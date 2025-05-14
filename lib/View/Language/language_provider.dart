@@ -89,6 +89,7 @@ class AppLanguage extends ChangeNotifier {
     'create_new_password': 'Create New Password',
     'password_reset_done': 'Password reset successful! You can now login with your new password.',
     'otp_required': 'Please enter all 6 digits',
+    'invalid_email': 'Please enter valid email address',
     'Failed to send OTP. Please try again.': 'Failed to send OTP. Please try again.',
     'Enter your email address and we will send you an OTP to reset your password.': 'Enter your email address and we will send you an OTP to reset your password.',
 
@@ -115,6 +116,19 @@ class AppLanguage extends ChangeNotifier {
     // signup page
     'signup_title': 'Create an account',
     'signup_subtitle': 'Join us and start your journey',
+
+    'please_enter_valid_postcode': 'Please enter a valid UK postcode',
+    'no_results_found': 'No results found for this postcode',
+    'error_searching_postcode': 'Error searching postcode',
+    'home_address': 'Home Address',
+    'home_postcode': 'Home Postcode',
+    'loading_profile': 'Loading profile...',
+    'personal_information': 'Personal Information',
+    'are_you_sure_you_want_to_logout': 'Are you sure you want to logout?',
+    'logout_confirmation': 'Logout Confirmation',
+    'change_password': 'Change Password',
+    'preferred_working_address': 'Preferred Working Address',
+    'account_settings': 'Account Settings',
   };
   
   // Constructor

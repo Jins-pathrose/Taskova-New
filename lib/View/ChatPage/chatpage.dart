@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskova_new/Model/api_config.dart';
@@ -9,7 +10,14 @@ import 'package:taskova_new/View/Authentication/login.dart';
 import 'package:taskova_new/View/driver_document.dart';
 
 
-class Chatpage extends StatelessWidget {
+class Chatpage extends StatefulWidget {
+  @override
+  State<Chatpage> createState() => _ChatpageState();
+}
+
+class _ChatpageState extends State<Chatpage> {
+    final GoogleSignIn _googleSignIn = GoogleSignIn();
+
    void showSuccessNotification(BuildContext context, String message) {
     showCupertinoDialog(
       context: context,
@@ -52,189 +60,194 @@ class Chatpage extends StatelessWidget {
   }
 
   // Logout function that calls the API
-  Future<void> logout(BuildContext context) async {
-    print('Starting logout process');
-    try {
-      // Show loading dialog
-      showCupertinoDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return CupertinoAlertDialog(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CupertinoActivityIndicator(),
-                SizedBox(height: 10),
-                Text("Logging out..."),
-              ],
-            ),
-          );
-        },
-      );
+//  Future<void> logout(BuildContext context) async {
+//     print('Starting logout process');
+//     try {
+//       // Show loading dialog
+//       showCupertinoDialog(
+//         context: context,
+//         barrierDismissible: false,
+//         builder: (BuildContext context) {
+//           return CupertinoAlertDialog(
+//             content: Column(
+//               mainAxisSize: MainAxisSize.min,
+//               children: [
+//                 CupertinoActivityIndicator(),
+//                 SizedBox(height: 10),
+//                 Text("Logging out..."),
+//               ],
+//             ),
+//           );
+//         },
+//       );
 
-      // Get tokens from SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      final accessToken = prefs.getString('access_token') ?? "";
-      final refreshToken = prefs.getString('refresh_token') ?? "";
+//       // Get tokens from SharedPreferences
+//       final prefs = await SharedPreferences.getInstance();
+//       final accessToken = prefs.getString('access_token') ?? "";
+//       final refreshToken = prefs.getString('refresh_token') ?? "";
 
-      // Call logout API
-      final response = await http.post(
-        Uri.parse(ApiConfig.logoutUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $accessToken',
-        },
-        body: jsonEncode({
-          'refresh': refreshToken,
-        }),
-      );
+//       // Sign out from Google
+//       await _googleSignIn.signOut();
+//       // For more aggressive disconnection that revokes access
+//       // await _googleSignIn.disconnect();
 
-      // Close the loading dialog
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
+//       // Call logout API
+//       final response = await http.post(
+//         Uri.parse(ApiConfig.logoutUrl),
+//         headers: {
+//           'Content-Type': 'application/json',
+//           'Authorization': 'Bearer $accessToken',
+//         },
+//         body: jsonEncode({
+//           'refresh': refreshToken,
+//         }),
+//       );
 
-      if (response.statusCode == 200 ||
-          response.statusCode == 204 ||
-          response.statusCode == 205) {
-        // Successfully logged out from server
-        Map<String, dynamic> responseData = {};
-        try {
-          if (response.body.isNotEmpty) {
-            responseData = jsonDecode(response.body);
-          }
-        } catch (e) {
-          // If the response body isn't valid JSON, ignore the error
-          print("Response body parsing error: $e");
-        }
+//       // Close the loading dialog
+//       if (Navigator.canPop(context)) {
+//         Navigator.pop(context);
+//       }
 
-        String successMessage =
-            responseData['message'] ?? "Logged out successfully";
-        print("Logged out successfully from server: $successMessage");
+//       if (response.statusCode == 200 ||
+//           response.statusCode == 204 ||
+//           response.statusCode == 205) {
+//         // Successfully logged out from server
+//         Map<String, dynamic> responseData = {};
+//         try {
+//           if (response.body.isNotEmpty) {
+//             responseData = jsonDecode(response.body);
+//           }
+//         } catch (e) {
+//           // If the response body isn't valid JSON, ignore the error
+//           print("Response body parsing error: $e");
+//         }
 
-        // Clear stored tokens
-        await prefs.remove('access_token');
-        await prefs.remove('refresh_token');
-        await prefs.remove('user_email');
-        await prefs.remove('user_name');
+//         String successMessage =
+//             responseData['message'] ?? "Logged out successfully";
+//         print("Logged out successfully from server: $successMessage");
 
-        // Show success notification briefly
-        showCupertinoDialog(
-          context: context,
-          builder: (BuildContext context) {
-            // Auto-dismiss after delay
-            Future.delayed(Duration(milliseconds: 800), () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
+//         // Clear stored tokens
+//         await prefs.remove('access_token');
+//         await prefs.remove('refresh_token');
+//         await prefs.remove('user_email');
+//         await prefs.remove('user_name');
+
+//         // Show success notification briefly
+//         showCupertinoDialog(
+//           context: context,
+//           builder: (BuildContext context) {
+//             // Auto-dismiss after delay
+//             Future.delayed(Duration(milliseconds: 800), () {
+//               if (Navigator.canPop(context)) {
+//                 Navigator.pop(context);
                 
-                // Navigate to login page using root navigator
-                Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                  CupertinoPageRoute(builder: (context) => LoginPage()),
-                  (Route<dynamic> route) => false,
-                );
-              }
-            });
+//                 // Navigate to login page using root navigator
+//                 Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+//                   CupertinoPageRoute(builder: (context) => LoginPage()),
+//                   (Route<dynamic> route) => false,
+//                 );
+//               }
+//             });
             
-            return CupertinoAlertDialog(
-              title: Text("Success"),
-              content: Text(successMessage),
-            );
-          },
-        );
-      } else {
-        print("Logout API error: ${response.statusCode} ${response.body}");
+//             return CupertinoAlertDialog(
+//               title: Text("Success"),
+//               content: Text(successMessage),
+//             );
+//           },
+//         );
+//       } else {
+//         print("Logout API error: ${response.statusCode} ${response.body}");
 
-        // Show error message
-        Map<String, dynamic> errorData = {};
-        try {
-          if (response.body.isNotEmpty) {
-            errorData = jsonDecode(response.body);
-          }
-        } catch (e) {
-          // If the response body isn't valid JSON, ignore the error
-          print("Error response body parsing error: $e");
-        }
+//         // Show error message
+//         Map<String, dynamic> errorData = {};
+//         try {
+//           if (response.body.isNotEmpty) {
+//             errorData = jsonDecode(response.body);
+//           }
+//         } catch (e) {
+//           // If the response body isn't valid JSON, ignore the error
+//           print("Error response body parsing error: $e");
+//         }
 
-        String errorMessage =
-            errorData['detail'] ?? "Logout failed. Please try again.";
+//         String errorMessage =
+//             errorData['detail'] ?? "Logout failed. Please try again.";
         
-        // We'll still clear tokens and redirect to login page even if the API call fails
-        await prefs.remove('access_token');
-        await prefs.remove('refresh_token');
-        await prefs.remove('user_email');
-        await prefs.remove('user_name');
+//         // We'll still clear tokens and redirect to login page even if the API call fails
+//         await prefs.remove('access_token');
+//         await prefs.remove('refresh_token');
+//         await prefs.remove('user_email');
+//         await prefs.remove('user_name');
 
-        // Show error notification with auto-dismiss
-        showCupertinoDialog(
-          context: context,
-          builder: (BuildContext context) {
-            // Auto-dismiss after delay
-            Future.delayed(Duration(milliseconds: 800), () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
+//         // Show error notification with auto-dismiss
+//         showCupertinoDialog(
+//           context: context,
+//           builder: (BuildContext context) {
+//             // Auto-dismiss after delay
+//             Future.delayed(Duration(milliseconds: 800), () {
+//               if (Navigator.canPop(context)) {
+//                 Navigator.pop(context);
                 
-                // Navigate to login page using root navigator
-                Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                  CupertinoPageRoute(builder: (context) => LoginPage()),
-                  (Route<dynamic> route) => false,
-                );
-              }
-            });
+//                 // Navigate to login page using root navigator
+//                 Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+//                   CupertinoPageRoute(builder: (context) => LoginPage()),
+//                   (Route<dynamic> route) => false,
+//                 );
+//               }
+//             });
             
-            return CupertinoAlertDialog(
-              title: Text("Error"),
-              content: Text(errorMessage),
-            );
-          },
-        );
-      }
-    } catch (e) {
-      // Close the loading dialog if it's showing
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
+//             return CupertinoAlertDialog(
+//               title: Text("Error"),
+//               content: Text(errorMessage),
+//             );
+//           },
+//         );
+//       }
+//     } catch (e) {
+//       // Close the loading dialog if it's showing
+//       if (Navigator.canPop(context)) {
+//         Navigator.pop(context);
+//       }
 
-      print("Error during logout: $e");
+//       print("Error during logout: $e");
 
-      // Try to clear tokens locally anyway
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove('access_token');
-        await prefs.remove('refresh_token');
-        await prefs.remove('user_email');
-        await prefs.remove('user_name');
+//       // Try to clear tokens locally anyway and sign out from Google
+//       try {
+//         await _googleSignIn.signOut();
         
-        // Show error notification with auto-dismiss
-        showCupertinoDialog(
-          context: context,
-          builder: (BuildContext context) {
-            // Auto-dismiss after delay
-            Future.delayed(Duration(milliseconds: 800), () {
-              if (Navigator.canPop(context)) {
-                Navigator.pop(context);
+//         final prefs = await SharedPreferences.getInstance();
+//         await prefs.remove('access_token');
+//         await prefs.remove('refresh_token');
+//         await prefs.remove('user_email');
+//         await prefs.remove('user_name');
+        
+//         // Show error notification with auto-dismiss
+//         showCupertinoDialog(
+//           context: context,
+//           builder: (BuildContext context) {
+//             // Auto-dismiss after delay
+//             Future.delayed(Duration(milliseconds: 800), () {
+//               if (Navigator.canPop(context)) {
+//                 Navigator.pop(context);
                 
-                // Navigate to login page using root navigator
-                Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-                  CupertinoPageRoute(builder: (context) => LoginPage()),
-                  (Route<dynamic> route) => false,
-                );
-              }
-            });
+//                 // Navigate to login page using root navigator
+//                 Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+//                   CupertinoPageRoute(builder: (context) => LoginPage()),
+//                   (Route<dynamic> route) => false,
+//                 );
+//               }
+//             });
             
-            return CupertinoAlertDialog(
-              title: Text("Error"),
-              content: Text("Logout failed. Please try again."),
-            );
-          },
-        );
-      } catch (e) {
-        print("Error clearing SharedPreferences: $e");
-      }
-    }
-  }
-
-
+//             return CupertinoAlertDialog(
+//               title: Text("Error"),
+//               content: Text("Logout failed. Please try again."),
+//             );
+//           },
+//         );
+//       } catch (e) {
+//         print("Error clearing SharedPreferences: $e");
+//       }
+//     }
+//   }
 
   @override
   Widget build(BuildContext context) {
@@ -277,16 +290,16 @@ class Chatpage extends StatelessWidget {
                 ),
               ),
               // Logout Button
-              CupertinoButton(
-                onPressed: () => logout(context),
-                color: CupertinoColors.destructiveRed,
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                borderRadius: BorderRadius.circular(8),
-                child: Text(
-                  "Logout",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
+              // CupertinoButton(
+              //   onPressed: () => logout(context),
+              //   color: CupertinoColors.destructiveRed,
+              //   padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+              //   borderRadius: BorderRadius.circular(8),
+              //   child: Text(
+              //     "Logout",
+              //     style: TextStyle(fontWeight: FontWeight.bold),
+              //   ),
+              // ),
             ],
           ),
         ),

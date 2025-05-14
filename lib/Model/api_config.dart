@@ -41,5 +41,7 @@ class ApiConfig {
   static String get googleLoginUrl {
     return '$baseUrl/social_auth/google-login/';
   }
-  
+  static String get jobListUrl {
+    return '$baseUrl/api/job-posts/';
+  }
 }

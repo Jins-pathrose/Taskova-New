@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart'
@@ -18,6 +19,7 @@ import 'package:taskova_new/View/Authentication/signup.dart';
 import 'package:taskova_new/View/BottomNavigation/bottomnavigation.dart';
 import 'package:taskova_new/View/Homepage/homepage.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
+import 'package:taskova_new/View/Profile/profilepage.dart';
 import 'package:taskova_new/View/profile.dart';
 
 class LoginPage extends StatefulWidget {
@@ -55,7 +57,7 @@ class _LoginPageState extends State<LoginPage> {
     if (token != null) {
       Navigator.pushReplacement(
         context,
-        CupertinoPageRoute(builder: (context) => HomePage()),
+        CupertinoPageRoute(builder: (context) => MainWrapper()),
       );
     }
   }
@@ -84,37 +86,47 @@ class _LoginPageState extends State<LoginPage> {
 
   void _showErrorDialog(String message) {
     showCupertinoDialog(
-      context: context,
-      builder:
-          (context) => CupertinoAlertDialog(
-            title: const Text('Error'),
-            content: Text(message),
-            actions: [
-              CupertinoDialogAction(
-                child: const Text('OK'),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-    );
+  context: context,
+  builder: (context) => CupertinoTheme(
+    data: CupertinoThemeData(
+      brightness: Brightness.light, // Ensures light theme
+    ),
+    child: CupertinoAlertDialog(
+      title: const Text('Wrong Credentials'),
+      content: Text(message),
+      actions: [
+        CupertinoDialogAction(
+          child: const Text('OK'),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ],
+    ),
+  ),
+);
+
   }
 
-  void _showSuccessDialog(String message) {
-    showCupertinoDialog(
-      context: context,
-      builder:
-          (context) => CupertinoAlertDialog(
-            title: const Text('Success'),
-            content: Text(message),
-            actions: [
-              CupertinoDialogAction(
-                child: const Text('OK'),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
+void _showSuccessDialog(String message) {
+  showCupertinoDialog(
+    context: context,
+    builder: (context) => CupertinoTheme(
+      data: const CupertinoThemeData(
+        brightness: Brightness.light, // Forces light (white) background
+      ),
+      child: CupertinoAlertDialog(
+        title: const Text('Success'),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(context),
           ),
-    );
-  }
+        ],
+      ),
+    ),
+  );
+}
+
 
   void _showInfoDialog(String message) {
     showCupertinoDialog(
@@ -152,16 +164,44 @@ class _LoginPageState extends State<LoginPage> {
       String refreshToken = data['tokens']['refresh'] ?? "";
       String name = data['name'] ?? "User";
       String email = account.email;
-      print("Access Token: $accessToken");
-      print("Refresh Token: $refreshToken");
-      print("Name: $name");
-      print("Email: $email");
+      
       // Save to SharedPreferences
       await saveTokens(accessToken, refreshToken, email, name);
-
-      Navigator.of(context).pushReplacement(
-        CupertinoPageRoute(builder: (_) => const MainWrapper()),
-      );
+final profileResponse = await http.get(
+            Uri.parse(ApiConfig.profileStatusUrl),
+            headers: {
+              'Authorization': 'Bearer $accessToken',
+              'Content-Type': 'application/json',
+            },
+          );
+if (profileResponse.statusCode == 200){
+  final profileData = jsonDecode(profileResponse.body);
+            bool isProfileComplete =
+                profileData['is_profile_complete'] ?? false;
+                if (!isProfileComplete) {
+              // _showInfoDialog("Please verify your email");
+              Navigator.push(
+                context,
+                CupertinoPageRoute(
+                  builder:
+                      (context) =>
+                          ProfileRegistrationPage(),
+                ),
+              );
+            }else {
+              _showSuccessDialog("Login successful!");
+              Navigator.pushReplacement(
+                context,
+                CupertinoPageRoute(
+                  builder:
+                      (context) =>
+                          MainWrapper(),
+                ),
+              );
+            }
+}
+          
+      
     } else {
       _showErrorDialog(data['error'] ?? 'Google login failed');
     }

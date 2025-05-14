@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http_parser/http_parser.dart';
 import 'package:taskova_new/Model/api_config.dart';
+import 'package:taskova_new/Model/postcode.dart';
 import 'package:taskova_new/View/BottomNavigation/bottomnavigation.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
 
@@ -40,6 +41,9 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
   bool _isSubmitting = false;
   String? _errorMessage;
   late AppLanguage appLanguage;
+  String? _selectedHomeAddress;
+  double? _homeLatitude;
+  double? _homeLongitude;
 
   // Define blue and white color scheme
   final Color primaryBlue = Color(0xFF1A5DC1); // Primary blue color
@@ -134,8 +138,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
       request.fields['name'] = _nameController.text;
       request.fields['phone_number'] = _phoneController.text;
       request.fields['email'] = _emailController.text;
-      request.fields['address'] = _addressController.text;
-      request.fields['preferred_working_area'] = _postcodeController.text;
+      request.fields['address'] = _selectedHomeAddress ?? '';
       request.fields['preferred_working_address'] = _selectedAddress ?? '';
       request.fields['latitude'] = _latitude!.toString();
       request.fields['longitude'] = _longitude!.toString();
@@ -264,21 +267,26 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     showCupertinoDialog(
       context: context,
       builder:
-          (context) => CupertinoAlertDialog(
-            title: Text(
-              appLanguage.get('error'),
-              style: TextStyle(color: CupertinoColors.destructiveRed),
+          (context) => CupertinoTheme(
+            data: CupertinoThemeData(
+              brightness: Brightness.light,
             ),
-            content: Text(message),
-            actions: [
-              CupertinoDialogAction(
-                child: Text(
-                  appLanguage.get('ok'),
-                  style: TextStyle(color: primaryBlue),
-                ),
-                onPressed: () => Navigator.pop(context),
+            child: CupertinoAlertDialog(
+              title: Text(
+                appLanguage.get('Please submit all required fields'),
+                style: TextStyle(color: CupertinoColors.destructiveRed),
               ),
-            ],
+              content: Text(message),
+              actions: [
+                CupertinoDialogAction(
+                  child: Text(
+                    appLanguage.get('ok'),
+                    style: TextStyle(color: primaryBlue),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
           ),
     );
   }
@@ -498,17 +506,83 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
 
                         SizedBox(height: 16),
 
-                        _buildFormField(
-                          controller: _addressController,
-                          placeholder: appLanguage.get('address'),
-                          icon: CupertinoIcons.home,
-                          maxLines: 3,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return appLanguage.get('please_enter_address');
-                            }
-                            return null;
-                          },
+                        // Home Address Section
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: lightBlue,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: primaryBlue.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                appLanguage.get('home_address'),
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.bold,
+                                  color: primaryBlue,
+                                ),
+                              ),
+                              SizedBox(height: 16),
+
+                              // Home Address Postcode Search Widget
+                              PostcodeSearchWidget(
+                                placeholderText: appLanguage.get(
+                                  'home_postcode',
+                                ),
+                                onAddressSelected: (
+                                  latitude,
+                                  longitude,
+                                  address,
+                                ) {
+                                  setState(() {
+                                    _selectedHomeAddress = address;
+                                    _homeLatitude = latitude;
+                                    _homeLongitude = longitude;
+                                  });
+                                },
+                              ),
+
+                              SizedBox(height: 16),
+
+                              // Display Selected Home Address
+                              if (_selectedHomeAddress != null)
+                                Container(
+                                  padding: EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: whiteColor,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: primaryBlue.withOpacity(0.5),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        appLanguage.get(
+                                          'selected_home_address',
+                                        ),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: primaryBlue,
+                                        ),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        _selectedHomeAddress!,
+                                        style: TextStyle(color: accentBlue),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
 
                         SizedBox(height: 24),
@@ -651,82 +725,29 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                   color: primaryBlue,
                                 ),
                               ),
-
                               SizedBox(height: 16),
 
-                              // Postcode Search Field
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: whiteColor,
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: primaryBlue.withOpacity(0.5),
-                                        ),
-                                      ),
-                                      child: CupertinoTextField(
-                                        controller: _postcodeController,
-                                        placeholder: appLanguage.get(
-                                          'postcode',
-                                        ),
-                                        placeholderStyle: TextStyle(
-                                          color: Colors.grey,
-                                        ), // <- Add this line
-                                        prefix: Padding(
-                                          padding: const EdgeInsets.only(
-                                            left: 10,
-                                          ),
-                                          child: Icon(
-                                            CupertinoIcons.search,
-                                            color: primaryBlue,
-                                          ),
-                                        ),
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 12,
-                                        ),
-                                        style: TextStyle(color: primaryBlue),
-                                        decoration: BoxDecoration(
-                                          color: Colors.transparent,
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 12),
-                                  CupertinoButton(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 15,
-                                      vertical: 8,
-                                    ),
-                                    color: primaryBlue,
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Text(
-                                      appLanguage.get('search'),
-                                      style: TextStyle(color: whiteColor),
-                                    ),
-                                    onPressed:
-                                        () => _searchByPostcode(
-                                          _postcodeController.text,
-                                        ),
-                                  ),
-                                ],
+                              // Working Area Postcode Search
+                              PostcodeSearchWidget(
+                                postcodeController: _postcodeController,
+                                placeholderText: appLanguage.get('postcode'),
+                                onAddressSelected: (
+                                  latitude,
+                                  longitude,
+                                  address,
+                                ) {
+                                  setState(() {
+                                    _selectedAddress = address;
+                                    _latitude = latitude;
+                                    _longitude = longitude;
+                                  });
+                                },
                               ),
 
                               SizedBox(height: 16),
 
-                              // Search Result Display
-                              if (_isSearching)
-                                Center(
-                                  child: CupertinoActivityIndicator(
-                                    color: primaryBlue,
-                                  ),
-                                )
-                              else if (_selectedAddress != null)
+                              // Display Selected Working Address
+                              if (_selectedAddress != null)
                                 Container(
                                   padding: EdgeInsets.all(16),
                                   decoration: BoxDecoration(

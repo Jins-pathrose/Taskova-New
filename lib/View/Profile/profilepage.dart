@@ -1,44 +1,65 @@
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show Icons;
-import 'package:provider/provider.dart';
+import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:taskova_new/Model/api_config.dart';
+import 'package:taskova_new/View/Authentication/login.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
 
-
 class ProfilePage extends StatefulWidget {
+  const ProfilePage({Key? key}) : super(key: key);
+
   @override
   _ProfilePageState createState() => _ProfilePageState();
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final _formKey = GlobalKey<FormState>();
+  
+  // Define controllers for the editable fields
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+      final GoogleSignIn _googleSignIn = GoogleSignIn();
+
+  // Profile image
+  String? _profileImageUrl;
+  File? _imageFile;
+  final picker = ImagePicker();
+  
+  // Other profile data
+  String? _selectedAddress;
+  
+  // UI States
   bool _isLoading = true;
   bool _isEditing = false;
-  bool _isSubmitting = false;
+  bool _isSaving = false;
   String? _errorMessage;
   
-  // Profile data
-  Map<String, dynamic> _profileData = {};
+  // Color scheme
+  final Color primaryBlue = Color(0xFF1A5DC1);
+  final Color lightBlue = Color(0xFFE6F0FF);
+  final Color accentBlue = Color(0xFF0E4DA4);
+  final Color whiteColor = CupertinoColors.white;
   
-  // Text controllers for editing
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
-  
-  final _formKey = GlobalKey<FormState>();
   late AppLanguage appLanguage;
 
   @override
   void initState() {
     super.initState();
     appLanguage = Provider.of<AppLanguage>(context, listen: false);
-    _fetchProfileData();
+    _loadProfileData();
   }
 
-  Future<void> _fetchProfileData() async {
+  // Load profile data from API/storage
+  Future<void> _loadProfileData() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -47,11 +68,11 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final accessToken = prefs.getString('access_token');
-      
+
       if (accessToken == null) {
         throw Exception('Authentication token not found. Please login again.');
       }
-      
+
       final url = Uri.parse(ApiConfig.driverProfileUrl);
       final response = await http.get(
         url,
@@ -59,44 +80,25 @@ class _ProfilePageState extends State<ProfilePage> {
           'Authorization': 'Bearer $accessToken',
           'Accept': 'application/json',
         },
-      ).timeout(
-        Duration(seconds: 30),
-        onTimeout: () {
-          throw TimeoutException('Request timed out. Please check your connection.');
-        },
       );
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        
         setState(() {
-          _profileData = data;
-          // Initialize controllers with current data
           _nameController.text = data['name'] ?? '';
-          _phoneController.text = data['phone_number'] ?? '';
           _emailController.text = data['email'] ?? '';
-          _addressController.text = data['address'] ?? '';
+          _phoneController.text = data['phone_number'] ?? '';
+          _selectedAddress = data['preferred_working_address'] ?? '';
+          _addressController.text = _selectedAddress ?? '';
+          _profileImageUrl = data['profile_picture_url'];
         });
       } else {
-        setState(() {
-          try {
-            final responseData = json.decode(response.body);
-            if (responseData is Map<String, dynamic> && responseData.containsKey('detail')) {
-              _errorMessage = responseData['detail'];
-            } else {
-              _errorMessage = 'Failed to fetch profile data. Status code: ${response.statusCode}';
-            }
-          } catch (e) {
-            _errorMessage = 'Failed to parse server response: ${e.toString()}';
-          }
-        });
+        throw Exception('Failed to load profile data');
       }
     } catch (e) {
       setState(() {
-        if (e is TimeoutException) {
-          _errorMessage = e.message;
-        } else {
-          _errorMessage = 'Error: ${e.toString()}';
-        }
+        _errorMessage = 'Error loading profile: ${e.toString()}';
       });
     } finally {
       setState(() {
@@ -104,97 +106,195 @@ class _ProfilePageState extends State<ProfilePage> {
       });
     }
   }
-  
- Future<void> _updateProfile() async {
-  if (!_formKey.currentState!.validate()) {
-    return;
-  }
 
-  setState(() {
-    _isSubmitting = true;
-    _errorMessage = null;
-  });
+  // Get image from camera or gallery
+  Future<void> _getImage(ImageSource source) async {
+    final pickedFile = await picker.pickImage(source: source, imageQuality: 70);
 
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final accessToken = prefs.getString('access_token');
-    
-    if (accessToken == null) {
-      throw Exception('Authentication token not found. Please login again.');
-    }
-    
-    final url = Uri.parse(ApiConfig.driverProfileUrl);
-    final headers = {
-      'Authorization': 'Bearer $accessToken',
-      'Accept': 'application/json',
-      'Content-Type': 'application/json', // Remove charset parameter
-    };
-    
-    // Prepare data for update
-    final data = {
-      'name': _nameController.text,
-      'phone_number': _phoneController.text,
-      'email': _emailController.text,
-      'address': _addressController.text,
-    };
-    
-    final response = await http.put(
-      url,
-      headers: headers,
-      body: json.encode(data),
-    ).timeout(
-      Duration(seconds: 30),
-      onTimeout: () {
-        throw TimeoutException('Request timed out. Please check your connection.');
-      },
-    );
-    
-    if (response.statusCode == 200) {
-      _showSuccessDialog('Profile updated successfully!');
-      _fetchProfileData(); // Refresh the profile data
-      setState(() {
-        _isEditing = false;
-      });
-    } else {
-      setState(() {
-        try {
-          final responseData = json.decode(response.body);
-          if (responseData is Map<String, dynamic> && responseData.containsKey('detail')) {
-            _errorMessage = responseData['detail'];
-          } else {
-            _errorMessage = 'Failed to update profile. Status code: ${response.statusCode}';
-          }
-        } catch (e) {
-          _errorMessage = 'Failed to parse server response: ${e.toString()}';
-        }
-      });
-    }
-  } catch (e) {
     setState(() {
-      if (e is TimeoutException) {
-        _errorMessage = e.message;
-      } else {
-        _errorMessage = 'Error: ${e.toString()}';
+      if (pickedFile != null) {
+        _imageFile = File(pickedFile.path);
       }
     });
-  } finally {
+  }
+
+  // Save profile changes
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+
     setState(() {
-      _isSubmitting = false;
+      _isSaving = true;
+      _errorMessage = null;
     });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('access_token');
+
+      if (accessToken == null) {
+        throw Exception('Authentication token not found. Please login again.');
+      }
+
+      final url = Uri.parse(ApiConfig.driverProfileUrl);
+      final request = http.MultipartRequest('PUT', url);
+
+      request.headers.addAll({
+        'Authorization': 'Bearer $accessToken',
+        'Accept': 'application/json',
+      });
+
+      // Add form fields
+      request.fields['name'] = _nameController.text;
+      request.fields['email'] = _emailController.text;
+      request.fields['phone_number'] = _phoneController.text;
+      request.fields['preferred_working_address'] = _addressController.text;
+
+      // Add profile image if updated
+      if (_imageFile != null) {
+        final fileName = _imageFile!.path.split('/').last;
+        final extension = fileName.split('.').last.toLowerCase();
+
+        final multipartFile = await http.MultipartFile.fromPath(
+          'profile_picture',
+          _imageFile!.path,
+          contentType: MediaType('image', extension),
+          filename: fileName,
+        );
+
+        request.files.add(multipartFile);
+      }
+
+      final streamedResponse = await request.send().timeout(
+        Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException(
+            'Request timed out. Please check your connection.',
+          );
+        },
+      );
+
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        // Refresh profile data
+        _loadProfileData();
+        setState(() {
+          _isEditing = false;
+        });
+        _showSuccessDialog(appLanguage.get('profile_updated_successfully'));
+      } else {
+        throw Exception('Failed to update profile');
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Error updating profile: ${e.toString()}';
+      });
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
+    }
+  }
+
+  // Logout function
+  Future<void> logout(BuildContext context) async {
+  // showCupertinoDialog(
+  //   context: context,
+  //   barrierDismissible: false,
+  //   builder: (context) => CupertinoAlertDialog(
+  //     content: Column(
+  //       children: [
+  //         CupertinoActivityIndicator(),
+  //         SizedBox(height: 10),
+  //         Text("Logging out..."),
+  //       ],
+  //     ),
+  //   ),
+  // );
+
+  try {
+    await _googleSignIn.signOut();
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+
+    Navigator.of(context, rootNavigator: true).pop();
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      CupertinoPageRoute(builder: (context) => LoginPage()),
+      (route) => false,
+    );
+  } catch (e) {
+    Navigator.of(context, rootNavigator: true).pop();
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text("Error"),
+        content: Text("Logout failed"),
+        actions: [
+          CupertinoDialogAction(
+            child: Text("OK"),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
+    );
   }
 }
 
+  // Show confirmation dialog for logout
+  void _showLogoutConfirmation() {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoTheme(
+        data: CupertinoThemeData(
+              brightness: Brightness.light,
+            ),
+        child: CupertinoAlertDialog(
+          title: Text(
+            appLanguage.get('logout_confirmation'),
+            style: TextStyle(color: primaryBlue),
+          ),
+          content: Text(appLanguage.get('are_you_sure_you_want_to_logout')),
+          actions: [
+            CupertinoDialogAction(
+              child: Text(
+                appLanguage.get('cancel'),
+                style: TextStyle(color: primaryBlue),
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
+            CupertinoDialogAction(
+              isDestructiveAction: true,
+              child: Text(appLanguage.get('logout')),
+              onPressed: () {
+                Navigator.pop(context);
+                logout(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
+ 
 
+  // Show success dialog
   void _showSuccessDialog(String message) {
     showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
-        title: Text(appLanguage.get('success')),
+        title: Text(
+          appLanguage.get('success'),
+          style: TextStyle(color: primaryBlue),
+        ),
         content: Text(message),
         actions: [
           CupertinoDialogAction(
-            child: Text(appLanguage.get('ok')),
+            child: Text(
+              appLanguage.get('ok'),
+              style: TextStyle(color: primaryBlue),
+            ),
             onPressed: () => Navigator.pop(context),
           ),
         ],
@@ -202,271 +302,63 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildProfileView() {    
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Header with icon
-          Icon(
-            CupertinoIcons.person_circle,
-            size: 100,
-            color: CupertinoColors.activeBlue,
-          ),
-          
-          SizedBox(height: 24),
-          
-          // Name
-          _buildInfoCard(
-            title: appLanguage.get('name'),
-            value: _profileData['name'] ?? appLanguage.get('not_specified'),
-            icon: CupertinoIcons.person,
-          ),
-          
-          SizedBox(height: 16),
-          
-          // Email
-          _buildInfoCard(
-            title: appLanguage.get('email'),
-            value: _profileData['email'] ?? appLanguage.get('not_specified'),
-            icon: CupertinoIcons.mail,
-          ),
-          
-          SizedBox(height: 16),
-          
-          // Phone
-          _buildInfoCard(
-            title: appLanguage.get('phone_number'),
-            value: _profileData['phone_number'] ?? appLanguage.get('not_specified'),
-            icon: CupertinoIcons.phone,
-          ),
-          
-          SizedBox(height: 16),
-          
-          // Address
-          _buildInfoCard(
-            title: appLanguage.get('address'),
-            value: _profileData['address'] ?? appLanguage.get('not_specified'),
-            icon: CupertinoIcons.home,
-          ),
-          
-          SizedBox(height: 30),
-          
-          // Edit Button
-          // CupertinoButton.filled(
-          //   child: Text(appLanguage.get('edit_profile')),
-          //   onPressed: () {
-          //     setState(() {
-          //       _isEditing = true;
-          //     });
-          //   },
-          // ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildInfoCard({required String title, required String value, required IconData icon}) {
+  // Helper widget for creating consistent form fields
+  Widget _buildFormField({
+    required TextEditingController controller,
+    required String placeholder,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
+    String? Function(String?)? validator,
+  }) {
     return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: CupertinoColors.systemBackground,
+        color: readOnly ? lightBlue.withOpacity(0.5) : lightBlue,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.1),
-            blurRadius: 5,
-            offset: Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: primaryBlue.withOpacity(0.3)),
       ),
-      child: Row(
-        children: [
-          Icon(icon, color: CupertinoColors.activeBlue),
-          SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: CupertinoColors.systemGrey,
-                    fontSize: 14,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: CupertinoColors.black,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+      child: CupertinoFormRow(
+        child: CupertinoTextFormFieldRow(
+          controller: controller,
+          placeholder: placeholder,
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          prefix: Icon(icon, color: primaryBlue),
+          keyboardType: keyboardType,
+          style: TextStyle(color: primaryBlue),
+          placeholderStyle: TextStyle(color: primaryBlue.withOpacity(0.7)),
+          decoration: BoxDecoration(color: Colors.transparent),
+          readOnly: !_isEditing || readOnly,
+          validator: validator,
+        ),
       ),
     );
   }
-  
-  Widget _buildEditForm() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            if (_errorMessage != null)
-              Container(
-                padding: EdgeInsets.all(12),
-                margin: EdgeInsets.only(bottom: 20),
-                decoration: BoxDecoration(
-                  color: CupertinoColors.destructiveRed.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: CupertinoColors.destructiveRed),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      appLanguage.get('update_failed'),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: CupertinoColors.destructiveRed,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      _errorMessage!,
-                      style: TextStyle(color: CupertinoColors.destructiveRed),
-                    ),
-                  ],
-                ),
-              ),
-            
-            // Header icon
-            Icon(
-              CupertinoIcons.person_circle,
-              size: 100,
-              color: CupertinoColors.activeBlue,
-            ),
-            
-            SizedBox(height: 30),
-            
-            // Name Field
-            CupertinoFormRow(
-              child: CupertinoTextFormFieldRow(
-                controller: _nameController,
-                placeholder: appLanguage.get('name'),
-                prefix: Icon(CupertinoIcons.person),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return appLanguage.get('please_enter_name');
-                  }
-                  return null;
-                },
-              ),
-            ),
-            
-            SizedBox(height: 16),
-            
-            // Email Field
-            CupertinoFormRow(
-              child: CupertinoTextFormFieldRow(
-                controller: _emailController,
-                placeholder: appLanguage.get('email'),
-                prefix: Icon(CupertinoIcons.mail),
-                keyboardType: TextInputType.emailAddress,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return appLanguage.get('please_enter_email');
-                  }
-                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                    return appLanguage.get('please_enter_valid_email');
-                  }
-                  return null;
-                },
-              ),
-            ),
-            
-            SizedBox(height: 16),
-            
-            // Phone Number Field
-            CupertinoFormRow(
-              child: CupertinoTextFormFieldRow(
-                controller: _phoneController,
-                placeholder: appLanguage.get('phone_number'),
-                prefix: Icon(CupertinoIcons.phone),
-                keyboardType: TextInputType.phone,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return appLanguage.get('please_enter_phone_number');
-                  }
-                  return null;
-                },
-              ),
-            ),
-            
-            SizedBox(height: 16),
-            
-            // Address Field
-            CupertinoFormRow(
-              child: CupertinoTextFormFieldRow(
-                controller: _addressController,
-                placeholder: appLanguage.get('address'),
-                prefix: Icon(CupertinoIcons.home),
-                maxLines: 3,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return appLanguage.get('please_enter_address');
-                  }
-                  return null;
-                },
-              ),
-            ),
-            
-            SizedBox(height: 30),
-            
-            // Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: CupertinoButton(
-                    color: CupertinoColors.systemGrey5,
-                    child: Text(
-                      appLanguage.get('cancel'),
-                      style: TextStyle(color: CupertinoColors.systemBlue),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isEditing = false;
-                        _errorMessage = null;
-                        // Reset controllers to current values
-                        _nameController.text = _profileData['name'] ?? '';
-                        _phoneController.text = _profileData['phone_number'] ?? '';
-                        _emailController.text = _profileData['email'] ?? '';
-                        _addressController.text = _profileData['address'] ?? '';
-                      });
-                    },
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: CupertinoButton.filled(
-                    child: Text(appLanguage.get('save')),
-                    onPressed: _updateProfile,
-                  ),
-                ),
-              ],
-            ),
-          ],
+
+  // Image picker options dialog
+  void _showImagePickerOptions() {
+    showCupertinoModalPopup(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        title: Text(appLanguage.get('select_profile_picture')),
+        actions: [
+          CupertinoActionSheetAction(
+            child: Text(appLanguage.get('take_photo')),
+            onPressed: () {
+              Navigator.pop(context);
+              _getImage(ImageSource.camera);
+            },
+          ),
+          CupertinoActionSheetAction(
+            child: Text(appLanguage.get('choose_from_gallery')),
+            onPressed: () {
+              Navigator.pop(context);
+              _getImage(ImageSource.gallery);
+            },
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          child: Text(appLanguage.get('cancel')),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
     );
@@ -475,50 +367,534 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
+      backgroundColor: whiteColor,
       navigationBar: CupertinoNavigationBar(
-        middle: Text(appLanguage.get('profile')),
+        backgroundColor: primaryBlue,
+        middle: Text(
+          appLanguage.get('profile'),
+          style: TextStyle(color: whiteColor, fontWeight: FontWeight.bold),
+        ),
+        // trailing: Row(
+        //   mainAxisSize: MainAxisSize.min,
+        //   children: [
+        //     GestureDetector(
+        //       onTap: () {
+        //         setState(() {
+        //           if (_isEditing) {
+        //             // Save changes
+        //             _saveProfile();
+        //           } else {
+        //             // Enter edit mode
+        //             _isEditing = true;
+        //           }
+        //         });
+        //       },
+        //       // child: _isSaving
+        //       //     ? CupertinoActivityIndicator(color: whiteColor)
+        //       //     : Icon(
+        //       //         _isEditing ? CupertinoIcons.check_mark : CupertinoIcons.pencil,
+        //       //         color: whiteColor,
+        //       //       ),
+        //     ),
+        //     // SizedBox(width: 15),
+        //     // GestureDetector(
+        //     //   onTap: _showLogoutConfirmation,
+        //     //   child: Icon(
+        //     //     CupertinoIcons.square_arrow_right,
+        //     //     color: whiteColor,
+        //     //   ),
+        //     // ),
+        //   ],
+        // ),
       ),
-      child: SafeArea(
-        child: _isLoading
-            ? Center(
+      child: _isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CupertinoActivityIndicator(color: primaryBlue, radius: 15),
+                  SizedBox(height: 16),
+                  Text(
+                    appLanguage.get('loading_profile'),
+                    style: TextStyle(color: primaryBlue, fontSize: 16),
+                  ),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              padding: EdgeInsets.all(16),
+              child: Form(
+                key: _formKey,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    CupertinoActivityIndicator(),
-                    SizedBox(height: 16),
-                    Text(
-                      appLanguage.get('loading_profile'),
-                      style: CupertinoTheme.of(context).textTheme.textStyle,
+                    // Error message display
+                    if (_errorMessage != null)
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        margin: EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.destructiveRed.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: CupertinoColors.destructiveRed),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              appLanguage.get('error'),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: CupertinoColors.destructiveRed,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              _errorMessage!,
+                              style: TextStyle(
+                                color: CupertinoColors.destructiveRed,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Profile picture
+                    Center(
+                      child: Stack(
+                        children: [
+                          GestureDetector(
+                            onTap: _isEditing ? _showImagePickerOptions : null,
+                            child: Container(
+                              width: 140,
+                              height: 140,
+                              decoration: BoxDecoration(
+                                color: lightBlue,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: primaryBlue,
+                                  width: 3,
+                                ),
+                                image: _imageFile != null
+                                    ? DecorationImage(
+                                        image: FileImage(_imageFile!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : _profileImageUrl != null
+                                        ? DecorationImage(
+                                            image: NetworkImage(_profileImageUrl!),
+                                            fit: BoxFit.cover,
+                                          )
+                                        : null,
+                              ),
+                              child: (_imageFile == null && _profileImageUrl == null)
+                                  ? Icon(
+                                      CupertinoIcons.person_solid,
+                                      size: 70,
+                                      color: primaryBlue,
+                                    )
+                                  : null,
+                            ),
+                          ),
+                          if (_isEditing)
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: CupertinoButton(
+                                padding: EdgeInsets.zero,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: primaryBlue,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: whiteColor,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  padding: EdgeInsets.all(8),
+                                  child: Icon(
+                                    CupertinoIcons.camera_fill,
+                                    color: whiteColor,
+                                    size: 20,
+                                  ),
+                                ),
+                                onPressed: _showImagePickerOptions,
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
+
+                    SizedBox(height: 30),
+
+                    // Profile status card
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [primaryBlue, accentBlue],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryBlue.withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: whiteColor.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  CupertinoIcons.person_badge_plus,
+                                  color: whiteColor,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      appLanguage.get('driver_status'),
+                                      style: TextStyle(
+                                        color: whiteColor.withOpacity(0.8),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      appLanguage.get('active'),
+                                      style: TextStyle(
+                                        color: whiteColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: whiteColor,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  appLanguage.get('verified'),
+                                  style: TextStyle(
+                                    color: primaryBlue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 24),
+
+                    // Profile Information Section
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: lightBlue,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: primaryBlue.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                appLanguage.get('personal_information'),
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: primaryBlue,
+                                ),
+                              ),
+                              // if (!_isEditing)
+                              //   CupertinoButton(
+                              //     padding: EdgeInsets.zero,
+                              //     child: Text(
+                              //       appLanguage.get('edit'),
+                              //       style: TextStyle(
+                              //         color: primaryBlue,
+                              //         fontWeight: FontWeight.w600,
+                              //       ),
+                              //     ),
+                              //     onPressed: () {
+                              //       setState(() {
+                              //         _isEditing = true;
+                              //       });
+                              //     },
+                              //   ),
+                            ],
+                          ),
+                          SizedBox(height: 16),
+                          _buildFormField(
+                            controller: _nameController,
+                            placeholder: appLanguage.get('name'),
+                            icon: CupertinoIcons.person,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return appLanguage.get('please_enter_name');
+                              }
+                              return null;
+                            },
+                          ),
+                          SizedBox(height: 16),
+                          _buildFormField(
+                            controller: _emailController,
+                            placeholder: appLanguage.get('email'),
+                            icon: CupertinoIcons.mail,
+                            keyboardType: TextInputType.emailAddress,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return appLanguage.get('please_enter_email');
+                              }
+                              if (!RegExp(
+                                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                              ).hasMatch(value)) {
+                                return appLanguage.get('please_enter_valid_email');
+                              }
+                              return null;
+                            },
+                          ),
+                          SizedBox(height: 16),
+                          _buildFormField(
+                            controller: _phoneController,
+                            placeholder: appLanguage.get('phone_number'),
+                            icon: CupertinoIcons.phone,
+                            keyboardType: TextInputType.phone,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return appLanguage.get('please_enter_phone_number');
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 16),
+
+                    // Address Section
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: lightBlue,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: primaryBlue.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            appLanguage.get('preferred_working_address'),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: primaryBlue,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          _buildFormField(
+                            controller: _addressController,
+                            placeholder: appLanguage.get('address'),
+                            icon: CupertinoIcons.location,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return appLanguage.get('please_enter_address');
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 16),
+
+                    // Account Settings Section
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: lightBlue,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: primaryBlue.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            appLanguage.get('account_settings'),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: primaryBlue,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          _buildSettingsItem(
+                            icon: CupertinoIcons.bell,
+                            title: appLanguage.get('notifications'),
+                            onTap: () {
+                              // Navigate to notifications settings
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildSettingsItem(
+                            icon: CupertinoIcons.lock,
+                            title: appLanguage.get('change_password'),
+                            onTap: () {
+                              // Navigate to change password screen
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildSettingsItem(
+                            icon: CupertinoIcons.globe,
+                            title: appLanguage.get('language'),
+                            onTap: () {
+                              // Navigate to language settings
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildSettingsItem(
+                            icon: CupertinoIcons.square_arrow_right,
+                            title: appLanguage.get('logout'),
+                            isDestructive: true,
+                            onTap: _showLogoutConfirmation,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 30),
+
+                    // Bottom buttons
+                    if (_isEditing)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CupertinoButton(
+                              padding: EdgeInsets.symmetric(vertical: 14),
+                              color: CupertinoColors.systemGrey5,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Text(
+                                appLanguage.get('cancel'),
+                                style: TextStyle(
+                                  color: primaryBlue,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isEditing = false;
+                                  _imageFile = null;
+                                  // Reset controllers to original values
+                                  _loadProfileData();
+                                });
+                              },
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: CupertinoButton(
+                              padding: EdgeInsets.symmetric(vertical: 14),
+                              color: primaryBlue,
+                              borderRadius: BorderRadius.circular(12),
+                              child: _isSaving
+                                  ? CupertinoActivityIndicator(color: whiteColor)
+                                  : Text(
+                                      appLanguage.get('save').toUpperCase(),
+                                      style: TextStyle(
+                                        color: whiteColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                              onPressed: _isSaving ? null : _saveProfile,
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
-              )
-            : _isSubmitting
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CupertinoActivityIndicator(),
-                        SizedBox(height: 16),
-                        Text(
-                          appLanguage.get('updating_profile'),
-                          style: CupertinoTheme.of(context).textTheme.textStyle,
-                        ),
-                      ],
-                    ),
-                  )
-                : _isEditing
-                    ? _buildEditForm()
-                    : _buildProfileView(),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildSettingsItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
+    return CupertinoButton(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      onPressed: onTap,
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: isDestructive ? CupertinoColors.destructiveRed : primaryBlue,
+            size: 24,
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                color: isDestructive ? CupertinoColors.destructiveRed : primaryBlue,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Icon(
+            CupertinoIcons.chevron_right,
+            color: isDestructive ? CupertinoColors.destructiveRed : primaryBlue.withOpacity(0.5),
+            size: 20,
+          ),
+        ],
       ),
     );
   }
-  
+
+  Widget _buildDivider() {
+    return Divider(
+      color: primaryBlue.withOpacity(0.2),
+      height: 1,
+    );
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
-    _phoneController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _addressController.dispose();
     super.dispose();
   }
@@ -527,7 +903,7 @@ class _ProfilePageState extends State<ProfilePage> {
 class TimeoutException implements Exception {
   final String? message;
   TimeoutException(this.message);
-  
+
   @override
   String toString() {
     return message ?? 'Request timed out';

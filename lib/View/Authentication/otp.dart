@@ -189,14 +189,18 @@ class _OtpVerificationState extends State<OtpVerification> with SingleTickerProv
   }
 
   void _showErrorDialog(String message) {
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
+  showCupertinoDialog(
+    context: context,
+    builder: (context) => CupertinoTheme(
+      data: const CupertinoThemeData(
+        brightness: Brightness.light, // Ensures white background
+      ),
+      child: CupertinoAlertDialog(
         title: Text(
-          'Error',
+          'Incorrect OTP',
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: Colors.black, // Changed to black for contrast on white
           ),
         ),
         content: Text(
@@ -218,13 +222,19 @@ class _OtpVerificationState extends State<OtpVerification> with SingleTickerProv
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
-  void _showSuccessDialog(String message) {
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
+
+ void _showSuccessDialog(String message) {
+  showCupertinoDialog(
+    context: context,
+    builder: (context) => CupertinoTheme(
+      data: const CupertinoThemeData(
+        brightness: Brightness.light, // Forces white background
+      ),
+      child: CupertinoAlertDialog(
         title: Text(
           'Success',
           style: GoogleFonts.poppins(
@@ -251,8 +261,10 @@ class _OtpVerificationState extends State<OtpVerification> with SingleTickerProv
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {

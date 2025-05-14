@@ -61,7 +61,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         } else {
           final responseData = jsonDecode(response.body);
           String errorMessage = responseData['message'] ?? 
-              appLanguage.get('Failed to send OTP. Please try again.');
+              appLanguage.get('invalid_email');
           _showErrorDialog(errorMessage);
         }
       } catch (e) {
@@ -73,36 +73,60 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   void _showErrorDialog(String message) {
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: Text('Error', style: TextStyle(color: AppColors.accentBlue)),
+  showCupertinoDialog(
+    context: context,
+    builder: (context) => CupertinoTheme(
+      data: const CupertinoThemeData(
+        brightness: Brightness.light, // Forces white background
+      ),
+      child: CupertinoAlertDialog(
+        title: Text(
+          'Invalid Email',
+          style: TextStyle(color: AppColors.accentBlue),
+        ),
         content: Text(message),
         actions: [
           CupertinoDialogAction(
-            child: Text('OK', style: TextStyle(color: AppColors.primaryBlue)),
+            child: Text(
+              'OK',
+              style: TextStyle(color: AppColors.primaryBlue),
+            ),
             onPressed: () => Navigator.pop(context),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   void _showSuccessDialog(String message) {
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: Text('Success', style: TextStyle(color: AppColors.primaryBlue)),
+  showCupertinoDialog(
+    context: context,
+    builder: (context) => CupertinoTheme(
+      data: const CupertinoThemeData(
+        brightness: Brightness.light, // Ensures white background
+      ),
+      child: CupertinoAlertDialog(
+        title: Text(
+          'Success',
+          style: TextStyle(color: AppColors.primaryBlue),
+        ),
         content: Text(message),
         actions: [
           CupertinoDialogAction(
-            child: Text('OK', style: TextStyle(color: AppColors.primaryBlue)),
+            child: Text(
+              'OK',
+              style: TextStyle(color: AppColors.primaryBlue),
+            ),
             onPressed: () => Navigator.pop(context),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   @override
   void dispose() {

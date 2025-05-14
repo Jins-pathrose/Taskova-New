@@ -143,87 +143,93 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
     String? label,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (label != null)
-            Padding(
-              padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
-              child: Text(
-                label,
-                style: GoogleFonts.poppins(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: textDarkBlue,
-                ),
-              ),
+  padding: const EdgeInsets.only(bottom: 16.0),
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (label != null)
+        Padding(
+          padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
+          child: Text(
+            label,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: textDarkBlue,
             ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 0.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: cardWhite,
-                borderRadius: BorderRadius.circular(16.0),
-                border: Border.all(
-                  color: Colors.blue.shade100,
-                  width: 1.0,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.shade100.withOpacity(0.25),
-                    blurRadius: 8.0,
-                    offset: Offset(0, 2),
-                  ),
-                ],
+          ),
+        ),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 0.0),
+        child: Container(
+          decoration: BoxDecoration(
+            color: cardWhite,
+            borderRadius: BorderRadius.circular(16.0),
+            border: Border.all(
+              color: Colors.blue.shade100,
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.blue.shade100.withOpacity(0.25),
+                blurRadius: 8.0,
+                offset: Offset(0, 2),
               ),
-              child: CupertinoFormRow(
-                child: CupertinoTextFormFieldRow(
-                  controller: controller,
-                  obscureText: obscureText && !visibilityState,
-                  keyboardType: keyboardType,
-                  placeholder: placeholder,
-                  placeholderStyle: TextStyle(
-                    color: textLightGrey,
-                    fontSize: 16.0,
+            ],
+          ),
+          child: CupertinoFormRow(
+            padding: EdgeInsets.zero,
+            child: Row(
+              children: [
+                Expanded(
+                  child: CupertinoTextFormFieldRow(
+                    controller: controller,
+                    obscureText: obscureText && !visibilityState,
+                    keyboardType: keyboardType,
+                    placeholder: placeholder,
+                    placeholderStyle: TextStyle(
+                      color: textLightGrey,
+                      fontSize: 16.0,
+                    ),
+                    style: TextStyle(
+                      color: textDarkBlue,
+                      fontSize: 16.0,
+                    ),
+                    prefix: Container(
+                      padding: EdgeInsets.only(right: 12.0, left: 8.0),
+                      child: Icon(
+                        icon,
+                        color: primaryBlue,
+                        size: 22,
+                      ),
+                    ),
+                    validator: validator,
+                    padding: EdgeInsets.symmetric(vertical: 12.0),
+                    decoration: BoxDecoration(border: null),
                   ),
-                  style: TextStyle(
-                    color: textDarkBlue,
-                    fontSize: 16.0,
-                  ),  
-                  prefix: Container(
-                    padding: EdgeInsets.only(right: 12.0, left: 8.0),
+                ),
+                if (showVisibilityToggle)
+                  CupertinoButton(
+                    padding: EdgeInsets.only(right: 12.0),
+                    minSize: 0,
+                    onPressed: onVisibilityToggle,
                     child: Icon(
-                      icon,
-                      color: primaryBlue,
+                      visibilityState
+                          ? CupertinoIcons.eye_slash
+                          : CupertinoIcons.eye,
+                      color: lightBlue,
                       size: 22,
                     ),
                   ),
-                  // suffix: showVisibilityToggle
-                  //     ? CupertinoButton(
-                  //         padding: EdgeInsets.zero,
-                  //         onPressed: onVisibilityToggle,
-                  //         child: Icon(
-                  //           visibilityState
-                  //               ? CupertinoIcons.eye_slash
-                  //               : CupertinoIcons.eye,
-                  //           color: lightBlue,
-                  //           size: 22,
-                  //         ),
-                  //       )
-                  //     : null,
-                  validator: validator,
-                  decoration: BoxDecoration(
-                    border: null,
-                  ),
-                  padding: EdgeInsets.symmetric(vertical: 12.0),
-                ),
-              ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
-    );
+    ],
+  ),
+);
+
   }
 
   @override
