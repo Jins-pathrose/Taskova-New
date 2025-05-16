@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskova_new/Model/api_config.dart';
+import 'package:taskova_new/View/Homepage/detailspage.dart';
 
 // Extension for safely accessing map values
 extension SafeAccess on Map<String, dynamic> {
@@ -22,40 +25,47 @@ Map<String, dynamic> _safeMap(dynamic value) {
   return {};
 }
 
+
+// Driver Profile Model
+class DriverProfile {
+  final double latitude;
+  final double longitude;
+
+  DriverProfile({
+    required this.latitude,
+    required this.longitude,
+  });
+
+  factory DriverProfile.fromJson(Map<String, dynamic> json) {
+    return DriverProfile(
+      latitude: _parseDouble(json['latitude']) ?? 0.0,
+      longitude: _parseDouble(json['longitude']) ?? 0.0,
+    );
+  }
+
+  // Default profile if we can't fetch or parse the actual profile
+  factory DriverProfile.defaultProfile() {
+    return DriverProfile(
+      latitude: 0.0,
+      longitude: 0.0,
+    );
+  }
+}
+
 // Business Model
 class Business {
   final int id;
   final String name;
   final String? image;
-  final String? logo;
-  
+
   Business({
     required this.id,
     required this.name,
     this.image,
-    this.logo,
   });
-  
-  factory Business.fromJson(dynamic json) {
-    if (json is! Map<String, dynamic>) {
-      // If not a map, create a default business with just an ID
-      if (json is int) {
-        return Business(id: json, name: "Business #$json");
-      }
-      return Business(id: 0, name: "Unknown Business");
-    }
-    
-    final data = _safeMap(json);
-    return Business(
-      id: data.get<int>('id') ?? 0,
-      name: data.get<String>('name') ?? "Unnamed Business",
-      image: data.get<String>('image'),
-      logo: data.get<String>('logo'),
-    );
-  }
 }
 
-// Job Post Model
+// Job Post Model with distance information
 class JobPost {
   final int id;
   final String title;
@@ -64,9 +74,14 @@ class JobPost {
   final String? endTime;
   final double? hourlyRate;
   final double? perDeliveryRate;
-  final List<dynamic>? complimentaryBenefits;
+  final List<dynamic> complimentaryBenefits;
   final String createdAt;
-  final Business business;
+  final int businessId;
+  final String businessName;
+  final String? businessImage;
+  final double businessLatitude;
+  final double businessLongitude;
+  double? distanceKm;  // Distance from driver in kilometers
 
   JobPost({
     required this.id,
@@ -76,42 +91,105 @@ class JobPost {
     this.endTime,
     this.hourlyRate,
     this.perDeliveryRate,
-    this.complimentaryBenefits,
+    required this.complimentaryBenefits,
     required this.createdAt,
-    required this.business,
+    required this.businessId,
+    required this.businessName,
+    this.businessImage,
+    required this.businessLatitude,
+    required this.businessLongitude,
+    this.distanceKm,
   });
 
+  Business get business => Business(
+    id: businessId,
+    name: businessName,
+    image: businessImage,
+  );
+
   factory JobPost.fromJson(Map<String, dynamic> json) {
-    // Handle business data correctly
-    final business = Business.fromJson(json['business']);
-    
-    // Safely parse numeric values
-    double? parseDoubleValue(dynamic value) {
-      if (value == null) return null;
-      if (value is double) return value;
-      if (value is int) return value.toDouble();
-      if (value is String) {
-        try {
-          return double.parse(value);
-        } catch (e) {
-          return null;
-        }
-      }
-      return null;
-    }
-    
     return JobPost(
       id: json['id'] ?? 0,
       title: json['title'] ?? 'Unnamed Job',
       description: json['description'],
       startTime: json['start_time'],
       endTime: json['end_time'],
-      hourlyRate: parseDoubleValue(json['hourly_rate']),
-      perDeliveryRate: parseDoubleValue(json['per_delivery_rate']),
+      hourlyRate: _parseDouble(json['hourly_rate']),
+      perDeliveryRate: _parseDouble(json['per_delivery_rate']),
       complimentaryBenefits: json['complimentary_benefits'] ?? [],
       createdAt: json['created_at'] ?? '',
-      business: business,
+      businessId: json['business'] ?? 0,
+      businessName: json['business_name'] ?? 'Unknown Business',
+      businessImage: json['business_image'],
+      businessLatitude: _parseDouble(json['business_latitude']) ?? 0.0,
+      businessLongitude: _parseDouble(json['business_longitude']) ?? 0.0,
     );
+  }
+
+  // Calculate distance from driver's location
+  void calculateDistanceFrom(double driverLat, double driverLng) {
+    distanceKm = calculateDistance(
+      driverLat, driverLng, 
+      businessLatitude, businessLongitude
+    );
+  }
+}
+
+// Helper function to safely parse a double from various types
+double? _parseDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) {
+    try {
+      return double.parse(value);
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+}
+
+// Calculate distance between two points using the Haversine formula
+double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  const int earthRadius = 6371; // Radius of the Earth in kilometers
+  
+  // Convert to radians
+  final double lat1Rad = _degreesToRadians(lat1);
+  final double lon1Rad = _degreesToRadians(lon1);
+  final double lat2Rad = _degreesToRadians(lat2);
+  final double lon2Rad = _degreesToRadians(lon2);
+  
+  // Haversine formula
+  final double dLat = lat2Rad - lat1Rad;
+  final double dLon = lon2Rad - lon1Rad;
+  final double a = pow(sin(dLat / 2), 2) +
+      cos(lat1Rad) * cos(lat2Rad) * pow(sin(dLon / 2), 2);
+  final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+  final double distance = earthRadius * c;
+  
+  return distance;
+}
+
+// Helper function to convert degrees to radians
+double _degreesToRadians(double degrees) {
+  return degrees * (pi / 180);
+}
+
+// Format distance for display
+String formatDistance(double? distanceKm) {
+  if (distanceKm == null) return 'Unknown distance';
+  
+  if (distanceKm < 1) {
+    // Convert to meters if less than 1 km
+    final int meters = (distanceKm * 1000).round();
+    return '$meters m';
+  } else if (distanceKm < 10) {
+    // Show one decimal place if less than 10 km
+    return '${distanceKm.toStringAsFixed(1)} km';
+  } else {
+    // Round to nearest km if 10 km or more
+    return '${distanceKm.round()} km';
   }
 }
 
@@ -127,47 +205,86 @@ class _HomePageState extends State<HomePage> {
   List<JobPost> jobPosts = [];
   bool isLoading = true;
   String? errorMessage;
+  DriverProfile? driverProfile;
 
   @override
   void initState() {
     super.initState();
-    fetchJobPosts();
+    loadData();
   }
 
-  // Helper method to build business image
-  Widget _buildBusinessImage(Business business, {double size = 80}) {
-    // Try image first, then logo, then fallback to placeholder
-    String? imageUrl = business.image ?? business.logo;
-    
-    if (imageUrl != null) {
-      return Image.network(
-        imageUrl,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildImagePlaceholder(size);
-        },
-      );
-    } else {
-      return _buildImagePlaceholder(size);
+  // Load all required data
+  Future<void> loadData() async {
+    try {
+      // First get the driver profile to get current location
+      await fetchDriverProfile();
+      
+      // Then fetch job posts and calculate distances
+      await fetchJobPosts();
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Error loading data: ${e.toString()}';
+        isLoading = false;
+      });
     }
   }
 
-  Widget _buildImagePlaceholder(double size) {
-    return Container(
-      width: size,
-      height: size,
-      color: Colors.grey[300],
-      child: Icon(
-        CupertinoIcons.building_2_fill, 
-        color: Colors.grey[600],
-        size: size * 0.5,
-      ),
-    );
+  // Fetch the driver's profile including their location
+  Future<void> fetchDriverProfile() async {
+    try {
+      // Retrieve the access token from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('access_token');
+
+      // Check if access token exists
+      if (accessToken == null || accessToken.isEmpty) {
+        setState(() {
+          errorMessage = 'No access token found. Please log in.';
+          isLoading = false;
+        });
+        return;
+      }
+
+      // Make the API call with the access token in the header
+      final response = await http.get(
+        Uri.parse(ApiConfig.driverProfileUrl),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      // Handle the response
+      if (response.statusCode == 200) {
+        // Parse the JSON response
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        setState(() {
+          driverProfile = DriverProfile.fromJson(jsonResponse);
+        });
+      } else if (response.statusCode == 401) {
+        // Unauthorized - token might be expired
+        setState(() {
+          errorMessage = 'Authentication failed. Please log in again.';
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          errorMessage = 'Failed to load driver profile. Status code: ${response.statusCode}';
+          // Use default profile if we can't get the actual one
+          driverProfile = DriverProfile.defaultProfile();
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = 'Error fetching driver profile: ${e.toString()}';
+        // Use default profile in case of error
+        driverProfile = DriverProfile.defaultProfile();
+      });
+    }
   }
 
- Future<void> fetchJobPosts() async {
+  // Fetch job posts and calculate distance from driver
+  Future<void> fetchJobPosts() async {
     try {
       // Retrieve the access token from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
@@ -195,8 +312,32 @@ class _HomePageState extends State<HomePage> {
       if (response.statusCode == 200) {
         // Parse the JSON response
         final List<dynamic> jsonResponse = json.decode(response.body);
+        
+        // Convert to JobPost objects
+        final List<JobPost> posts = jsonResponse
+            .map((job) => JobPost.fromJson(job))
+            .toList();
+        
+        // Calculate distances if we have driver location
+        if (driverProfile != null) {
+          for (var post in posts) {
+            post.calculateDistanceFrom(
+              driverProfile!.latitude, 
+              driverProfile!.longitude
+            );
+          }
+          
+          // Sort by distance (nearest first)
+          posts.sort((a, b) {
+            if (a.distanceKm == null && b.distanceKm == null) return 0;
+            if (a.distanceKm == null) return 1;
+            if (b.distanceKm == null) return -1;
+            return a.distanceKm!.compareTo(b.distanceKm!);
+          });
+        }
+        
         setState(() {
-          jobPosts = jsonResponse.map((job) => JobPost.fromJson(job)).toList();
+          jobPosts = posts;
           isLoading = false;
         });
       } else if (response.statusCode == 401) {
@@ -205,7 +346,6 @@ class _HomePageState extends State<HomePage> {
           errorMessage = 'Authentication failed. Please log in again.';
           isLoading = false;
         });
-       
       } else {
         setState(() {
           errorMessage = 'Failed to load job posts. Status code: ${response.statusCode}';
@@ -220,302 +360,205 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // Helper method to build business image
+ Widget _buildBusinessImage(JobPost job, {double size = 80}) {
+  // Try to load the business image
+  if (job.businessImage != null && job.businessImage!.isNotEmpty) {
+    // Ensure the image URL is properly formatted
+    String imageUrl = job.businessImage!;
+    
+    // Print the original image URL for debugging
+    print('Original image URL: $imageUrl');
+    
+    if (!imageUrl.startsWith('http')) {
+      // If it's a relative URL, prepend the base URL
+      imageUrl = 'https://anjalitechfifo.pythonanywhere.com${imageUrl}';
+      
+      // Print the constructed URL for debugging
+      print('Constructed image URL: $imageUrl');
+    }
+    
+    // Try to make a test request to see if the image exists
+    try {
+      final uri = Uri.parse(imageUrl);
+      HttpClient().headUrl(uri).then((request) => request.close()).then((response) {
+        print('Image URL status code: ${response.statusCode}');
+        if (response.statusCode != 200) {
+          print('Image not found at URL: $imageUrl');
+        }
+      });
+    } catch (e) {
+      print('Error checking image URL: $e');
+    }
+    
+    return Image.network(
+      imageUrl,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        print('Image loading progress: $loadingProgress');
+        return _buildImagePlaceholder(size);
+      },
+      errorBuilder: (context, error, stackTrace) {
+        print('Image loading error: $error');
+        print(stackTrace);
+        return _buildImagePlaceholder(size);
+      },
+    );
+  } else {
+    print('No business image provided');
+    return _buildImagePlaceholder(size);
+  }
+}
+
+  Widget _buildImagePlaceholder(double size) {
+    return Container(
+      width: size,
+      height: size,
+      color: Colors.grey[300],
+      child: Icon(
+        CupertinoIcons.building_2_fill, 
+        color: Colors.grey[600],
+        size: size * 0.5,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: const Text("Job Posts", style: TextStyle(color: Colors.white)),
+        middle: Text("Nearby Jobs", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.blue[700],
       ),
+      backgroundColor: Colors.blue[50],
       child: SafeArea(
         child: isLoading
             ? Center(child: CupertinoActivityIndicator())
             : errorMessage != null
                 ? Center(child: Text(errorMessage!, style: TextStyle(color: Colors.red)))
-                : ListView.builder(
-                    itemCount: jobPosts.length,
-                    itemBuilder: (context, index) {
-                      final job = jobPosts[index];
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            CupertinoPageRoute(
-                              builder: (context) => JobDetailPage(jobPost: job),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blue.withOpacity(0.1),
-                                spreadRadius: 2,
-                                blurRadius: 5,
-                                offset: Offset(0, 3),
-                              ),
-                            ],
+                : Column(
+                    children: [
+                      // Location info banner
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(12),
+                        color: Colors.blue[100],
+                        child: Text(
+                          driverProfile != null 
+                              ? 'Your location: ${driverProfile!.latitude.toStringAsFixed(4)}, ${driverProfile!.longitude.toStringAsFixed(4)}'
+                              : 'Location not available',
+                          style: TextStyle(
+                            color: Colors.blue[800],
+                            fontWeight: FontWeight.w500,
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Business Image
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: _buildBusinessImage(job.business, size: 80),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      
+                      // Job list
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: jobPosts.length,
+                          itemBuilder: (context, index) {
+                            final job = jobPosts[index];
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  CupertinoPageRoute(
+                                    builder: (context) => JobDetailPage(jobPost: job),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.blue.withOpacity(0.1),
+                                      spreadRadius: 2,
+                                      blurRadius: 5,
+                                      offset: Offset(0, 3),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 16),
-                                // Main content
-                                Expanded(
-                                  child: Column(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Row(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        job.title,
-                                        style: TextStyle(
-                                          color: Colors.blue[900],
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
+                                      // Business Image
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: _buildBusinessImage(job, size: 80),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      // Main content
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            // Distance badge
+                                            Container(
+                                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: Colors.green[100],
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
+                                                formatDistance(job.distanceKm),
+                                                style: TextStyle(
+                                                  color: Colors.green[800],
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              job.title,
+                                              style: TextStyle(
+                                                color: Colors.blue[900],
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              job.businessName,
+                                              style: TextStyle(
+                                                color: Colors.blue[700],
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Start: ${job.startTime ?? 'N/A'} - End: ${job.endTime ?? 'N/A'}',
+                                              style: TextStyle(color: Colors.blue[700]),
+                                            ),
+                                            Text(
+                                              '''Pay: ${job.hourlyRate != null ? '\$${job.hourlyRate}/hr' : ''} ${job.hourlyRate != null && job.perDeliveryRate != null ? ' + ' : ''} ${job.perDeliveryRate != null ? '\$${job.perDeliveryRate}/delivery' : ''}''',
+                                              style: TextStyle(color: Colors.blue[700]),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        job.business.name,
-                                        style: TextStyle(
-                                          color: Colors.blue[700],
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        'Start Time: ${job.startTime ?? 'N/A'}',
-                                        style: TextStyle(color: Colors.blue[700]),
-                                      ),
-                                      Text(
-                                        'End Time: ${job.endTime ?? 'N/A'}',
-                                        style: TextStyle(color: Colors.blue[700]),
-                                      ),
-                                      Text(
-                                        '''Hourly Rate: ${job.hourlyRate?.toStringAsFixed(2) ?? 'N/A'}''',
-                                        style: TextStyle(color: Colors.blue[700]),
-                                      ),
-                                      Text(
-                                        '''Per Delivery Rate: ${job.perDeliveryRate?.toStringAsFixed(2) ?? 'N/A'}''',
-                                        style: TextStyle(color: Colors.blue[700]),
-                                      ),
+                                      // Arrow icon
+                                      Icon(CupertinoIcons.forward, color: Colors.blue[700]),
                                     ],
                                   ),
                                 ),
-                                // Arrow icon
-                                Icon(CupertinoIcons.forward, color: Colors.blue[700]),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-      ),
-      backgroundColor: Colors.blue[50],
-    );
-  }
-}
-
-// Job Detail Page
-class JobDetailPage extends StatelessWidget {
-  final JobPost jobPost;
-
-  const JobDetailPage({Key? key, required this.jobPost}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: Text(jobPost.title, style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.blue[700],
-      ),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Large Business Image
-              jobPost.business.image != null
-                ? Image.network(
-                    jobPost.business.image!,
-                    width: double.infinity,
-                    height: 200,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: double.infinity,
-                        height: 200,
-                        color: Colors.grey[300],
-                        child: Center(
-                          child: Icon(CupertinoIcons.building_2_fill, 
-                            size: 60, 
-                            color: Colors.grey[600]
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                : Container(
-                    width: double.infinity,
-                    height: 200,
-                    color: Colors.grey[300],
-                    child: Center(
-                      child: Icon(CupertinoIcons.building_2_fill, 
-                        size: 60, 
-                        color: Colors.grey[600]
-                      ),
-                    ),
-                  ),
-              // Business Name
-              Container(
-                width: double.infinity,
-                color: Colors.blue[700],
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                child: Text(
-                  jobPost.business.name,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              // Job Details
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildDetailSection('Description', jobPost.description ?? 'No description available'),
-                    const SizedBox(height: 16),
-                    _buildDetailSection('Start Time', jobPost.startTime ?? 'N/A'),
-                    const SizedBox(height: 16),
-                    _buildDetailSection('End Time', jobPost.endTime ?? 'N/A'),
-                    const SizedBox(height: 16),
-                    _buildDetailSection('Hourly Rate', 
-                      jobPost.hourlyRate != null 
-                        ? '${jobPost.hourlyRate?.toStringAsFixed(2)}' 
-                        : 'N/A'
-                    ),
-                    const SizedBox(height: 16),
-                    _buildDetailSection('Per Delivery Rate', 
-                      jobPost.perDeliveryRate != null 
-                        ? '${jobPost.perDeliveryRate?.toStringAsFixed(2)}' 
-                        : 'N/A'
-                    ),
-                    const SizedBox(height: 16),
-                    _buildBenefitsSection(),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      backgroundColor: Colors.blue[50],
-    );
-  }
-
-  Widget _buildDetailSection(String title, String content) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(0.1),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: Colors.blue[900],
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            content,
-            style: TextStyle(
-              color: Colors.blue[800],
-              fontSize: 16,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBenefitsSection() {
-    final benefits = jobPost.complimentaryBenefits ?? [];
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.blue.withOpacity(0.1),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Complimentary Benefits',
-            style: TextStyle(
-              color: Colors.blue[900],
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          benefits.isEmpty
-              ? Text(
-                  'No benefits listed',
-                  style: TextStyle(color: Colors.blue[800], fontSize: 16),
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: benefits.map((benefit) => 
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        '• $benefit',
-                        style: TextStyle(
-                          color: Colors.blue[800],
-                          fontSize: 16,
+                              ),
+                            );
+                          },
                         ),
                       ),
-                    )
-                  ).toList(),
-                ),
-        ],
+                    ],
+                  ),
       ),
     );
   }

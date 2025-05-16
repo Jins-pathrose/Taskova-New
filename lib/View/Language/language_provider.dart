@@ -129,6 +129,11 @@ class AppLanguage extends ChangeNotifier {
     'change_password': 'Change Password',
     'preferred_working_address': 'Preferred Working Address',
     'account_settings': 'Account Settings',
+    'no_address_selected': 'No address selected',
+    'current_working_area': 'Current Working Area',
+    'enter_postcode': 'Enter postcode',
+    'driver_status': 'Driver Status',
+    'profile_updated_successfully': 'Profile updated successfully',
   };
   
   // Constructor
