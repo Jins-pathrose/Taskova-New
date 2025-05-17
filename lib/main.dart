@@ -7,6 +7,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
+import 'package:taskova_new/View/Staticpages/proof_of_identity.dart';
 import 'package:taskova_new/View/splashscreen.dart';
 
 

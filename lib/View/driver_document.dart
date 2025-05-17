@@ -9,6 +9,12 @@ import 'dart:convert';
 
 import 'package:taskova_new/Model/api_config.dart';
 import 'package:taskova_new/View/Homepage/admin_approval.dart';
+import 'package:taskova_new/View/Staticpages/britishpassport.dart';
+import 'package:taskova_new/View/Staticpages/driver_licence.dart';
+import 'package:taskova_new/View/Staticpages/proof_of_address.dart';
+import 'package:taskova_new/View/Staticpages/proof_of_identity.dart';
+import 'package:taskova_new/View/Staticpages/right_to_work.dart';
+import 'package:taskova_new/View/Staticpages/vehicle_insurance.dart';
 
 class DocumentRegistrationPage extends StatefulWidget {
   const DocumentRegistrationPage({Key? key}) : super(key: key);
@@ -538,184 +544,234 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
   }
 
   Widget _buildDocumentCard({
-    required String title,
-    required IconData icon,
-    required File? frontFile,
-    required File? backFile,
-    required Function(File?) onFrontUploaded,
-    required Function(File?) onBackUploaded,
-    bool isRequired = true,
-    TextEditingController? detailsController,
-    String documentType = '',
-  }) {
-    final isComplete = frontFile != null && backFile != null;
+  required String title,
+  required IconData icon,
+  required File? frontFile,
+  required File? backFile,
+  required Function(File?) onFrontUploaded,
+  required Function(File?) onBackUploaded,
+  bool isRequired = true,
+  TextEditingController? detailsController,
+  String documentType = '',
+}) {
+  final isComplete = frontFile != null && backFile != null;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: _backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isComplete ? _completedColor : _accentColor.withOpacity(0.5),
-          width: isComplete ? 2 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: _accentColor.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+  return Container(
+    margin: const EdgeInsets.only(bottom: 16),
+    decoration: BoxDecoration(
+      color: _backgroundColor,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: isComplete ? _completedColor : _accentColor.withOpacity(0.5),
+        width: isComplete ? 2 : 1,
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isComplete ? _completedColor : _accentColor,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    isComplete ? CupertinoIcons.checkmark_alt : icon,
-                    color: _backgroundColor,
-                    size: 20,
-                  ),
+      boxShadow: [
+        BoxShadow(
+          color: _accentColor.withOpacity(0.1),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isComplete ? _completedColor : _accentColor,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: _textColor,
-                      fontSize: 16,
-                    ),
-                  ),
+                child: Icon(
+                  isComplete ? CupertinoIcons.checkmark_alt : icon,
+                  color: _backgroundColor,
+                  size: 20,
                 ),
-                if (isComplete)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: _completedColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Complete',
-                      style: TextStyle(
-                        color: _completedColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                if (isRequired)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: CupertinoColors.systemRed.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'Required',
-                      style: TextStyle(
-                        color: CupertinoColors.systemRed,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _buildImageUpload(
-                  label: 'Front',
-                  file: frontFile,
-                  onPressed: () async {
-                    final file = await _pickImage();
-                    if (file != null) {
-                      onFrontUploaded(file);
-                      _updateDocumentStatus();
-                    }
-                  },
-                ),
-                const SizedBox(width: 16),
-                _buildImageUpload(
-                  label: 'Back',
-                  file: backFile,
-                  onPressed: () async {
-                    final file = await _pickImage();
-                    if (file != null) {
-                      onBackUploaded(file);
-                      _updateDocumentStatus();
-                    }
-                  },
-                ),
-              ],
-            ),
-            if (detailsController != null && isComplete)
-              Padding(
-                padding: const EdgeInsets.only(top: 16.0),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Document Details',
-                      style: TextStyle(color: _textColor, fontSize: 14),
-                    ),
-                    const SizedBox(height: 8),
-                    CupertinoTextField(
-                      controller: detailsController,
-                      placeholder: 'Enter document details',
-                      maxLines: 3,
-                      style: TextStyle(color: _textColor),
-                      placeholderStyle: TextStyle(color: _secondaryTextColor),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: _accentColor.withOpacity(0.5),
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                        color: _backgroundColor,
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _textColor,
+                        fontSize: 16,
                       ),
                     ),
-                    if (detailsController.text.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: CupertinoButton(
-                          padding: EdgeInsets.zero,
-                          child: Text(
-                            'Add Details',
-                            style: TextStyle(color: _accentColor),
-                          ),
-                          onPressed:
-                              () => _promptForDetails(
-                                documentType,
-                                (details) => setState(
-                                  () => detailsController.text = details,
-                                ),
-                              ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      minSize: 0,
+                      child: Text(
+                        "What is this?",
+                        style: TextStyle(
+                          color: _accentColor,
+                          fontSize: 12,
                         ),
                       ),
+                      onPressed: () {
+                        // Navigate based on title
+                        if (title == "Proof of Identity") {
+                          Navigator.push(
+                            context, 
+                            CupertinoPageRoute(builder: (context) => IdentityVerificationScreen())
+                          );
+                        } else if (title == "British Passport") {
+                          Navigator.push(
+                            context, 
+                            CupertinoPageRoute(builder: (context) => BritishPassport())
+                          );
+                        } else if (title == "Right to Work in UK") {
+                          Navigator.push(
+                            context, 
+                            CupertinoPageRoute(builder: (context) => RightToWork())
+                          );
+                        } else if (title == "Proof of Address") {
+                          Navigator.push(
+                            context, 
+                            CupertinoPageRoute(builder: (context) => ProofOfAddress())
+                          );
+                        } else if (title == "Vehicle Insurance") {
+                          Navigator.push(
+                            context, 
+                            CupertinoPageRoute(builder: (context) => VehicleInsurance())
+                          );
+                        } else if (title == "Driving License") {
+                          Navigator.push(
+                            context, 
+                            CupertinoPageRoute(builder: (context) => DriverLicence())
+                          );
+                        }
+                      },
+                    ),
                   ],
                 ),
               ),
-          ],
-        ),
+              if (isComplete)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _completedColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Complete',
+                    style: TextStyle(
+                      color: _completedColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              if (isRequired)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemRed.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Required',
+                    style: TextStyle(
+                      color: CupertinoColors.systemRed,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildImageUpload(
+                label: 'Front',
+                file: frontFile,
+                onPressed: () async {
+                  final file = await _pickImage();
+                  if (file != null) {
+                    onFrontUploaded(file);
+                    _updateDocumentStatus();
+                  }
+                },
+              ),
+              const SizedBox(width: 16),
+              _buildImageUpload(
+                label: 'Back',
+                file: backFile,
+                onPressed: () async {
+                  final file = await _pickImage();
+                  if (file != null) {
+                    onBackUploaded(file);
+                    _updateDocumentStatus();
+                  }
+                },
+              ),
+            ],
+          ),
+          if (detailsController != null && isComplete)
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Document Details',
+                    style: TextStyle(color: _textColor, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  CupertinoTextField(
+                    controller: detailsController,
+                    placeholder: 'Enter document details',
+                    maxLines: 3,
+                    style: TextStyle(color: _textColor),
+                    placeholderStyle: TextStyle(color: _secondaryTextColor),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: _accentColor.withOpacity(0.5),
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                      color: _backgroundColor,
+                    ),
+                  ),
+                  if (detailsController.text.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        child: Text(
+                          'Add Details',
+                          style: TextStyle(color: _accentColor),
+                        ),
+                        onPressed:
+                            () => _promptForDetails(
+                              documentType,
+                              (details) => setState(
+                                () => detailsController.text = details,
+                              ),
+                            ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildImageUpload({
     required String label,
