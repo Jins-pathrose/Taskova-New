@@ -363,7 +363,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor: whiteColor,
+      // backgroundColor: whiteColor,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: primaryBlue,
         middle: Text(

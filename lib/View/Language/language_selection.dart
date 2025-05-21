@@ -28,7 +28,6 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
     final appLanguage = Provider.of<AppLanguage>(context);
 
     return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.systemBackground,
       navigationBar: CupertinoNavigationBar(
         middle: Text(appLanguage.get('Select Language')),
       ),

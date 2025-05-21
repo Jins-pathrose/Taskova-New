@@ -317,7 +317,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor: whiteColor,
+      // backgroundColor: whiteColor,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: primaryBlue,
         middle: Text(
@@ -347,7 +347,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                 ),
               )
               : Container(
-                color: whiteColor,
+                // color: whiteColor,
                 child: SingleChildScrollView(
                   padding: EdgeInsets.all(16),
                   child: Form(

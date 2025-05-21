@@ -235,7 +235,7 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor: backgroundWhite,
+      // backgroundColor: backgroundWhite,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: cardWhite,
         border: Border(

@@ -25,7 +25,6 @@ Map<String, dynamic> _safeMap(dynamic value) {
   return {};
 }
 
-
 // Driver Profile Model
 class DriverProfile {
   final double latitude;
@@ -81,7 +80,7 @@ class JobPost {
   final String? businessImage;
   final double businessLatitude;
   final double businessLongitude;
-  double? distanceKm;  // Distance from driver in kilometers
+  double? distanceMiles;  // Distance from driver in miles
 
   JobPost({
     required this.id,
@@ -98,7 +97,7 @@ class JobPost {
     this.businessImage,
     required this.businessLatitude,
     required this.businessLongitude,
-    this.distanceKm,
+    this.distanceMiles,
   });
 
   Business get business => Business(
@@ -126,9 +125,9 @@ class JobPost {
     );
   }
 
-  // Calculate distance from driver's location
+  // Calculate distance from driver's location in miles
   void calculateDistanceFrom(double driverLat, double driverLng) {
-    distanceKm = calculateDistance(
+    distanceMiles = calculateDistanceInMiles(
       driverLat, driverLng, 
       businessLatitude, businessLongitude
     );
@@ -150,9 +149,10 @@ double? _parseDouble(dynamic value) {
   return null;
 }
 
-// Calculate distance between two points using the Haversine formula
-double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-  const int earthRadius = 6371; // Radius of the Earth in kilometers
+// Calculate distance between two points in miles using the Haversine formula
+double calculateDistanceInMiles(double lat1, double lon1, double lat2, double lon2) {
+  const double earthRadiusKm = 6371; // Earth radius in kilometers
+  const double kmToMiles = 0.621371; // Conversion factor from km to miles
   
   // Convert to radians
   final double lat1Rad = _degreesToRadians(lat1);
@@ -166,9 +166,10 @@ double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
   final double a = pow(sin(dLat / 2), 2) +
       cos(lat1Rad) * cos(lat2Rad) * pow(sin(dLon / 2), 2);
   final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-  final double distance = earthRadius * c;
+  final double distanceKm = earthRadiusKm * c;
+  final double distanceMiles = distanceKm * kmToMiles;
   
-  return distance;
+  return distanceMiles;
 }
 
 // Helper function to convert degrees to radians
@@ -176,20 +177,20 @@ double _degreesToRadians(double degrees) {
   return degrees * (pi / 180);
 }
 
-// Format distance for display
-String formatDistance(double? distanceKm) {
-  if (distanceKm == null) return 'Unknown distance';
+// Format distance for display in miles
+String formatDistance(double? distanceMiles) {
+  if (distanceMiles == null) return 'Unknown distance';
   
-  if (distanceKm < 1) {
-    // Convert to meters if less than 1 km
-    final int meters = (distanceKm * 1000).round();
-    return '$meters m';
-  } else if (distanceKm < 10) {
-    // Show one decimal place if less than 10 km
-    return '${distanceKm.toStringAsFixed(1)} km';
+  if (distanceMiles < 1) {
+    // Convert to feet if less than 0.1 miles (528 feet)
+    final int feet = (distanceMiles * 5280).round();
+    return '$feet ft';
+  } else if (distanceMiles < 10) {
+    // Show one decimal place if less than 10 miles
+    return '${distanceMiles.toStringAsFixed(1)} mi';
   } else {
-    // Round to nearest km if 10 km or more
-    return '${distanceKm.round()} km';
+    // Round to nearest mile if 10 miles or more
+    return '${distanceMiles.round()} mi';
   }
 }
 
@@ -329,10 +330,10 @@ class _HomePageState extends State<HomePage> {
           
           // Sort by distance (nearest first)
           posts.sort((a, b) {
-            if (a.distanceKm == null && b.distanceKm == null) return 0;
-            if (a.distanceKm == null) return 1;
-            if (b.distanceKm == null) return -1;
-            return a.distanceKm!.compareTo(b.distanceKm!);
+            if (a.distanceMiles == null && b.distanceMiles == null) return 0;
+            if (a.distanceMiles == null) return 1;
+            if (b.distanceMiles == null) return -1;
+            return a.distanceMiles!.compareTo(b.distanceMiles!);
           });
         }
         
@@ -430,10 +431,10 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: Text("Nearby Jobs", style: TextStyle(color: Colors.white)),
+        middle: Text("Nearby Jobs",),
         backgroundColor: Colors.blue[700],
       ),
-      backgroundColor: Colors.blue[50],
+      // backgroundColor: Colors.blue[50],
       child: SafeArea(
         child: isLoading
             ? Center(child: CupertinoActivityIndicator())
@@ -511,7 +512,7 @@ class _HomePageState extends State<HomePage> {
                                                 borderRadius: BorderRadius.circular(12),
                                               ),
                                               child: Text(
-                                                formatDistance(job.distanceKm),
+                                                formatDistance(job.distanceMiles),
                                                 style: TextStyle(
                                                   color: Colors.green[800],
                                                   fontWeight: FontWeight.bold,

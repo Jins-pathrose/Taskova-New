@@ -160,7 +160,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.white,
+      // backgroundColor: AppColors.white,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: AppColors.primaryBlue,
         middle: Text(

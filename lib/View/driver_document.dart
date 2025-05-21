@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart'
     show Icons; // Only for icons not available in Cupertino
@@ -11,6 +13,7 @@ import 'package:taskova_new/Model/api_config.dart';
 import 'package:taskova_new/View/Homepage/admin_approval.dart';
 import 'package:taskova_new/View/Staticpages/britishpassport.dart';
 import 'package:taskova_new/View/Staticpages/driver_licence.dart';
+import 'package:taskova_new/View/Staticpages/dvls.dart';
 import 'package:taskova_new/View/Staticpages/proof_of_address.dart';
 import 'package:taskova_new/View/Staticpages/proof_of_identity.dart';
 import 'package:taskova_new/View/Staticpages/right_to_work.dart';
@@ -42,6 +45,8 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
   File? _vehicleInsuranceBack;
   File? _drivingLicenseFront;
   File? _drivingLicenseBack;
+  File? _dvlsFront;
+  File? _dvlsBack;
 
   // Text controllers for document details
   final TextEditingController _identityDetailsController =
@@ -53,6 +58,8 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
   final TextEditingController _insuranceDetailsController =
       TextEditingController();
   final TextEditingController _licenseDetailsController =
+      TextEditingController();
+final TextEditingController _dvlaController =
       TextEditingController();
 
   // Track completion status
@@ -110,6 +117,8 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
           _vehicleInsuranceFront != null && _vehicleInsuranceBack != null;
       _documentStatus['license'] =
           _drivingLicenseFront != null && _drivingLicenseBack != null;
+      _documentStatus['dvla'] =
+          _dvlsFront != null && _dvlsBack != null;
     });
   }
 
@@ -309,6 +318,8 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
         return 'Vehicle Insurance';
       case 'LICENSE':
         return 'Driving License';
+      case 'DVLA':
+        return 'DVLA Electronic Counterpart';
       default:
         return 'Document';
     }
@@ -346,6 +357,8 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
           break;
         case 'LICENSE':
           request.fields['license_details'] = details;
+        case 'DVLA':
+          request.fields['dvla_details'] = details;
           break;
       }
 
@@ -443,6 +456,8 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
         });
         setState(() => _isLoading = false);
         return;
+
+      
       }
 
       // Check driving license documents and details
@@ -453,6 +468,17 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
       if (_licenseDetailsController.text.isEmpty) {
         _promptForDetails('LICENSE', (details) {
           _licenseDetailsController.text = details;
+          _submitAllDocuments();
+        });
+        setState(() => _isLoading = false);
+        return;
+      }
+      if(_dvlsFront == null || _dvlsBack == null) {
+        throw Exception('Please upload both sides of your DVLA Electronic Counterpart');
+      }
+      if (_dvlaController.text.isEmpty) {
+        _promptForDetails('DVLA', (details) {
+          _dvlaController.text = details;
           _submitAllDocuments();
         });
         setState(() => _isLoading = false);
@@ -492,6 +518,12 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
           backImage: _drivingLicenseBack!,
           details: _licenseDetailsController.text,
         ),
+        _uploadDocument(
+          documentType: 'DVLA',
+          frontImage: _dvlsFront!,
+          backImage: _dvlsBack!,
+          details: _dvlaController.text,
+        ),
       ];
 
       final results = await Future.wait(uploads);
@@ -519,7 +551,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
               Text(
                 'Document Completion',
                 style: TextStyle(
-                  color: _textColor,
+                  // color: _textColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -648,6 +680,12 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                             CupertinoPageRoute(builder: (context) => DriverLicence())
                           );
                         }
+                        else if (title == "DVLA Electronic Counterpart") {
+                          Navigator.push(
+                            context, 
+                            CupertinoPageRoute(builder: (context) => DvlsDocument())
+                          );
+                        }
                       },
                     ),
                   ],
@@ -721,7 +759,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
               ),
             ],
           ),
-          if (detailsController != null && isComplete)
+          // if (detailsController != null && isComplete)
             Padding(
               padding: const EdgeInsets.only(top: 16.0),
               child: Column(
@@ -746,7 +784,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                       color: _backgroundColor,
                     ),
                   ),
-                  if (detailsController.text.isEmpty)
+                  // if (detailsController.text.isEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 8.0),
                       child: CupertinoButton(
@@ -755,13 +793,13 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                           'Add Details',
                           style: TextStyle(color: _accentColor),
                         ),
-                        onPressed:
-                            () => _promptForDetails(
-                              documentType,
-                              (details) => setState(
-                                () => detailsController.text = details,
-                              ),
-                            ),
+                        onPressed:(){}
+                            // () => _promptForDetails(
+                            //   documentType,
+                            //   (details) => setState(
+                            //     () => detailsController.text = details,
+                            //   ),
+                            // ),
                       ),
                     ),
                 ],
@@ -813,13 +851,13 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor: _backgroundColor,
+      // backgroundColor: _backgroundColor,
       navigationBar: CupertinoNavigationBar(
         middle: Text(
           'Document Registrations',
           style: TextStyle(color: _textColor),
         ),
-        trailing: CupertinoButton(
+         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
           child: Icon(CupertinoIcons.refresh, color: _accentColor),
           onPressed: _fetchCitizenshipStatus,
@@ -989,6 +1027,19 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                     detailsController: _licenseDetailsController,
                     documentType: 'LICENSE',
                   ),
+                   _buildDocumentCard(
+                    title: 'DVLA Electronic Counterpart',
+                    icon: CupertinoIcons.car_detailed,
+                    frontFile: _dvlsFront,
+                    backFile: _dvlsBack,
+                    onFrontUploaded:
+                        (file) => setState(() => _dvlsFront = file),
+                    onBackUploaded:
+                        (file) => setState(() => _dvlsBack = file),
+                    isRequired: true,
+                    detailsController: _dvlaController,
+                    documentType: 'DVLA',
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 20),
                     child: SizedBox(
@@ -1013,6 +1064,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
             ),
             if (_isLoading)
               Container(
+                
                 color: _textColor.withOpacity(0.5),
                 child: Center(
                   child: CupertinoAlertDialog(

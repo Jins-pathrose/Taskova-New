@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:taskova_new/Model/api_config.dart';
 import 'package:taskova_new/View/Homepage/admin_approval.dart';
 
 import 'package:taskova_new/View/Homepage/homepage.dart';
@@ -25,11 +26,11 @@ class _JobDetailPageState extends State<JobDetailPage> {
       navigationBar: CupertinoNavigationBar(
         middle: Text(
           widget.jobPost.title,
-          style: TextStyle(color: Colors.white),
+          // style: TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.blue[700],
       ),
-      backgroundColor: Colors.blue[50],
+      // backgroundColor: Colors.blue[50],
       child: SafeArea(
         child: Stack(
           children: [
@@ -62,7 +63,7 @@ class _JobDetailPageState extends State<JobDetailPage> {
                           ),
                         ),
                         // Distance badge
-                        if (widget.jobPost.distanceKm != null)
+                        if (widget.jobPost.distanceMiles != null)
                           Container(
                             padding: EdgeInsets.symmetric(
                               horizontal: 12,
@@ -73,7 +74,7 @@ class _JobDetailPageState extends State<JobDetailPage> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: Text(
-                              formatDistance(widget.jobPost.distanceKm),
+                              formatDistance(widget.jobPost.distanceMiles),
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -137,7 +138,7 @@ class _JobDetailPageState extends State<JobDetailPage> {
               child: Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  // color: Colors.white,
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.1),
@@ -287,7 +288,7 @@ class _JobDetailPageState extends State<JobDetailPage> {
                     final accessToken = prefs.getString('access_token');
                     final response = await http.get(
                       Uri.parse(
-                        'https://anjalitechfifo.pythonanywhere.com/api/profile-status/',
+                        ApiConfig.profileStatusUrl
                       ),
                       headers: {
                         'Authorization': 'Bearer $accessToken',
@@ -316,25 +317,23 @@ class _JobDetailPageState extends State<JobDetailPage> {
                             fullscreenDialog: true, //
                           ),
                         );
-                      } else if (!isApproved) {
-                        // Navigate to a wrapper that contains only the DocumentRegistrationPage
-                        Navigator.of(context).push(
-                          CupertinoPageRoute(
-                            builder:
-                                (context) => CupertinoPageScaffold(
-                                  navigationBar: CupertinoNavigationBar(
-                                    middle: Text('Please wait for approval'),
-                                    backgroundColor: Colors.blue[700],
-                                  ),
-                                  child: DocumentVerificationPendingScreen(),
-                                ),
-                          ),
-                        );
+                      // } else if (!isApproved) {
+                      //   // Navigate to a wrapper that contains only the DocumentRegistrationPage
+                      //   Navigator.of(context).push(
+                      //     CupertinoPageRoute(
+                      //       builder:
+                      //           (context) => CupertinoPageScaffold(
+                      //             navigationBar: CupertinoNavigationBar(
+                      //               middle: Text('Please wait for approval'),
+                      //               backgroundColor: Colors.blue[700],
+                      //             ),
+                      //             child: DocumentVerificationPendingScreen(),
+                      //           ),
+                      //     ),
+                      //   );
                       } else {
-                        // Both conditions are true, proceed with application
-                        // Here you would make the API call to submit the application
-                        // After successful submission:
-                        _showApplicationSuccessMessage(context);
+                        await _submitJobApplication(context);
+                        // _showApplicationSuccessMessage(context);
                       }
                     } else {
                       // Handle API error
@@ -384,7 +383,91 @@ class _JobDetailPageState extends State<JobDetailPage> {
           ),
     );
   }
-
+Future<void> _submitJobApplication(BuildContext context) async {
+  BuildContext? loadingContext;
+  
+  try {
+    // Show loading indicator
+    showCupertinoDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext ctx) {
+        loadingContext = ctx;
+        return Center(
+          child: CupertinoActivityIndicator(radius: 15),
+        );
+      },
+    );
+    
+    // Get access token
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('access_token');
+    
+    // Create request body
+    final requestBody = {
+      'job': widget.jobPost.id, // Pass the job ID
+    };
+    
+    // Send POST request to job-requests API
+    final response = await http.post(
+      Uri.parse(ApiConfig.jobRequestUrl),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(requestBody),
+    );
+    
+    // Close loading dialog
+    if (loadingContext != null && Navigator.canPop(loadingContext!)) {
+      Navigator.pop(loadingContext!);
+    }
+    
+    if (response.statusCode == 201) {
+      // Application submitted successfully
+      _showApplicationSuccessMessage(context);
+      print('Application submitted successfully++++++++++++++++++++++++++++++++++++++++++++++++++');
+    } else {
+      // Handle API error
+      final errorData = jsonDecode(response.body);
+      final errorMessage = errorData['detail'] ?? 'Failed to submit application. Please try again.';
+      
+      showCupertinoDialog(
+        context: context,
+        builder: (context) => CupertinoAlertDialog(
+          title: Text('Error'),
+          content: Text(errorMessage),
+          actions: [
+            CupertinoDialogAction(
+              child: Text('OK'),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      );
+    }
+  } catch (e) {
+    // Close loading dialog if open
+    if (loadingContext != null && Navigator.canPop(loadingContext!)) {
+      Navigator.pop(loadingContext!);
+    }
+    
+    // Show error dialog
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text('Error'),
+        content: Text('An error occurred: ${e.toString()}'),
+        actions: [
+          CupertinoDialogAction(
+            child: Text('OK'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+}
   // Success message after application is submitted
   void _showApplicationSuccessMessage(BuildContext context) {
     showCupertinoModalPopup(
@@ -502,7 +585,7 @@ class _JobDetailPageState extends State<JobDetailPage> {
             'Longitude: ${widget.jobPost.businessLongitude.toStringAsFixed(6)}',
             style: TextStyle(color: Colors.blue[800], fontSize: 16),
           ),
-          if (widget.jobPost.distanceKm != null) ...[
+          if (widget.jobPost.distanceMiles != null) ...[
             const SizedBox(height: 8),
             Row(
               children: [
@@ -513,7 +596,7 @@ class _JobDetailPageState extends State<JobDetailPage> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'Distance: ${formatDistance(widget.jobPost.distanceKm)}',
+                  'Distance: ${formatDistance(widget.jobPost.distanceMiles)}',
                   style: TextStyle(
                     color: Colors.blue[900],
                     fontSize: 16,

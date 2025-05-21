@@ -137,7 +137,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor: AppColors.white,
+      // backgroundColor: AppColors.white,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: AppColors.primaryBlue,
         middle: Text(

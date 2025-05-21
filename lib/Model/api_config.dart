@@ -44,4 +44,7 @@ class ApiConfig {
   static String get jobListUrl {
     return '$baseUrl/api/job-posts/';
   }
+  static String get jobRequestUrl {
+    return '$baseUrl/api/job-requests/';
+  }
 }

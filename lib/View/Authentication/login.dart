@@ -222,6 +222,7 @@ if (profileResponse.statusCode == 200){
           body: jsonEncode({
             'email': _emailController.text,
             'password': _passwordController.text,
+            'remember_me': true,
           }),
         );
 
@@ -317,9 +318,9 @@ if (profileResponse.statusCode == 200){
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.white,
+      // backgroundColor: CupertinoColors.white,
       navigationBar: CupertinoNavigationBar(
-        backgroundColor: CupertinoColors.white,
+        // backgroundColor: CupertinoColors.white,
         middle: Text(
           appLanguage.get('login'),
           style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold),

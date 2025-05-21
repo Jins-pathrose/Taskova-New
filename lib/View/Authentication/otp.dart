@@ -269,7 +269,7 @@ class _OtpVerificationState extends State<OtpVerification> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      backgroundColor: backgroundWhite,
+      // backgroundColor: backgroundWhite,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: cardWhite,
         border: Border(
