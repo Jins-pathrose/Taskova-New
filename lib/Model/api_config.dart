@@ -47,4 +47,10 @@ class ApiConfig {
   static String get jobRequestUrl {
     return '$baseUrl/api/job-requests/';
   }
+  static String get jobRequestsAcceptedUrl {
+    return '$baseUrl/api/job-requests/accepted/';
+  }
+  static String get getImageUrl {
+    return baseUrl;
+  }
 }

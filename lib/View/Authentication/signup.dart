@@ -90,7 +90,6 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
 
     print("Starting API call...");
     try {
-      print("Sending request to http://192.168.20.7:8000/api/register/");
       var response = await http.post(
         Uri.parse(ApiConfig.registerUrl),
         headers: {'Content-Type': 'application/json'},

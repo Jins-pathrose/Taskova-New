@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskova_new/Model/api_config.dart';
+import 'package:taskova_new/View/Chat/chat.dart';
 import 'package:taskova_new/View/Homepage/admin_approval.dart';
-
 import 'package:taskova_new/View/Homepage/homepage.dart';
 import 'package:taskova_new/View/driver_document.dart';
 
@@ -20,24 +20,102 @@ class JobDetailPage extends StatefulWidget {
 }
 
 class _JobDetailPageState extends State<JobDetailPage> {
+  String? _jobRequestId;
+  bool _isAccepted = false;
+  bool _isLoading = false;
+  String? _chatRoomId;
+  String? _driverId;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfAlreadyApplied();
+  }
+
+  Future<void> _checkIfAlreadyApplied() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('access_token');
+
+      final response = await http.get(
+        Uri.parse(ApiConfig.jobRequestUrl),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> jobRequests = jsonDecode(response.body);
+        final appliedJob = jobRequests.firstWhere(
+          (request) => request['job'] == widget.jobPost.id,
+          orElse: () => null,
+        );
+
+        if (appliedJob != null) {
+          setState(() {
+            _jobRequestId = appliedJob['id'].toString();
+          });
+          _checkIfJobIsAccepted();
+        }
+      }
+    } catch (e) {
+      print('Error checking applied jobs: $e');
+    }
+  }
+
+  Future<void> _checkIfJobIsAccepted() async {
+    if (_jobRequestId == null) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('access_token');
+
+      final response = await http.get(
+        Uri.parse('${ApiConfig.jobRequestsAcceptedUrl}$_jobRequestId'),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _isAccepted = data['is_accepted'] ?? false;
+          _chatRoomId = data['chat_room_id']?.toString(); // Add this line
+          _driverId =data['driver_id']?.toString(); // Add this line
+        });
+        print(_driverId);
+        print(_chatRoomId);
+        print('****************************************************************************************************************');
+      }
+    } catch (e) {
+      print('Error checking job acceptance: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: Text(
-          widget.jobPost.title,
-          // style: TextStyle(color: Colors.white),
-        ),
+        middle: Text(widget.jobPost.title),
         backgroundColor: Colors.blue[700],
       ),
-      // backgroundColor: Colors.blue[50],
       child: SafeArea(
         child: Stack(
           children: [
             // Content
             SingleChildScrollView(
-              // Add padding at the bottom to prevent content from being covered by the apply button
-              padding: EdgeInsets.only(bottom: 100),
+              padding: EdgeInsets.only(bottom: _isAccepted ? 160 : 100),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -62,7 +140,6 @@ class _JobDetailPageState extends State<JobDetailPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        // Distance badge
                         if (widget.jobPost.distanceMiles != null)
                           Container(
                             padding: EdgeInsets.symmetric(
@@ -130,39 +207,36 @@ class _JobDetailPageState extends State<JobDetailPage> {
               ),
             ),
 
-            // Apply Button - Fixed at bottom
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  // color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      spreadRadius: 0,
-                      blurRadius: 10,
-                      offset: Offset(0, -2),
-                    ),
-                  ],
-                ),
+            // Chat Button (if job is accepted)
+            if (_isAccepted)
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 100,
                 child: GestureDetector(
-                  onTap: () => _handleJobApplication(context),
+                  onTap: () {
+                    if (_chatRoomId != null) {
+                      Navigator.push(
+                        context,
+                        CupertinoPageRoute(
+                          builder:
+                              (context) => ChatPage(
+                                driverId: _driverId!,
+                                chatRoomId: _chatRoomId!,
+                                businessName: widget.jobPost.businessName,
+                              ),
+                        ),
+                      );
+                    }
+                  },
                   child: Container(
-                    width: double.infinity,
-                    height: 60,
+                    height: 50,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.blue[600]!, Colors.blue[800]!],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
+                      color: Colors.green,
                       borderRadius: BorderRadius.circular(15),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.blue.withOpacity(0.3),
+                          color: Colors.green.withOpacity(0.3),
                           spreadRadius: 1,
                           blurRadius: 8,
                           offset: Offset(0, 4),
@@ -173,16 +247,16 @@ class _JobDetailPageState extends State<JobDetailPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          CupertinoIcons.paperplane_fill,
+                          CupertinoIcons.chat_bubble_text_fill,
                           color: Colors.white,
                           size: 24,
                         ),
                         SizedBox(width: 12),
                         Text(
-                          'Apply for this Job',
+                          'Chat with ${widget.jobPost.businessName}',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 18,
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
                           ),
@@ -191,6 +265,88 @@ class _JobDetailPageState extends State<JobDetailPage> {
                     ),
                   ),
                 ),
+              ),
+
+            // Apply Button - Fixed at bottom
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      spreadRadius: 0,
+                      blurRadius: 10,
+                      offset: Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child:
+                    _isLoading
+                        ? Center(child: CupertinoActivityIndicator())
+                        : GestureDetector(
+                          onTap:
+                              _isAccepted
+                                  ? null // Disable button if already accepted
+                                  : () => _handleJobApplication(context),
+                          child: Container(
+                            width: double.infinity,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              gradient:
+                                  _isAccepted
+                                      ? null
+                                      : LinearGradient(
+                                        colors: [
+                                          Colors.blue[600]!,
+                                          Colors.blue[800]!,
+                                        ],
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
+                                      ),
+                              color: _isAccepted ? Colors.grey : null,
+                              borderRadius: BorderRadius.circular(15),
+                              boxShadow:
+                                  _isAccepted
+                                      ? null
+                                      : [
+                                        BoxShadow(
+                                          color: Colors.blue.withOpacity(0.3),
+                                          spreadRadius: 1,
+                                          blurRadius: 8,
+                                          offset: Offset(0, 4),
+                                        ),
+                                      ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  _isAccepted
+                                      ? CupertinoIcons.checkmark_alt
+                                      : CupertinoIcons.paperplane_fill,
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  _isAccepted
+                                      ? 'Application Accepted'
+                                      : 'Apply for this Job',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
               ),
             ),
           ],
@@ -201,13 +357,11 @@ class _JobDetailPageState extends State<JobDetailPage> {
 
   // Build the business image for the detail page
   Widget _buildBusinessImage() {
-    // Ensure the image URL is properly formatted
     if (widget.jobPost.businessImage != null &&
         widget.jobPost.businessImage!.isNotEmpty) {
       String imageUrl = widget.jobPost.businessImage!;
       if (!imageUrl.startsWith('http')) {
-        // If it's a relative URL, prepend the base URL
-        imageUrl = 'https://anjalitechfifo.pythonanywhere.com${imageUrl}';
+        imageUrl = '${ApiConfig.getImageUrl}$imageUrl';
       }
 
       return Image.network(
@@ -264,210 +418,113 @@ class _JobDetailPageState extends State<JobDetailPage> {
                 isDefaultAction: true,
                 child: Text('Apply'),
                 onPressed: () async {
-                  // Close the dialog first
                   Navigator.pop(dialogContext);
-
-                  // Create a BuildContext variable to track the loading dialog context
-                  BuildContext? loadingContext;
-
-                  try {
-                    // Show loading indicator
-                    showCupertinoDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (BuildContext ctx) {
-                        loadingContext = ctx;
-                        return Center(
-                          child: CupertinoActivityIndicator(radius: 15),
-                        );
-                      },
-                    );
-
-                    // Fetch profile status from API
-                    final prefs = await SharedPreferences.getInstance();
-                    final accessToken = prefs.getString('access_token');
-                    final response = await http.get(
-                      Uri.parse(
-                        ApiConfig.profileStatusUrl
-                      ),
-                      headers: {
-                        'Authorization': 'Bearer $accessToken',
-                        'Content-Type': 'application/json',
-                      },
-                    );
-
-                    // Make sure to close the loading dialog before further navigation
-                    if (loadingContext != null &&
-                        Navigator.canPop(loadingContext!)) {
-                      Navigator.pop(loadingContext!);
-                    }
-
-                    if (response.statusCode == 200) {
-                      final data = jsonDecode(response.body);
-                      final bool isDocumentComplete =
-                          data['is_document_complete'] ?? false;
-                      final bool isApproved = data['is_approved'] ?? false;
-
-                      if (!isDocumentComplete) {
-                        // Navigate to document registration page
-                        Navigator.push(
-                          context,
-                          CupertinoPageRoute(
-                            builder: (context) => DocumentRegistrationPage(),
-                            fullscreenDialog: true, //
-                          ),
-                        );
-                      // } else if (!isApproved) {
-                      //   // Navigate to a wrapper that contains only the DocumentRegistrationPage
-                      //   Navigator.of(context).push(
-                      //     CupertinoPageRoute(
-                      //       builder:
-                      //           (context) => CupertinoPageScaffold(
-                      //             navigationBar: CupertinoNavigationBar(
-                      //               middle: Text('Please wait for approval'),
-                      //               backgroundColor: Colors.blue[700],
-                      //             ),
-                      //             child: DocumentVerificationPendingScreen(),
-                      //           ),
-                      //     ),
-                      //   );
-                      } else {
-                        await _submitJobApplication(context);
-                        // _showApplicationSuccessMessage(context);
-                      }
-                    } else {
-                      // Handle API error
-                      showCupertinoDialog(
-                        context: context,
-                        builder:
-                            (context) => CupertinoAlertDialog(
-                              title: Text('Error'),
-                              content: Text(
-                                'Failed to check profile status. Please try again.',
-                              ),
-                              actions: [
-                                CupertinoDialogAction(
-                                  child: Text('OK'),
-                                  onPressed: () => Navigator.pop(context),
-                                ),
-                              ],
-                            ),
-                      );
-                    }
-                  } catch (e) {
-                    // Close loading dialog if open
-                    if (loadingContext != null &&
-                        Navigator.canPop(loadingContext!)) {
-                      Navigator.pop(loadingContext!);
-                    }
-
-                    // Show error dialog
-                    showCupertinoDialog(
-                      context: context,
-                      builder:
-                          (context) => CupertinoAlertDialog(
-                            title: Text('Error'),
-                            content: Text('An error occurred: ${e.toString()}'),
-                            actions: [
-                              CupertinoDialogAction(
-                                child: Text('OK'),
-                                onPressed: () => Navigator.pop(context),
-                              ),
-                            ],
-                          ),
-                    );
-                  }
+                  await _submitJobApplication(context);
                 },
               ),
             ],
           ),
     );
   }
-Future<void> _submitJobApplication(BuildContext context) async {
-  BuildContext? loadingContext;
-  
-  try {
-    // Show loading indicator
-    showCupertinoDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext ctx) {
-        loadingContext = ctx;
-        return Center(
-          child: CupertinoActivityIndicator(radius: 15),
-        );
-      },
-    );
-    
-    // Get access token
-    final prefs = await SharedPreferences.getInstance();
-    final accessToken = prefs.getString('access_token');
-    
-    // Create request body
-    final requestBody = {
-      'job': widget.jobPost.id, // Pass the job ID
-    };
-    
-    // Send POST request to job-requests API
-    final response = await http.post(
-      Uri.parse(ApiConfig.jobRequestUrl),
-      headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(requestBody),
-    );
-    
-    // Close loading dialog
-    if (loadingContext != null && Navigator.canPop(loadingContext!)) {
-      Navigator.pop(loadingContext!);
-    }
-    
-    if (response.statusCode == 201) {
-      // Application submitted successfully
-      _showApplicationSuccessMessage(context);
-      print('Application submitted successfully++++++++++++++++++++++++++++++++++++++++++++++++++');
-    } else {
-      // Handle API error
-      final errorData = jsonDecode(response.body);
-      final errorMessage = errorData['detail'] ?? 'Failed to submit application. Please try again.';
-      
+
+  Future<void> _submitJobApplication(BuildContext context) async {
+    BuildContext? loadingContext;
+
+    try {
+      // Show loading indicator
       showCupertinoDialog(
         context: context,
-        builder: (context) => CupertinoAlertDialog(
-          title: Text('Error'),
-          content: Text(errorMessage),
-          actions: [
-            CupertinoDialogAction(
-              child: Text('OK'),
-              onPressed: () => Navigator.pop(context),
+        barrierDismissible: false,
+        builder: (BuildContext ctx) {
+          loadingContext = ctx;
+          return Center(child: CupertinoActivityIndicator(radius: 15));
+        },
+      );
+
+      // Get access token
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('access_token');
+
+      // Create request body
+      final requestBody = {'job': widget.jobPost.id};
+
+      // Send POST request to job-requests API
+      final response = await http.post(
+        Uri.parse(ApiConfig.jobRequestUrl),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      // Close loading dialog
+      if (loadingContext != null && Navigator.canPop(loadingContext!)) {
+        Navigator.pop(loadingContext!);
+      }
+
+      if (response.statusCode == 201) {
+        // Application submitted successfully
+        final responseData = jsonDecode(response.body);
+        final jobRequestId = responseData['id'].toString();
+        print('Job request ID: $jobRequestId');
+        print(
+          '------------------------------------------------------------------------------------------------------------',
+        );
+        setState(() {
+          _jobRequestId = jobRequestId;
+        });
+
+        // Check if job is accepted
+        await _checkIfJobIsAccepted();
+
+        _showApplicationSuccessMessage(context);
+      } else {
+        // Handle API error
+        final errorData = jsonDecode(response.body);
+        final errorMessage =
+            errorData['detail'] ??
+            'Failed to submit application. Please try again.';
+
+        showCupertinoDialog(
+          context: context,
+          builder:
+              (context) => CupertinoAlertDialog(
+                title: Text('Error'),
+                content: Text(errorMessage),
+                actions: [
+                  CupertinoDialogAction(
+                    child: Text('OK'),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if open
+      if (loadingContext != null && Navigator.canPop(loadingContext!)) {
+        Navigator.pop(loadingContext!);
+      }
+
+      // Show error dialog
+      showCupertinoDialog(
+        context: context,
+        builder:
+            (context) => CupertinoAlertDialog(
+              title: Text('Please wait for your request to be approved'),
+              content: Text("You are allready applied for this job."),
+              actions: [
+                CupertinoDialogAction(
+                  child: Text('OK'),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
             ),
-          ],
-        ),
       );
     }
-  } catch (e) {
-    // Close loading dialog if open
-    if (loadingContext != null && Navigator.canPop(loadingContext!)) {
-      Navigator.pop(loadingContext!);
-    }
-    
-    // Show error dialog
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: Text('Error'),
-        content: Text('An error occurred: ${e.toString()}'),
-        actions: [
-          CupertinoDialogAction(
-            child: Text('OK'),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
-      ),
-    );
   }
-}
+
   // Success message after application is submitted
   void _showApplicationSuccessMessage(BuildContext context) {
     showCupertinoModalPopup(

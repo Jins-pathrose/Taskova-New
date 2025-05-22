@@ -230,6 +230,17 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // Refresh data method
+  Future<void> _refreshData() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+      jobPosts = [];
+      driverProfile = null;
+    });
+    await loadData();
+  }
+
   // Fetch the driver's profile including their location
   Future<void> fetchDriverProfile() async {
     try {
@@ -362,57 +373,57 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Helper method to build business image
- Widget _buildBusinessImage(JobPost job, {double size = 80}) {
-  // Try to load the business image
-  if (job.businessImage != null && job.businessImage!.isNotEmpty) {
-    // Ensure the image URL is properly formatted
-    String imageUrl = job.businessImage!;
-    
-    // Print the original image URL for debugging
-    print('Original image URL: $imageUrl');
-    
-    if (!imageUrl.startsWith('http')) {
-      // If it's a relative URL, prepend the base URL
-      imageUrl = 'https://anjalitechfifo.pythonanywhere.com${imageUrl}';
+  Widget _buildBusinessImage(JobPost job, {double size = 80}) {
+    // Try to load the business image
+    if (job.businessImage != null && job.businessImage!.isNotEmpty) {
+      // Ensure the image URL is properly formatted
+      String imageUrl = job.businessImage!;
       
-      // Print the constructed URL for debugging
-      print('Constructed image URL: $imageUrl');
+      // Print the original image URL for debugging
+      print('Original image URL: $imageUrl');
+      
+      if (!imageUrl.startsWith('http')) {
+        // If it's a relative URL, prepend the base URL
+        imageUrl = '${ApiConfig.getImageUrl}$imageUrl';
+        
+        // Print the constructed URL for debugging
+        print('Constructed image URL: $imageUrl');
+      }
+      
+      // Try to make a test request to see if the image exists
+      try {
+        final uri = Uri.parse(imageUrl);
+        HttpClient().headUrl(uri).then((request) => request.close()).then((response) {
+          print('Image URL status code: ${response.statusCode}');
+          if (response.statusCode != 200) {
+            print('Image not found at URL: $imageUrl');
+          }
+        });
+      } catch (e) {
+        print('Error checking image URL: $e');
+      }
+      
+      return Image.network(
+        imageUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          print('Image loading progress: $loadingProgress');
+          return _buildImagePlaceholder(size);
+        },
+        errorBuilder: (context, error, stackTrace) {
+          print('Image loading error: $error');
+          print(stackTrace);
+          return _buildImagePlaceholder(size);
+        },
+      );
+    } else {
+      print('No business image provided');
+      return _buildImagePlaceholder(size);
     }
-    
-    // Try to make a test request to see if the image exists
-    try {
-      final uri = Uri.parse(imageUrl);
-      HttpClient().headUrl(uri).then((request) => request.close()).then((response) {
-        print('Image URL status code: ${response.statusCode}');
-        if (response.statusCode != 200) {
-          print('Image not found at URL: $imageUrl');
-        }
-      });
-    } catch (e) {
-      print('Error checking image URL: $e');
-    }
-    
-    return Image.network(
-      imageUrl,
-      width: size,
-      height: size,
-      fit: BoxFit.cover,
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        print('Image loading progress: $loadingProgress');
-        return _buildImagePlaceholder(size);
-      },
-      errorBuilder: (context, error, stackTrace) {
-        print('Image loading error: $error');
-        print(stackTrace);
-        return _buildImagePlaceholder(size);
-      },
-    );
-  } else {
-    print('No business image provided');
-    return _buildImagePlaceholder(size);
   }
-}
 
   Widget _buildImagePlaceholder(double size) {
     return Container(
@@ -431,135 +442,145 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
-        middle: Text("Nearby Jobs",),
+        middle: Text("Nearby Jobs"),
         backgroundColor: Colors.blue[700],
       ),
-      // backgroundColor: Colors.blue[50],
       child: SafeArea(
-        child: isLoading
-            ? Center(child: CupertinoActivityIndicator())
-            : errorMessage != null
-                ? Center(child: Text(errorMessage!, style: TextStyle(color: Colors.red)))
-                : Column(
-                    children: [
-                      // Location info banner
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(12),
-                        color: Colors.blue[100],
-                        child: Text(
-                          driverProfile != null 
-                              ? 'Your location: ${driverProfile!.latitude.toStringAsFixed(4)}, ${driverProfile!.longitude.toStringAsFixed(4)}'
-                              : 'Location not available',
-                          style: TextStyle(
-                            color: Colors.blue[800],
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
+        child: CustomScrollView(
+          slivers: [
+            // Add Cupertino-style refresh control
+            CupertinoSliverRefreshControl(
+              onRefresh: _refreshData,
+            ),
+            SliverToBoxAdapter(
+              child: isLoading
+                  ? Center(child: CupertinoActivityIndicator())
+                  : errorMessage != null
+                      ? Center(child: Text(errorMessage!, style: TextStyle(color: Colors.red)))
+                      : Column(
+                          children: [
+                            // Location info banner
+                            Container(
+                              width: double.infinity,
+                              padding: EdgeInsets.all(12),
+                              color: Colors.blue[100],
+                              child: Text(
+                                driverProfile != null
+                                    ? 'Your location: ${driverProfile!.latitude.toStringAsFixed(4)}, ${driverProfile!.longitude.toStringAsFixed(4)}'
+                                    : 'Location not available',
+                                style: TextStyle(
+                                  color: Colors.blue[800],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      
-                      // Job list
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: jobPosts.length,
-                          itemBuilder: (context, index) {
-                            final job = jobPosts[index];
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  CupertinoPageRoute(
-                                    builder: (context) => JobDetailPage(jobPost: job),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.blue.withOpacity(0.1),
-                                      spreadRadius: 2,
-                                      blurRadius: 5,
-                                      offset: Offset(0, 3),
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Business Image
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: _buildBusinessImage(job, size: 80),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      // Main content
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            // Distance badge
-                                            Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: Colors.green[100],
-                                                borderRadius: BorderRadius.circular(12),
-                                              ),
-                                              child: Text(
-                                                formatDistance(job.distanceMiles),
-                                                style: TextStyle(
-                                                  color: Colors.green[800],
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              job.title,
-                                              style: TextStyle(
-                                                color: Colors.blue[900],
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              job.businessName,
-                                              style: TextStyle(
-                                                color: Colors.blue[700],
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              'Start: ${job.startTime ?? 'N/A'} - End: ${job.endTime ?? 'N/A'}',
-                                              style: TextStyle(color: Colors.blue[700]),
-                                            ),
-                                            Text(
-                                              '''Pay: ${job.hourlyRate != null ? '\$${job.hourlyRate}/hr' : ''} ${job.hourlyRate != null && job.perDeliveryRate != null ? ' + ' : ''} ${job.perDeliveryRate != null ? '\$${job.perDeliveryRate}/delivery' : ''}''',
-                                              style: TextStyle(color: Colors.blue[700]),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      // Arrow icon
-                                      Icon(CupertinoIcons.forward, color: Colors.blue[700]),
-                                    ],
-                                  ),
-                                ),
+            ),
+            // Job list as a SliverList
+            isLoading || errorMessage != null
+                ? SliverToBoxAdapter(child: Container())
+                : SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final job = jobPosts[index];
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              CupertinoPageRoute(
+                                builder: (context) => JobDetailPage(jobPost: job),
                               ),
                             );
                           },
-                        ),
-                      ),
-                    ],
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.blue.withOpacity(0.1),
+                                  spreadRadius: 2,
+                                  blurRadius: 5,
+                                  offset: Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Business Image
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: _buildBusinessImage(job, size: 80),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  // Main content
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Distance badge
+                                        Container(
+                                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green[100],
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            formatDistance(job.distanceMiles),
+                                            style: TextStyle(
+                                              color: Colors.green[800],
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          job.title,
+                                          style: TextStyle(
+                                            color: Colors.blue[900],
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          job.businessName,
+                                          style: TextStyle(
+                                            color: Colors.blue[700],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Start: ${job.startTime ?? 'N/A'} - End: ${job.endTime ?? 'N/A'}',
+                                          style: TextStyle(color: Colors.blue[700]),
+                                        ),
+                                        Text(
+                                          '''Pay: ${job.hourlyRate != null ? '\$${job.hourlyRate}/hr' : ''} ${job.hourlyRate != null && job.perDeliveryRate != null ? ' + ' : ''} ${job.perDeliveryRate != null ? '\$${job.perDeliveryRate}/delivery' : ''}''',
+                                          style: TextStyle(color: Colors.blue[700]),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Arrow icon
+                                  Icon(CupertinoIcons.forward, color: Colors.blue[700]),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      childCount: jobPosts.length,
+                    ),
                   ),
+          ],
+        ),
       ),
     );
   }
