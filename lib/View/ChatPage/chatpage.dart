@@ -16,7 +16,6 @@ class Chatpage extends StatefulWidget {
 }
 
 class _ChatpageState extends State<Chatpage> {
-    final GoogleSignIn _googleSignIn = GoogleSignIn();
 
    void showSuccessNotification(BuildContext context, String message) {
     showCupertinoDialog(

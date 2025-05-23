@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -441,147 +442,570 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: Text("Nearby Jobs"),
-        backgroundColor: Colors.blue[700],
+  navigationBar: CupertinoNavigationBar(
+    middle: Text(
+      "Discover Jobs",
+      style: TextStyle(
+        fontWeight: FontWeight.w600,
+        fontSize: 18,
       ),
-      child: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // Add Cupertino-style refresh control
-            CupertinoSliverRefreshControl(
-              onRefresh: _refreshData,
+    ),
+    backgroundColor: CupertinoColors.systemBackground.withOpacity(0.8),
+    border: null,
+  ),
+  child: SafeArea(
+    child: CustomScrollView(
+      physics: BouncingScrollPhysics(),
+      slivers: [
+        // Cupertino-style refresh control
+        CupertinoSliverRefreshControl(
+          onRefresh: _refreshData,
+        ),
+        
+        // Search and header section
+        SliverToBoxAdapter(
+          child: AnimatedContainer(
+            duration: Duration(milliseconds: 600),
+            curve: Curves.easeInOut,
+            padding: EdgeInsets.fromLTRB(20, 16, 20, 24),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  CupertinoColors.systemBlue.withOpacity(0.1),
+                  CupertinoColors.systemBackground,
+                ],
+              ),
             ),
-            SliverToBoxAdapter(
-              child: isLoading
-                  ? Center(child: CupertinoActivityIndicator())
-                  : errorMessage != null
-                      ? Center(child: Text(errorMessage!, style: TextStyle(color: Colors.red)))
-                      : Column(
-                          children: [
-                            // Location info banner
-                            Container(
-                              width: double.infinity,
-                              padding: EdgeInsets.all(12),
-                              color: Colors.blue[100],
-                              child: Text(
-                                driverProfile != null
-                                    ? 'Your location: ${driverProfile!.latitude.toStringAsFixed(4)}, ${driverProfile!.longitude.toStringAsFixed(4)}'
-                                    : 'Location not available',
-                                style: TextStyle(
-                                  color: Colors.blue[800],
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Welcome text with fade animation
+                TweenAnimationBuilder<double>(
+                  duration: Duration(milliseconds: 800),
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: Transform.translate(
+                        offset: Offset(0, 20 * (1 - value)),
+                        child: Text(
+                          "Find your next opportunity",
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: CupertinoColors.label,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                SizedBox(height: 8),
+                
+                // Subtitle with delayed fade
+                TweenAnimationBuilder<double>(
+                  duration: Duration(milliseconds: 1000),
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: Transform.translate(
+                        offset: Offset(0, 15 * (1 - value)),
+                        child: Text(
+                          "Jobs near you, updated in real-time",
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: CupertinoColors.secondaryLabel,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                SizedBox(height: 24),
+                
+                // Search box with animation
+                TweenAnimationBuilder<double>(
+                  duration: Duration(milliseconds: 1200),
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: Transform.scale(
+                        scale: 0.8 + (0.2 * value),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: CupertinoColors.systemGrey6,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: CupertinoColors.systemBlue.withOpacity(0.1),
+                                spreadRadius: 0,
+                                blurRadius: 20,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: CupertinoTextField(
+                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                            placeholder: "Search jobs, companies, or locations...",
+                            placeholderStyle: TextStyle(
+                              color: CupertinoColors.placeholderText,
+                              fontSize: 16,
+                            ),
+                            style: TextStyle(fontSize: 16),
+                            decoration: BoxDecoration(),
+                            prefix: Padding(
+                              padding: EdgeInsets.only(left: 8),
+                              child: Icon(
+                                CupertinoIcons.search,
+                                color: CupertinoColors.systemBlue,
+                                size: 20,
                               ),
                             ),
+                            onChanged: (value) {
+                              // Add your search logic here
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        // Job listings
+        isLoading 
+          ? _buildShimmerJobList()
+          : errorMessage != null
+              ? SliverToBoxAdapter(
+                  child: _buildErrorState(),
+                )
+              : SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final job = jobPosts[index];
+                      return TweenAnimationBuilder<double>(
+                        duration: Duration(milliseconds: 600 + (index * 100)),
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        builder: (context, value, child) {
+                          return Opacity(
+                            opacity: value,
+                            child: Transform.translate(
+                              offset: Offset(0, 30 * (1 - value)),
+                              child: _buildJobCard(job, index),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                    childCount: jobPosts.length,
+                  ),
+                ),
+      ],
+    ),
+  ),
+);
+  }
+  Widget _buildShimmerJobList() {
+  return SliverList(
+    delegate: SliverChildBuilderDelegate(
+      (context, index) {
+        return TweenAnimationBuilder<double>(
+          duration: Duration(milliseconds: 1500),
+          tween: Tween(begin: 0.0, end: 1.0),
+          builder: (context, value, child) {
+            return Container(
+              margin: EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemBackground,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: CupertinoColors.systemGrey.withOpacity(0.1),
+                    spreadRadius: 0,
+                    blurRadius: 10,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Shimmer image placeholder
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          begin: Alignment(-1.0 + value * 2, 0.0),
+                          end: Alignment(1.0 + value * 2, 0.0),
+                          colors: [
+                            CupertinoColors.systemGrey5,
+                            CupertinoColors.systemGrey6,
+                            CupertinoColors.systemGrey5,
                           ],
                         ),
-            ),
-            // Job list as a SliverList
-            isLoading || errorMessage != null
-                ? SliverToBoxAdapter(child: Container())
-                : SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final job = jobPosts[index];
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              CupertinoPageRoute(
-                                builder: (context) => JobDetailPage(jobPost: job),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                      ),
+                    ),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Shimmer badge
+                          Container(
+                            width: 80,
+                            height: 24,
                             decoration: BoxDecoration(
-                              color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.blue.withOpacity(0.1),
-                                  spreadRadius: 2,
-                                  blurRadius: 5,
-                                  offset: Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Business Image
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: _buildBusinessImage(job, size: 80),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  // Main content
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        // Distance badge
-                                        Container(
-                                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green[100],
-                                            borderRadius: BorderRadius.circular(12),
-                                          ),
-                                          child: Text(
-                                            formatDistance(job.distanceMiles),
-                                            style: TextStyle(
-                                              color: Colors.green[800],
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          job.title,
-                                          style: TextStyle(
-                                            color: Colors.blue[900],
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          job.businessName,
-                                          style: TextStyle(
-                                            color: Colors.blue[700],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'Start: ${job.startTime ?? 'N/A'} - End: ${job.endTime ?? 'N/A'}',
-                                          style: TextStyle(color: Colors.blue[700]),
-                                        ),
-                                        Text(
-                                          '''Pay: ${job.hourlyRate != null ? '\$${job.hourlyRate}/hr' : ''} ${job.hourlyRate != null && job.perDeliveryRate != null ? ' + ' : ''} ${job.perDeliveryRate != null ? '\$${job.perDeliveryRate}/delivery' : ''}''',
-                                          style: TextStyle(color: Colors.blue[700]),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  // Arrow icon
-                                  Icon(CupertinoIcons.forward, color: Colors.blue[700]),
+                              gradient: LinearGradient(
+                                begin: Alignment(-1.0 + value * 2, 0.0),
+                                end: Alignment(1.0 + value * 2, 0.0),
+                                colors: [
+                                  CupertinoColors.systemGrey5,
+                                  CupertinoColors.systemGrey6,
+                                  CupertinoColors.systemGrey5,
                                 ],
                               ),
                             ),
                           ),
-                        );
-                      },
-                      childCount: jobPosts.length,
+                          SizedBox(height: 12),
+                          // Shimmer title
+                          Container(
+                            width: double.infinity,
+                            height: 20,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              gradient: LinearGradient(
+                                begin: Alignment(-1.0 + value * 2, 0.0),
+                                end: Alignment(1.0 + value * 2, 0.0),
+                                colors: [
+                                  CupertinoColors.systemGrey5,
+                                  CupertinoColors.systemGrey6,
+                                  CupertinoColors.systemGrey5,
+                                ],
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          // Shimmer company
+                          Container(
+                            width: 120,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              gradient: LinearGradient(
+                                begin: Alignment(-1.0 + value * 2, 0.0),
+                                end: Alignment(1.0 + value * 2, 0.0),
+                                colors: [
+                                  CupertinoColors.systemGrey5,
+                                  CupertinoColors.systemGrey6,
+                                  CupertinoColors.systemGrey5,
+                                ],
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          // Shimmer details
+                          Container(
+                            width: 200,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              gradient: LinearGradient(
+                                begin: Alignment(-1.0 + value * 2, 0.0),
+                                end: Alignment(1.0 + value * 2, 0.0),
+                                colors: [
+                                  CupertinoColors.systemGrey5,
+                                  CupertinoColors.systemGrey6,
+                                  CupertinoColors.systemGrey5,
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+      childCount: 6, // Show 6 shimmer items
+    ),
+  );
+}
+
+// Enhanced job card with animations
+Widget _buildJobCard(dynamic job, int index) {
+  return GestureDetector(
+    onTap: () {
+      Navigator.push(
+        context,
+        CupertinoPageRoute(
+          builder: (context) => JobDetailPage(jobPost: job),
+        ),
+      );
+    },
+    child: Container(
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemBackground,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemBlue.withOpacity(0.08),
+            spreadRadius: 0,
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                CupertinoColors.systemBackground,
+                CupertinoColors.systemBackground.withOpacity(0.8),
+              ],
+            ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Enhanced business image with hero animation
+                Hero(
+                  tag: "job_image_${job.id}",
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: CupertinoColors.systemBlue.withOpacity(0.2),
+                          spreadRadius: 0,
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: _buildBusinessImage(job, size: 80),
                     ),
                   ),
-          ],
+                ),
+                SizedBox(width: 16),
+                
+                // Enhanced main content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Distance badge with glow effect
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              CupertinoColors.systemGreen.withOpacity(0.2),
+                              CupertinoColors.systemGreen.withOpacity(0.1),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: CupertinoColors.systemGreen.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              CupertinoIcons.location_solid,
+                              color: CupertinoColors.systemGreen,
+                              size: 12,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              formatDistance(job.distanceMiles),
+                              style: TextStyle(
+                                color: CupertinoColors.systemGreen,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      
+                      // Job title with enhanced typography
+                      Text(
+                        job.title,
+                        style: TextStyle(
+                          color: CupertinoColors.label,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          letterSpacing: -0.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 6),
+                      
+                      // Business name with icon
+                      Row(
+                        children: [
+                          Icon(
+                            CupertinoIcons.building_2_fill,
+                            color: CupertinoColors.systemBlue,
+                            size: 14,
+                          ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              job.businessName,
+                              style: TextStyle(
+                                color: CupertinoColors.systemBlue,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 15,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      
+                      // Time info with enhanced styling
+                      Row(
+                        children: [
+                          Icon(
+                            CupertinoIcons.time,
+                            color: CupertinoColors.secondaryLabel,
+                            size: 14,
+                          ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '${job.startTime ?? 'N/A'} - ${job.endTime ?? 'N/A'}',
+                              style: TextStyle(
+                                color: CupertinoColors.secondaryLabel,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 6),
+                      
+                      // Pay info with enhanced styling
+                      Row(
+                        children: [
+                          Icon(
+                            CupertinoIcons.money_dollar_circle,
+                            color: CupertinoColors.systemGreen,
+                            size: 14,
+                          ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '''${job.hourlyRate != null ? '\$${job.hourlyRate}/hr' : ''} ${job.hourlyRate != null && job.perDeliveryRate != null ? ' + ' : ''} ${job.perDeliveryRate != null ? '\$${job.perDeliveryRate}/delivery' : ''}''',
+                              style: TextStyle(
+                                color: CupertinoColors.systemGreen,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Enhanced arrow with subtle animation
+                TweenAnimationBuilder<double>(
+                  duration: Duration(milliseconds: 2000),
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  builder: (context, value, child) {
+                    return Transform.translate(
+                      offset: Offset(2 * math.sin(value * 2 * math.pi), 0),
+                      child: Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.systemBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          CupertinoIcons.chevron_right,
+                          color: CupertinoColors.systemBlue,
+                          size: 16,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+// Error state widget
+Widget _buildErrorState() {
+  return Container(
+    padding: EdgeInsets.all(40),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          CupertinoIcons.exclamationmark_triangle,
+          color: CupertinoColors.systemRed,
+          size: 48,
+        ),
+        SizedBox(height: 16),
+        Text(
+          errorMessage!,
+          style: TextStyle(
+            color: CupertinoColors.systemRed,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(height: 24),
+        CupertinoButton.filled(
+          child: Text("Try Again"),
+          onPressed: _refreshData,
+        ),
+      ],
+    ),
+  );
+}
 }

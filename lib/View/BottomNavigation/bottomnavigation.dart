@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:taskova_new/Model/Notifications/notification_service.dart';
 import 'package:taskova_new/View/ChatPage/chatpage.dart';
 import 'package:taskova_new/View/Community/community_page.dart';
 import 'package:taskova_new/View/Homepage/homepage.dart';
@@ -14,7 +15,9 @@ class MainWrapper extends StatefulWidget {
   State<MainWrapper> createState() => _MainWrapperState();
 }
 
-class _MainWrapperState extends State<MainWrapper> {
+class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
+  final NotificationService _notificationService = NotificationService();
+
   int _currentIndex = 0;
   late AppLanguage appLanguage;
 
@@ -29,6 +32,35 @@ class _MainWrapperState extends State<MainWrapper> {
   void initState() {
     super.initState();
     appLanguage = Provider.of<AppLanguage>(context, listen: false);
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Start notification service when user enters the app
+    _notificationService.startNotificationService();
+  }
+    @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // Stop notification service when leaving the app
+    _notificationService.stopNotificationService();
+    super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // App came to foreground, start notifications
+        _notificationService.startNotificationService();
+        break;
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        // App went to background, stop notifications
+        _notificationService.stopNotificationService();
+        break;
+      default:
+        break;
+    }
   }
 
   @override

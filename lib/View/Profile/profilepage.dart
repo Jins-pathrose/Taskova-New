@@ -793,7 +793,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 borderRadius: BorderRadius.circular(12),
                                 child: Text(
                                   appLanguage.get('cancel'),
-                                  style: TextStyle(
+                                  style: TextStyle( 
                                     color: primaryBlue,
                                     fontWeight: FontWeight.bold,
                                   ),

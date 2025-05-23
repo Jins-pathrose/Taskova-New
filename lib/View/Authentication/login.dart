@@ -17,9 +17,7 @@ import 'package:taskova_new/View/Authentication/forgot_password.dart';
 import 'package:taskova_new/View/Authentication/otp.dart';
 import 'package:taskova_new/View/Authentication/signup.dart';
 import 'package:taskova_new/View/BottomNavigation/bottomnavigation.dart';
-import 'package:taskova_new/View/Homepage/homepage.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
-import 'package:taskova_new/View/Profile/profilepage.dart';
 import 'package:taskova_new/View/profile.dart';
 
 class LoginPage extends StatefulWidget {
@@ -68,7 +66,11 @@ class _LoginPageState extends State<LoginPage> {
     _passwordController.dispose();
     super.dispose();
   }
-
+Future<void> _initializeNotificationService() async {
+  final prefs = await SharedPreferences.getInstance();
+  // Clear any previous notification timestamps on fresh login
+  await prefs.remove('last_notification_check');
+}
   Future<void> saveTokens(
     String accessToken,
     String refreshToken,
@@ -190,6 +192,7 @@ if (profileResponse.statusCode == 200){
               );
             }else {
               _showSuccessDialog("Login successful!");
+              await _initializeNotificationService();
               Navigator.pushReplacement(
                 context,
                 CupertinoPageRoute(
@@ -265,6 +268,7 @@ if (profileResponse.statusCode == 200){
               );
             } else {
               _showSuccessDialog("Login successful!");
+              await _initializeNotificationService();
               Navigator.pushReplacement(
                 context,
                 CupertinoPageRoute(
