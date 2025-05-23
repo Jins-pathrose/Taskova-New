@@ -81,7 +81,7 @@ class JobPost {
   final String? businessImage;
   final double businessLatitude;
   final double businessLongitude;
-  double? distanceMiles;  // Distance from driver in miles
+  double? distanceMiles; // Distance from driver in miles
 
   JobPost({
     required this.id,
@@ -102,10 +102,10 @@ class JobPost {
   });
 
   Business get business => Business(
-    id: businessId,
-    name: businessName,
-    image: businessImage,
-  );
+        id: businessId,
+        name: businessName,
+        image: businessImage,
+      );
 
   factory JobPost.fromJson(Map<String, dynamic> json) {
     return JobPost(
@@ -129,8 +129,10 @@ class JobPost {
   // Calculate distance from driver's location in miles
   void calculateDistanceFrom(double driverLat, double driverLng) {
     distanceMiles = calculateDistanceInMiles(
-      driverLat, driverLng, 
-      businessLatitude, businessLongitude
+      driverLat,
+      driverLng,
+      businessLatitude,
+      businessLongitude,
     );
   }
 }
@@ -154,13 +156,13 @@ double? _parseDouble(dynamic value) {
 double calculateDistanceInMiles(double lat1, double lon1, double lat2, double lon2) {
   const double earthRadiusKm = 6371; // Earth radius in kilometers
   const double kmToMiles = 0.621371; // Conversion factor from km to miles
-  
+
   // Convert to radians
   final double lat1Rad = _degreesToRadians(lat1);
   final double lon1Rad = _degreesToRadians(lon1);
   final double lat2Rad = _degreesToRadians(lat2);
   final double lon2Rad = _degreesToRadians(lon2);
-  
+
   // Haversine formula
   final double dLat = lat2Rad - lat1Rad;
   final double dLon = lon2Rad - lon1Rad;
@@ -169,7 +171,7 @@ double calculateDistanceInMiles(double lat1, double lon1, double lat2, double lo
   final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
   final double distanceKm = earthRadiusKm * c;
   final double distanceMiles = distanceKm * kmToMiles;
-  
+
   return distanceMiles;
 }
 
@@ -181,7 +183,7 @@ double _degreesToRadians(double degrees) {
 // Format distance for display in miles
 String formatDistance(double? distanceMiles) {
   if (distanceMiles == null) return 'Unknown distance';
-  
+
   if (distanceMiles < 1) {
     // Convert to feet if less than 0.1 miles (528 feet)
     final int feet = (distanceMiles * 5280).round();
@@ -205,9 +207,11 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   List<JobPost> jobPosts = [];
+  List<JobPost> filteredJobPosts = []; // List for filtered job posts
   bool isLoading = true;
   String? errorMessage;
   DriverProfile? driverProfile;
+  String _searchQuery = ''; // State for search query
 
   @override
   void initState() {
@@ -220,7 +224,7 @@ class _HomePageState extends State<HomePage> {
     try {
       // First get the driver profile to get current location
       await fetchDriverProfile();
-      
+
       // Then fetch job posts and calculate distances
       await fetchJobPosts();
     } catch (e) {
@@ -237,6 +241,8 @@ class _HomePageState extends State<HomePage> {
       isLoading = true;
       errorMessage = null;
       jobPosts = [];
+      filteredJobPosts = [];
+      _searchQuery = '';
       driverProfile = null;
     });
     await loadData();
@@ -325,21 +331,21 @@ class _HomePageState extends State<HomePage> {
       if (response.statusCode == 200) {
         // Parse the JSON response
         final List<dynamic> jsonResponse = json.decode(response.body);
-        
+
         // Convert to JobPost objects
         final List<JobPost> posts = jsonResponse
             .map((job) => JobPost.fromJson(job))
             .toList();
-        
+
         // Calculate distances if we have driver location
         if (driverProfile != null) {
           for (var post in posts) {
             post.calculateDistanceFrom(
-              driverProfile!.latitude, 
-              driverProfile!.longitude
+              driverProfile!.latitude,
+              driverProfile!.longitude,
             );
           }
-          
+
           // Sort by distance (nearest first)
           posts.sort((a, b) {
             if (a.distanceMiles == null && b.distanceMiles == null) return 0;
@@ -348,9 +354,10 @@ class _HomePageState extends State<HomePage> {
             return a.distanceMiles!.compareTo(b.distanceMiles!);
           });
         }
-        
+
         setState(() {
           jobPosts = posts;
+          filteredJobPosts = posts; // Initialize filtered list
           isLoading = false;
         });
       } else if (response.statusCode == 401) {
@@ -373,24 +380,39 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  // Filter job posts based on search query
+  void _filterJobPosts(String query) {
+    setState(() {
+      _searchQuery = query;
+      if (query.isEmpty) {
+        filteredJobPosts = jobPosts;
+      } else {
+        filteredJobPosts = jobPosts
+            .where((job) =>
+                job.businessName.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
+
   // Helper method to build business image
   Widget _buildBusinessImage(JobPost job, {double size = 80}) {
     // Try to load the business image
     if (job.businessImage != null && job.businessImage!.isNotEmpty) {
       // Ensure the image URL is properly formatted
       String imageUrl = job.businessImage!;
-      
+
       // Print the original image URL for debugging
       print('Original image URL: $imageUrl');
-      
+
       if (!imageUrl.startsWith('http')) {
         // If it's a relative URL, prepend the base URL
         imageUrl = '${ApiConfig.getImageUrl}$imageUrl';
-        
+
         // Print the constructed URL for debugging
         print('Constructed image URL: $imageUrl');
       }
-      
+
       // Try to make a test request to see if the image exists
       try {
         final uri = Uri.parse(imageUrl);
@@ -403,7 +425,7 @@ class _HomePageState extends State<HomePage> {
       } catch (e) {
         print('Error checking image URL: $e');
       }
-      
+
       return Image.network(
         imageUrl,
         width: size,
@@ -432,7 +454,7 @@ class _HomePageState extends State<HomePage> {
       height: size,
       color: Colors.grey[300],
       child: Icon(
-        CupertinoIcons.building_2_fill, 
+        CupertinoIcons.building_2_fill,
         color: Colors.grey[600],
         size: size * 0.5,
       ),
@@ -442,314 +464,353 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-  navigationBar: CupertinoNavigationBar(
-    middle: Text(
-      "Discover Jobs",
-      style: TextStyle(
-        fontWeight: FontWeight.w600,
-        fontSize: 18,
-      ),
-    ),
-    backgroundColor: CupertinoColors.systemBackground.withOpacity(0.8),
-    border: null,
-  ),
-  child: SafeArea(
-    child: CustomScrollView(
-      physics: BouncingScrollPhysics(),
-      slivers: [
-        // Cupertino-style refresh control
-        CupertinoSliverRefreshControl(
-          onRefresh: _refreshData,
-        ),
-        
-        // Search and header section
-        SliverToBoxAdapter(
-          child: AnimatedContainer(
-            duration: Duration(milliseconds: 600),
-            curve: Curves.easeInOut,
-            padding: EdgeInsets.fromLTRB(20, 16, 20, 24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  CupertinoColors.systemBlue.withOpacity(0.1),
-                  CupertinoColors.systemBackground,
-                ],
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Welcome text with fade animation
-                TweenAnimationBuilder<double>(
-                  duration: Duration(milliseconds: 800),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  builder: (context, value, child) {
-                    return Opacity(
-                      opacity: value,
-                      child: Transform.translate(
-                        offset: Offset(0, 20 * (1 - value)),
-                        child: Text(
-                          "Find your next opportunity",
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: CupertinoColors.label,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                SizedBox(height: 8),
-                
-                // Subtitle with delayed fade
-                TweenAnimationBuilder<double>(
-                  duration: Duration(milliseconds: 1000),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  builder: (context, value, child) {
-                    return Opacity(
-                      opacity: value,
-                      child: Transform.translate(
-                        offset: Offset(0, 15 * (1 - value)),
-                        child: Text(
-                          "Jobs near you, updated in real-time",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: CupertinoColors.secondaryLabel,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                SizedBox(height: 24),
-                
-                // Search box with animation
-                TweenAnimationBuilder<double>(
-                  duration: Duration(milliseconds: 1200),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  builder: (context, value, child) {
-                    return Opacity(
-                      opacity: value,
-                      child: Transform.scale(
-                        scale: 0.8 + (0.2 * value),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: CupertinoColors.systemGrey6,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: CupertinoColors.systemBlue.withOpacity(0.1),
-                                spreadRadius: 0,
-                                blurRadius: 20,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: CupertinoTextField(
-                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                            placeholder: "Search jobs, companies, or locations...",
-                            placeholderStyle: TextStyle(
-                              color: CupertinoColors.placeholderText,
-                              fontSize: 16,
-                            ),
-                            style: TextStyle(fontSize: 16),
-                            decoration: BoxDecoration(),
-                            prefix: Padding(
-                              padding: EdgeInsets.only(left: 8),
-                              child: Icon(
-                                CupertinoIcons.search,
-                                color: CupertinoColors.systemBlue,
-                                size: 20,
-                              ),
-                            ),
-                            onChanged: (value) {
-                              // Add your search logic here
-                            },
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+      resizeToAvoidBottomInset: false,
+      navigationBar: CupertinoNavigationBar(
+        middle: Text(
+          "Discover Jobs",
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
           ),
         ),
-        
-        // Job listings
-        isLoading 
-          ? _buildShimmerJobList()
-          : errorMessage != null
-              ? SliverToBoxAdapter(
-                  child: _buildErrorState(),
-                )
-              : SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final job = jobPosts[index];
-                      return TweenAnimationBuilder<double>(
-                        duration: Duration(milliseconds: 600 + (index * 100)),
-                        tween: Tween(begin: 0.0, end: 1.0),
-                        builder: (context, value, child) {
-                          return Opacity(
-                            opacity: value,
-                            child: Transform.translate(
-                              offset: Offset(0, 30 * (1 - value)),
-                              child: _buildJobCard(job, index),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                    childCount: jobPosts.length,
+        backgroundColor: CupertinoColors.systemBackground.withOpacity(0.8),
+        border: null,
+      ),
+      child: SafeArea(
+        child: CustomScrollView(
+          physics: BouncingScrollPhysics(),
+          slivers: [
+            // Cupertino-style refresh control
+            CupertinoSliverRefreshControl(
+              onRefresh: _refreshData,
+            ),
+
+            // Search and header section
+            SliverToBoxAdapter(
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 600),
+                curve: Curves.easeInOut,
+                padding: EdgeInsets.fromLTRB(20, 16, 20, 24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      CupertinoColors.systemBlue.withOpacity(0.1),
+                      CupertinoColors.systemBackground,
+                    ],
                   ),
                 ),
-      ],
-    ),
-  ),
-);
-  }
-  Widget _buildShimmerJobList() {
-  return SliverList(
-    delegate: SliverChildBuilderDelegate(
-      (context, index) {
-        return TweenAnimationBuilder<double>(
-          duration: Duration(milliseconds: 1500),
-          tween: Tween(begin: 0.0, end: 1.0),
-          builder: (context, value, child) {
-            return Container(
-              margin: EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-              decoration: BoxDecoration(
-                color: CupertinoColors.systemBackground,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: CupertinoColors.systemGrey.withOpacity(0.1),
-                    spreadRadius: 0,
-                    blurRadius: 10,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Row(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Shimmer image placeholder
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          begin: Alignment(-1.0 + value * 2, 0.0),
-                          end: Alignment(1.0 + value * 2, 0.0),
-                          colors: [
-                            CupertinoColors.systemGrey5,
-                            CupertinoColors.systemGrey6,
-                            CupertinoColors.systemGrey5,
-                          ],
-                        ),
-                      ),
+                    // Welcome text with fade animation
+                    TweenAnimationBuilder<double>(
+                      duration: Duration(milliseconds: 800),
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      builder: (context, value, child) {
+                        return Opacity(
+                          opacity: value,
+                          child: Transform.translate(
+                            offset: Offset(0, 20 * (1 - value)),
+                            child: Text(
+                              "Find your next opportunity",
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                color: CupertinoColors.label,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Shimmer badge
-                          Container(
-                            width: 80,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              gradient: LinearGradient(
-                                begin: Alignment(-1.0 + value * 2, 0.0),
-                                end: Alignment(1.0 + value * 2, 0.0),
-                                colors: [
-                                  CupertinoColors.systemGrey5,
-                                  CupertinoColors.systemGrey6,
-                                  CupertinoColors.systemGrey5,
-                                ],
+                    SizedBox(height: 8),
+
+                    // Subtitle with delayed fade
+                    TweenAnimationBuilder<double>(
+                      duration: Duration(milliseconds: 1000),
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      builder: (context, value, child) {
+                        return Opacity(
+                          opacity: value,
+                          child: Transform.translate(
+                            offset: Offset(0, 15 * (1 - value)),
+                            child: Text(
+                              "Jobs near you, updated in real-time",
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: CupertinoColors.secondaryLabel,
+                                fontWeight: FontWeight.w400,
                               ),
                             ),
                           ),
-                          SizedBox(height: 12),
-                          // Shimmer title
-                          Container(
-                            width: double.infinity,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(4),
-                              gradient: LinearGradient(
-                                begin: Alignment(-1.0 + value * 2, 0.0),
-                                end: Alignment(1.0 + value * 2, 0.0),
-                                colors: [
-                                  CupertinoColors.systemGrey5,
-                                  CupertinoColors.systemGrey6,
-                                  CupertinoColors.systemGrey5,
+                        );
+                      },
+                    ),
+                    SizedBox(height: 24),
+
+                    // Search box with animation
+                    TweenAnimationBuilder<double>(
+                      duration: Duration(milliseconds: 1200),
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      builder: (context, value, child) {
+                        return Opacity(
+                          opacity: value,
+                          child: Transform.scale(
+                            scale: 0.8 + (0.2 * value),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: CupertinoColors.systemGrey6,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: CupertinoColors.systemBlue.withOpacity(0.1),
+                                    spreadRadius: 0,
+                                    blurRadius: 20,
+                                    offset: Offset(0, 4),
+                                  ),
                                 ],
+                              ),
+                              child: CupertinoTextField(
+                                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                                placeholder: "Search jobs, companies, or locations...",
+                                placeholderStyle: TextStyle(
+                                  color: CupertinoColors.placeholderText,
+                                  fontSize: 16,
+                                ),
+                                style: TextStyle(fontSize: 16),
+                                decoration: BoxDecoration(),
+                                prefix: Padding(
+                                  padding: EdgeInsets.only(left: 8),
+                                  child: Icon(
+                                    CupertinoIcons.search,
+                                    color: CupertinoColors.systemBlue,
+                                    size: 20,
+                                  ),
+                                ),
+                                onChanged: _filterJobPosts, // Call filter function on text change
                               ),
                             ),
                           ),
-                          SizedBox(height: 8),
-                          // Shimmer company
-                          Container(
-                            width: 120,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(4),
-                              gradient: LinearGradient(
-                                begin: Alignment(-1.0 + value * 2, 0.0),
-                                end: Alignment(1.0 + value * 2, 0.0),
-                                colors: [
-                                  CupertinoColors.systemGrey5,
-                                  CupertinoColors.systemGrey6,
-                                  CupertinoColors.systemGrey5,
-                                ],
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 12),
-                          // Shimmer details
-                          Container(
-                            width: 200,
-                            height: 14,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(4),
-                              gradient: LinearGradient(
-                                begin: Alignment(-1.0 + value * 2, 0.0),
-                                end: Alignment(1.0 + value * 2, 0.0),
-                                colors: [
-                                  CupertinoColors.systemGrey5,
-                                  CupertinoColors.systemGrey6,
-                                  CupertinoColors.systemGrey5,
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   ],
                 ),
               ),
-            );
-          },
-        );
-      },
-      childCount: 6, // Show 6 shimmer items
-    ),
-  );
-}
+            ),
 
-// Enhanced job card with animations
-Widget _buildJobCard(dynamic job, int index) {
+            // Job listings
+            isLoading
+                ? _buildShimmerJobList()
+                : errorMessage != null
+                    ? SliverToBoxAdapter(
+                        child: _buildErrorState(),
+                      )
+                    : filteredJobPosts.isEmpty && _searchQuery.isNotEmpty
+                        ? SliverToBoxAdapter(
+                            child: _buildNoResultsState(),
+                          )
+                        : SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                final job = filteredJobPosts[index];
+                                return TweenAnimationBuilder<double>(
+                                  duration: Duration(milliseconds: 600 + (index * 100)),
+                                  tween: Tween(begin: 0.0, end: 1.0),
+                                  builder: (context, value, child) {
+                                    return Opacity(
+                                      opacity: value,
+                                      child: Transform.translate(
+                                        offset: Offset(0, 30 * (1 - value)),
+                                        child: _buildJobCard(job, index),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                              childCount: filteredJobPosts.length,
+                            ),
+                          ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // No results state widget for empty search results
+  Widget _buildNoResultsState() {
+    return Container(
+      padding: EdgeInsets.all(40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            CupertinoIcons.search,
+            color: CupertinoColors.systemGrey,
+            size: 48,
+          ),
+          SizedBox(height: 16),
+          Text(
+            "No jobs found for '$_searchQuery'",
+            style: TextStyle(
+              color: CupertinoColors.systemGrey,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 24),
+          CupertinoButton.filled(
+            child: Text("Clear Search"),
+            onPressed: () {
+              _filterJobPosts('');
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Shimmer loading effect
+  Widget _buildShimmerJobList() {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          return TweenAnimationBuilder<double>(
+            duration: Duration(milliseconds: 1500),
+            tween: Tween(begin: 0.0, end: 1.0),
+            builder: (context, value, child) {
+              return Container(
+                margin: EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+                decoration: BoxDecoration(
+                  color: CupertinoColors.systemBackground,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: CupertinoColors.systemGrey.withOpacity(0.1),
+                      spreadRadius: 0,
+                      blurRadius: 10,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Shimmer image placeholder
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: LinearGradient(
+                            begin: Alignment(-1.0 + value * 2, 0.0),
+                            end: Alignment(1.0 + value * 2, 0.0),
+                            colors: [
+                              CupertinoColors.systemGrey5,
+                              CupertinoColors.systemGrey6,
+                              CupertinoColors.systemGrey5,
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Shimmer badge
+                            Container(
+                              width: 80,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                gradient: LinearGradient(
+                                  begin: Alignment(-1.0 + value * 2, 0.0),
+                                  end: Alignment(1.0 + value * 2, 0.0),
+                                  colors: [
+                                    CupertinoColors.systemGrey5,
+                                    CupertinoColors.systemGrey6,
+                                    CupertinoColors.systemGrey5,
+                                  ],
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 12),
+                            // Shimmer title
+                            Container(
+                              width: double.infinity,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                                gradient: LinearGradient(
+                                  begin: Alignment(-1.0 + value * 2, 0.0),
+                                  end: Alignment(1.0 + value * 2, 0.0),
+                                  colors: [
+                                    CupertinoColors.systemGrey5,
+                                    CupertinoColors.systemGrey6,
+                                    CupertinoColors.systemGrey5,
+                                  ],
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            // Shimmer company
+                            Container(
+                              width: 120,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                                gradient: LinearGradient(
+                                  begin: Alignment(-1.0 + value * 2, 0.0),
+                                  end: Alignment(1.0 + value * 2, 0.0),
+                                  colors: [
+                                    CupertinoColors.systemGrey5,
+                                    CupertinoColors.systemGrey6,
+                                    CupertinoColors.systemGrey5,
+                                  ],
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 12),
+                            // Shimmer details
+                            Container(
+                              width: 200,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4),
+                                gradient: LinearGradient(
+                                  begin: Alignment(-1.0 + value * 2, 0.0),
+                                  end: Alignment(1.0 + value * 2, 0.0),
+                                  colors: [
+                                    CupertinoColors.systemGrey5,
+                                    CupertinoColors.systemGrey6,
+                                    CupertinoColors.systemGrey5,
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
+        childCount: 6, // Show 6 shimmer items
+      ),
+    );
+  }
+
+  // Enhanced job card with animations
+  Widget _buildJobCard(JobPost job, int index) {
   return GestureDetector(
     onTap: () {
       Navigator.push(
@@ -762,7 +823,6 @@ Widget _buildJobCard(dynamic job, int index) {
     child: Container(
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 20),
       decoration: BoxDecoration(
-        color: CupertinoColors.systemBackground,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -781,8 +841,8 @@ Widget _buildJobCard(dynamic job, int index) {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                CupertinoColors.systemBackground,
-                CupertinoColors.systemBackground.withOpacity(0.8),
+                Colors.blue[100]!, // Light blue
+                Colors.blue[100]!,// Dark blue
               ],
             ),
           ),
@@ -815,7 +875,7 @@ Widget _buildJobCard(dynamic job, int index) {
                   ),
                 ),
                 SizedBox(width: 16),
-                
+
                 // Enhanced main content
                 Expanded(
                   child: Column(
@@ -858,7 +918,7 @@ Widget _buildJobCard(dynamic job, int index) {
                         ),
                       ),
                       SizedBox(height: 12),
-                      
+
                       // Job title with enhanced typography
                       Text(
                         job.title,
@@ -872,7 +932,7 @@ Widget _buildJobCard(dynamic job, int index) {
                         overflow: TextOverflow.ellipsis,
                       ),
                       SizedBox(height: 6),
-                      
+
                       // Business name with icon
                       Row(
                         children: [
@@ -897,7 +957,7 @@ Widget _buildJobCard(dynamic job, int index) {
                         ],
                       ),
                       SizedBox(height: 12),
-                      
+
                       // Time info with enhanced styling
                       Row(
                         children: [
@@ -920,7 +980,7 @@ Widget _buildJobCard(dynamic job, int index) {
                         ],
                       ),
                       SizedBox(height: 6),
-                      
+
                       // Pay info with enhanced styling
                       Row(
                         children: [
@@ -945,7 +1005,7 @@ Widget _buildJobCard(dynamic job, int index) {
                     ],
                   ),
                 ),
-                
+
                 // Enhanced arrow with subtle animation
                 TweenAnimationBuilder<double>(
                   duration: Duration(milliseconds: 2000),
@@ -973,39 +1033,38 @@ Widget _buildJobCard(dynamic job, int index) {
           ),
         ),
       ),
-    ),
-  );
-}
+    ),);
+  }
 
-// Error state widget
-Widget _buildErrorState() {
-  return Container(
-    padding: EdgeInsets.all(40),
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(
-          CupertinoIcons.exclamationmark_triangle,
-          color: CupertinoColors.systemRed,
-          size: 48,
-        ),
-        SizedBox(height: 16),
-        Text(
-          errorMessage!,
-          style: TextStyle(
+  // Error state widget
+  Widget _buildErrorState() {
+    return Container(
+      padding: EdgeInsets.all(40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            CupertinoIcons.exclamationmark_triangle,
             color: CupertinoColors.systemRed,
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
+            size: 48,
           ),
-          textAlign: TextAlign.center,
-        ),
-        SizedBox(height: 24),
-        CupertinoButton.filled(
-          child: Text("Try Again"),
-          onPressed: _refreshData,
-        ),
-      ],
-    ),
-  );
-}
+          SizedBox(height: 16),
+          Text(
+            errorMessage!,
+            style: TextStyle(
+              color: CupertinoColors.systemRed,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 24),
+          CupertinoButton.filled(
+            child: Text("Try Again"),
+            onPressed: _refreshData,
+          ),
+        ],
+      ),
+    );
+  }
 }

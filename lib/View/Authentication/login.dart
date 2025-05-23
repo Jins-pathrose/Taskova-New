@@ -1,16 +1,642 @@
-import 'dart:convert';
-import 'dart:math';
+// import 'dart:convert';
+// import 'dart:ui';
+// import 'package:flutter/cupertino.dart';
+// import 'package:flutter/material.dart' show Icons, Colors;
+// import 'package:google_fonts/google_fonts.dart';
+// import 'package:google_sign_in/google_sign_in.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:provider/provider.dart';
+// import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:taskova_new/Model/api_config.dart';
+// import 'package:taskova_new/Model/apple_sign_in.dart';
+// import 'package:taskova_new/View/Authentication/forgot_password.dart';
+// import 'package:taskova_new/View/Authentication/otp.dart';
+// import 'package:taskova_new/View/Authentication/signup.dart';
+// import 'package:taskova_new/View/BottomNavigation/bottomnavigation.dart';
+// import 'package:taskova_new/View/Language/language_provider.dart';
+// import 'package:taskova_new/View/profile.dart';
 
+// class LoginPage extends StatefulWidget {
+//   const LoginPage({super.key});
+
+//   @override
+//   State<LoginPage> createState() => _LoginPageState();
+// }
+
+// class _LoginPageState extends State<LoginPage> {
+//   final TextEditingController _emailController = TextEditingController();
+//   final TextEditingController _passwordController = TextEditingController();
+//   final _formKey = GlobalKey<FormState>();
+//   bool _obscurePassword = true;
+//   late AppLanguage appLanguage;
+//   bool _isLoading = false;
+//   final GoogleSignIn _googleSignIn = GoogleSignIn();
+
+//   // Define blue theme colors
+//   final Color primaryBlue = Colors.blue;
+//   final Color lightBlue = const Color(0xFF8A84FF);
+//   final Color backgroundColor = const Color(0xFFF8F7FF);
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     appLanguage = Provider.of<AppLanguage>(context, listen: false);
+//     checkTokenAndNavigate();
+//   }
+// Future<void> _initializeNotificationService() async {
+//   final prefs = await SharedPreferences.getInstance();
+//   // Clear any previous notification timestamps on fresh login
+//   await prefs.remove('last_notification_check');
+// }
+//   Future<void> checkTokenAndNavigate() async {
+//     final prefs = await SharedPreferences.getInstance();
+//     final token = prefs.getString('access_token');
+//     if (token != null) {
+//       Navigator.pushReplacement(
+//         context,
+//         CupertinoPageRoute(builder: (context) => const MainWrapper()),
+//       );
+//     }
+//   }
+
+//   @override
+//   void dispose() {
+//     _emailController.dispose();
+//     _passwordController.dispose();
+//     super.dispose();
+//   }
+
+//   Future<void> saveTokens(
+//     String accessToken,
+//     String refreshToken,
+//     String email,
+//     String name,
+//   ) async {
+//     final prefs = await SharedPreferences.getInstance();
+//     await prefs.setString('access_token', accessToken);
+//     await prefs.setString('refresh_token', refreshToken);
+//     await prefs.setString('user_email', email);
+//     await prefs.setString('user_name', name);
+//   }
+
+//   void _showErrorDialog(String message) {
+//     showCupertinoDialog(
+//       context: context,
+//       builder:
+//           (context) => CupertinoTheme(
+//             data: const CupertinoThemeData(brightness: Brightness.light),
+//             child: CupertinoAlertDialog(
+//               title: const Text('Wrong Credentials'),
+//               content: Text(message),
+//               actions: [
+//                 CupertinoDialogAction(
+//                   child: const Text('OK'),
+//                   onPressed: () => Navigator.pop(context),
+//                 ),
+//               ],
+//             ),
+//           ),
+//     );
+//   }
+
+//   void _showSuccessDialog(String message) {
+//     showCupertinoDialog(
+//       context: context,
+//       builder:
+//           (context) => CupertinoTheme(
+//             data: const CupertinoThemeData(brightness: Brightness.light),
+//             child: CupertinoAlertDialog(
+//               title: const Text('Success'),
+//               content: Text(message),
+//               actions: [
+//                 CupertinoDialogAction(
+//                   child: const Text('OK'),
+//                   onPressed: () => Navigator.pop(context),
+//                 ),
+//               ],
+//             ),
+//           ),
+//     );
+//   }
+
+//   void _showInfoDialog(String message) {
+//     showCupertinoDialog(
+//       context: context,
+//       builder:
+//           (context) => CupertinoAlertDialog(
+//             title: const Text('Info'),
+//             content: Text(message),
+//             actions: [
+//               CupertinoDialogAction(
+//                 child: const Text('OK'),
+//                 onPressed: () => Navigator.pop(context),
+//               ),
+//             ],
+//           ),
+//     );
+//   }
+
+//   Future<void> _handleGoogleLogin() async {
+//     try {
+//       final GoogleSignInAccount? account = await _googleSignIn.signIn();
+//       if (account == null) return;
+
+//       final response = await http.post(
+//         Uri.parse(ApiConfig.googleLoginUrl),
+//         headers: {'Content-Type': 'application/json'},
+//         body: jsonEncode({'email': account.email}),
+//       );
+
+//       final data = jsonDecode(response.body);
+
+//       if (response.statusCode == 200) {
+//         String accessToken = data['tokens']['access'] ?? "";
+//         String refreshToken = data['tokens']['refresh'] ?? "";
+//         String name = data['name'] ?? "User";
+//         String email = account.email;
+
+//         await saveTokens(accessToken, refreshToken, email, name);
+//         final profileResponse = await http.get(
+//           Uri.parse(ApiConfig.profileStatusUrl),
+//           headers: {
+//             'Authorization': 'Bearer $accessToken',
+//             'Content-Type': 'application/json',
+//           },
+//         );
+//         if (profileResponse.statusCode == 200) {
+//           final profileData = jsonDecode(profileResponse.body);
+//           bool isProfileComplete = profileData['is_profile_complete'] ?? false;
+//           if (!isProfileComplete) {
+//             Navigator.push(
+//               context,
+//               CupertinoPageRoute(
+//                 builder: (context) => ProfileRegistrationPage(),
+//               ),
+//             );
+//           } else {
+//             _showSuccessDialog("Login successful!");
+//             await _initializeNotificationService();
+//             Navigator.pushReplacement(
+//               context,
+//               CupertinoPageRoute(builder: (context) => const MainWrapper()),
+//             );
+//           }
+//         } else {
+//           _showErrorDialog("Could not verify profile status");
+//         }
+//       } else {
+//         _showErrorDialog(data['error'] ?? 'Google login failed');
+//       }
+//     } catch (e) {
+//       _showErrorDialog('Something went wrong during Google Sign-In');
+//     }
+//   }
+
+//   Future<void> loginUser() async {
+//     if (_formKey.currentState!.validate()) {
+//       setState(() => _isLoading = true);
+
+//       try {
+//         final response = await http.post(
+//           Uri.parse(ApiConfig.loginUrl),
+//           headers: {'Content-Type': 'application/json'},
+//           body: jsonEncode({
+//             'email': _emailController.text,
+//             'password': _passwordController.text,
+//             'remember_me': true,
+//           }),
+//         );
+
+//         if (response.statusCode == 200) {
+//           Map<String, dynamic> responseData = jsonDecode(response.body);
+//           String accessToken = responseData['access'] ?? "";
+//           String refreshToken = responseData['refresh'] ?? "";
+//           String name = responseData['name'] ?? "User";
+
+//           await saveTokens(
+//             accessToken,
+//             refreshToken,
+//             _emailController.text,
+//             name,
+//           );
+
+//           final profileResponse = await http.get(
+//             Uri.parse(ApiConfig.profileStatusUrl),
+//             headers: {
+//               'Authorization': 'Bearer $accessToken',
+//               'Content-Type': 'application/json',
+//             },
+//           );
+
+//           if (profileResponse.statusCode == 200) {
+//             final profileData = jsonDecode(profileResponse.body);
+//             bool isProfileComplete =
+//                 profileData['is_profile_complete'] ?? false;
+//             bool isEmailVerified = profileData['is_email_verified'] ?? false;
+
+//             if (!isEmailVerified) {
+//               _showInfoDialog("Please verify your email");
+//               Navigator.push(
+//                 context,
+//                 CupertinoPageRoute(
+//                   builder:
+//                       (context) =>
+//                           OtpVerification(email: _emailController.text),
+//                 ),
+//               );
+//             } else {
+//               _showSuccessDialog("Login successful!");
+//               await _initializeNotificationService();
+//               Navigator.pushReplacement(
+//                 context,
+//                 CupertinoPageRoute(
+//                   builder:
+//                       (context) =>
+//                           isProfileComplete
+//                               ? const MainWrapper()
+//                               : ProfileRegistrationPage(),
+//                 ),
+//               );
+//             }
+//           } else {
+//             _showErrorDialog("Could not verify profile status");
+//           }
+//         } else {
+//           final responseData = jsonDecode(response.body);
+//           String errorMessage =
+//               responseData['detail'] ??
+//               "Login failed. Please check your credentials.";
+//           _showErrorDialog(errorMessage);
+//         }
+//       } catch (e) {
+//         _showErrorDialog(
+//           "Connection error. Please check your internet connection.",
+//         );
+//       } finally {
+//         setState(() => _isLoading = false);
+//       }
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return CupertinoPageScaffold(
+//       // backgroundColor: backgroundColor,
+//       child: SafeArea(
+//         child: Center(
+//           child: SingleChildScrollView(
+//             physics: const BouncingScrollPhysics(),
+//             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+//             child: Form(
+//               key: _formKey,
+//               child: Column(
+//                 mainAxisAlignment: MainAxisAlignment.center,
+//                 crossAxisAlignment: CrossAxisAlignment.stretch,
+//                 children: [
+//                   // Logo Section
+//                   Center(
+//                     child: Container(
+//                       height: 150,
+//                       width: 150,
+//                       decoration: BoxDecoration(
+//                         borderRadius: BorderRadius.circular(20),
+//                         gradient: LinearGradient(
+//                           begin: Alignment.topLeft,
+//                           end: Alignment.bottomRight,
+//                           colors: [
+//                             Colors.white.withOpacity(0.8),
+//                             Colors.white.withOpacity(0.4),
+//                           ],
+//                         ),
+//                         border: Border.all(
+//                           color: Colors.white.withOpacity(0.3),
+//                           width: 1.5,
+//                         ),
+//                         boxShadow: [
+//                           BoxShadow(
+//                             color: primaryBlue.withOpacity(0.1),
+//                             blurRadius: 25,
+//                             offset: const Offset(0, 10),
+//                           ),
+//                         ],
+//                       ),
+//                       child: BackdropFilter(
+//                         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+//                         child: Center(
+//                           child: SizedBox(
+//                             height: 155,
+//                             width: 155,
+//                             child: Image.asset(
+//                               'assets/taskova-logo.png',
+//                               fit: BoxFit.contain,
+//                             ),
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+//                   ),
+
+//                   const SizedBox(height: 32),
+//                   // Title
+//                   Text(
+//                     appLanguage.get('login'),
+//                     textAlign: TextAlign.center,
+//                     style: GoogleFonts.poppins(
+//                       fontSize: 20,
+//                       fontWeight: FontWeight.w600,
+//                       color: CupertinoColors.black,
+//                     ),
+//                   ),
+//                   const SizedBox(height: 8),
+
+//                   // Sign Up Link
+//                   Row(
+//                     mainAxisAlignment: MainAxisAlignment.center,
+//                     children: [
+//                       Text(
+//                         appLanguage.get('dont_have_account'),
+//                         style: GoogleFonts.poppins(
+//                           fontSize: 10,
+//                           color: CupertinoColors.systemGrey,
+//                         ),
+//                       ),
+//                       GestureDetector(
+//                         onTap: () {
+//                           Navigator.push(
+//                             context,
+//                             CupertinoPageRoute(
+//                               builder: (context) => const Registration(),
+//                             ),
+//                           );
+//                         },
+//                         child: Text(
+//                           appLanguage.get('sign_up'),
+//                           style: GoogleFonts.poppins(
+//                             fontSize: 10,
+//                             color: primaryBlue,
+//                             fontWeight: FontWeight.w600,
+//                           ),
+//                         ),
+//                       ),
+//                     ],
+//                   ),
+//                   const SizedBox(height: 40),
+
+//                   // Email Field
+//                   Container(
+//                     decoration: BoxDecoration(
+//                       color: CupertinoColors.white,
+//                       borderRadius: BorderRadius.circular(12),
+//                       boxShadow: [
+//                         BoxShadow(
+//                           color: CupertinoColors.systemGrey.withOpacity(0.1),
+//                           blurRadius: 8,
+//                           offset: const Offset(0, 2),
+//                         ),
+//                       ],
+//                     ),
+//                     child: CupertinoTextFormFieldRow(
+//                       controller: _emailController,
+//                       keyboardType: TextInputType.emailAddress,
+//                       placeholder: appLanguage.get('email_hint'),
+//                       placeholderStyle: GoogleFonts.poppins(
+//                         color: CupertinoColors.systemGrey,
+//                         fontSize: 14,
+//                       ),
+//                       style: GoogleFonts.poppins(
+//                         color: CupertinoColors.black,
+//                         fontSize: 14,
+//                       ),
+//                       padding: const EdgeInsets.symmetric(
+//                         horizontal: 16,
+//                         vertical: 10,
+//                       ),
+//                       decoration: const BoxDecoration(),
+//                       validator: (value) {
+//                         if (value == null || value.isEmpty) {
+//                           return appLanguage.get('enter_email');
+//                         }
+//                         if (!RegExp(
+//                           r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+//                         ).hasMatch(value)) {
+//                           return appLanguage.get('email_required');
+//                         }
+//                         return null;
+//                       },
+//                     ),
+//                   ),
+//                   const SizedBox(height: 12),
+
+//                   // Password Field
+//                   Container(
+//                     decoration: BoxDecoration(
+//                       color: CupertinoColors.white,
+//                       borderRadius: BorderRadius.circular(12),
+//                       boxShadow: [
+//                         BoxShadow(
+//                           color: CupertinoColors.systemGrey.withOpacity(0.1),
+//                           blurRadius: 8,
+//                           offset: const Offset(0, 2),
+//                         ),
+//                       ],
+//                     ),
+//                     child: Row(
+//                       children: [
+//                         Padding(
+//                           padding: const EdgeInsets.only(left: 16),
+//                           child: Icon(
+//                             CupertinoIcons.lock,
+//                             color: CupertinoColors.systemGrey,
+//                             size: 16,
+//                           ),
+//                         ),
+//                         Expanded(
+//                           child: CupertinoTextFormFieldRow(
+//                             controller: _passwordController,
+//                             obscureText: _obscurePassword,
+//                             placeholder: appLanguage.get('password_hint'),
+//                             placeholderStyle: GoogleFonts.poppins(
+//                               color: CupertinoColors.systemGrey,
+//                               fontSize: 14,
+//                             ),
+//                             style: GoogleFonts.poppins(
+//                               color: CupertinoColors.black,
+//                               fontSize: 14,
+//                             ),
+//                             padding: const EdgeInsets.symmetric(
+//                               horizontal: 8,
+//                               vertical: 10,
+//                             ),
+//                             decoration: const BoxDecoration(),
+//                             validator: (value) {
+//                               if (value == null || value.isEmpty) {
+//                                 return appLanguage.get('enter_password');
+//                               }
+//                               if (value.length < 6) {
+//                                 return appLanguage.get('password_required');
+//                               }
+//                               return null;
+//                             },
+//                           ),
+//                         ),
+//                         Padding(
+//                           padding: const EdgeInsets.only(right: 16),
+//                           child: GestureDetector(
+//                             onTap:
+//                                 () => setState(
+//                                   () => _obscurePassword = !_obscurePassword,
+//                                 ),
+//                             child: Icon(
+//                               _obscurePassword
+//                                   ? CupertinoIcons.eye_slash
+//                                   : CupertinoIcons.eye,
+//                               color: CupertinoColors.systemGrey,
+//                               size: 16,
+//                             ),
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                   const SizedBox(height: 8),
+
+//                   // Forgot Password Link
+//                   Align(
+//                     alignment: Alignment.centerRight,
+//                     child: GestureDetector(
+//                       onTap: () {
+//                         Navigator.push(
+//                           context,
+//                           CupertinoPageRoute(
+//                             builder: (context) => const ForgotPasswordScreen(),
+//                           ),
+//                         );
+//                       },
+//                       child: Text(
+//                         appLanguage.get('forgot_password'),
+//                         style: GoogleFonts.poppins(
+//                           color: primaryBlue,
+//                           fontSize: 10,
+//                           fontWeight: FontWeight.w600,
+//                         ),
+//                       ),
+//                     ),
+//                   ),
+//                   const SizedBox(height: 16),
+
+//                   // Login Button
+//                   Container(
+//                     height: 44,
+//                     decoration: BoxDecoration(
+//                       gradient: LinearGradient(
+//                         colors: [primaryBlue, lightBlue],
+//                         begin: Alignment.centerLeft,
+//                         end: Alignment.centerRight,
+//                       ),
+//                       borderRadius: BorderRadius.circular(12),
+//                       boxShadow: [
+//                         BoxShadow(
+//                           color: primaryBlue.withOpacity(0.2),
+//                           blurRadius: 8,
+//                           offset: const Offset(0, 2),
+//                         ),
+//                       ],
+//                     ),
+//                     child: CupertinoButton(
+//                       padding: EdgeInsets.zero,
+//                       borderRadius: BorderRadius.circular(12),
+//                       onPressed: _isLoading ? null : loginUser,
+//                       child:
+//                           _isLoading
+//                               ? const CupertinoActivityIndicator(
+//                                 color: CupertinoColors.white,
+//                               )
+//                               : Text(
+//                                 appLanguage.get('login'),
+//                                 style: GoogleFonts.poppins(
+//                                   color: CupertinoColors.white,
+//                                   fontWeight: FontWeight.w600,
+//                                   fontSize: 14,
+//                                 ),
+//                               ),
+//                     ),
+//                   ),
+//                   const SizedBox(height: 54),
+
+//                   // Social Login Icons
+//                   Row(
+//                     mainAxisAlignment: MainAxisAlignment.center,
+//                     children: [
+//                       const SizedBox(width: 12),
+
+//                       GestureDetector(
+//                         onTap: _isLoading ? null : _handleGoogleLogin,
+//                         child: Container(
+//                           width: 36,
+//                           height: 36,
+//                           decoration: BoxDecoration(
+//                             color: CupertinoColors.white,
+//                             borderRadius: BorderRadius.circular(18),
+//                             border: Border.all(
+//                               color: CupertinoColors.systemGrey5,
+//                               width: 0.5,
+//                             ),
+//                           ),
+//                           child: Padding(
+//                             padding: const EdgeInsets.all(8),
+//                             child: Image.asset(
+//                               'assets/th.jpeg',
+//                               width: 20,
+//                               height: 20,
+//                             ),
+//                           ),
+//                         ),
+//                       ),
+//                       const SizedBox(width: 12),
+//                       GestureDetector(
+//                         onTap:
+//                             _isLoading
+//                                 ? null
+//                                 : () => handleAppleSignIn(context),
+//                         child: Container(
+//                           width: 36,
+//                           height: 36,
+//                           decoration: BoxDecoration(
+//                             color: CupertinoColors.black,
+//                             borderRadius: BorderRadius.circular(18),
+//                           ),
+//                           child: const Icon(
+//                             Icons.apple,
+//                             color: CupertinoColors.white,
+//                             size: 18,
+//                           ),
+//                         ),
+//                       ),
+//                     ],
+//                   ),
+//                   const SizedBox(height: 16),
+//                 ],
+//               ),
+//             ),
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart'
-    show Icons; // Only for icons not available in Cupertino
+import 'package:flutter/material.dart' show Icons, Colors;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:lottie/lottie.dart';
 import 'package:http/http.dart' as http;
+import 'package:lottie/lottie.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:taskova_new/Controller/Theme/theme.dart';
+
 import 'package:taskova_new/Model/api_config.dart';
 import 'package:taskova_new/Model/apple_sign_in.dart';
 import 'package:taskova_new/View/Authentication/forgot_password.dart';
@@ -30,16 +656,17 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final _formkey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
   late AppLanguage appLanguage;
   bool _isLoading = false;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   // Define blue theme colors
-  final Color primaryBlue = const Color(0xFF1E88E5);
-  final Color darkBlue = const Color(0xFF0D47A1);
-  final Color lightBlue = const Color(0xFF64B5F6);
+  final Color primaryBlue = Colors.blue;
+  final Color darkmode = const Color(0xFF2F197D);
+  final Color lightBlue = const Color(0xFF8A84FF);
+  final Color backgroundColor = const Color(0xFFF8F7FF);
 
   @override
   void initState() {
@@ -47,15 +674,18 @@ class _LoginPageState extends State<LoginPage> {
     appLanguage = Provider.of<AppLanguage>(context, listen: false);
     checkTokenAndNavigate();
   }
-
+Future<void> _initializeNotificationService() async {
+  final prefs = await SharedPreferences.getInstance();
+  // Clear any previous notification timestamps on fresh login
+  await prefs.remove('last_notification_check');
+}
   Future<void> checkTokenAndNavigate() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('access_token');
-
     if (token != null) {
       Navigator.pushReplacement(
         context,
-        CupertinoPageRoute(builder: (context) => MainWrapper()),
+        CupertinoPageRoute(builder: (context) => const MainWrapper()),
       );
     }
   }
@@ -66,11 +696,7 @@ class _LoginPageState extends State<LoginPage> {
     _passwordController.dispose();
     super.dispose();
   }
-Future<void> _initializeNotificationService() async {
-  final prefs = await SharedPreferences.getInstance();
-  // Clear any previous notification timestamps on fresh login
-  await prefs.remove('last_notification_check');
-}
+
   Future<void> saveTokens(
     String accessToken,
     String refreshToken,
@@ -84,51 +710,45 @@ Future<void> _initializeNotificationService() async {
     await prefs.setString('user_name', name);
   }
 
-  
-
   void _showErrorDialog(String message) {
     showCupertinoDialog(
-  context: context,
-  builder: (context) => CupertinoTheme(
-    data: CupertinoThemeData(
-      brightness: Brightness.light, // Ensures light theme
-    ),
-    child: CupertinoAlertDialog(
-      title: const Text('Wrong Credentials'),
-      content: Text(message),
-      actions: [
-        CupertinoDialogAction(
-          child: const Text('OK'),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ],
-    ),
-  ),
-);
-
+      context: context,
+      builder:
+          (context) => CupertinoTheme(
+            data: const CupertinoThemeData(brightness: Brightness.light),
+            child: CupertinoAlertDialog(
+              title: const Text('Wrong Credentials'),
+              content: Text(message),
+              actions: [
+                CupertinoDialogAction(
+                  child: const Text('OK'),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+    );
   }
 
-void _showSuccessDialog(String message) {
-  showCupertinoDialog(
-    context: context,
-    builder: (context) => CupertinoTheme(
-      data: const CupertinoThemeData(
-        brightness: Brightness.light, // Forces light (white) background
-      ),
-      child: CupertinoAlertDialog(
-        title: const Text('Success'),
-        content: Text(message),
-        actions: [
-          CupertinoDialogAction(
-            child: const Text('OK'),
-            onPressed: () => Navigator.pop(context),
+  void _showSuccessDialog(String message) {
+    showCupertinoDialog(
+      context: context,
+      builder:
+          (context) => CupertinoTheme(
+            data: const CupertinoThemeData(brightness: Brightness.light),
+            child: CupertinoAlertDialog(
+              title: const Text('Success'),
+              content: Text(message),
+              actions: [
+                CupertinoDialogAction(
+                  child: const Text('OK'),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
-    ),
-  );
-}
-
+    );
+  }
 
   void _showInfoDialog(String message) {
     showCupertinoDialog(
@@ -147,75 +767,66 @@ void _showSuccessDialog(String message) {
     );
   }
 
- Future<void> _handleGoogleLogin() async {
-  try {
-    final GoogleSignInAccount? account = await _googleSignIn.signIn();
-    if (account == null) return;
+  Future<void> _handleGoogleLogin() async {
+    try {
+      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+      if (account == null) return;
 
-    final response = await http.post(
-      Uri.parse(ApiConfig.googleLoginUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': account.email}),
-    );
+      final response = await http.post(
+        Uri.parse(ApiConfig.googleLoginUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': account.email}),
+      );
 
-    final data = jsonDecode(response.body);
+      final data = jsonDecode(response.body);
 
-    if (response.statusCode == 200) {
-      // Extract tokens and name from response
-      String accessToken = data['tokens']['access'] ?? "";
-      String refreshToken = data['tokens']['refresh'] ?? "";
-      String name = data['name'] ?? "User";
-      String email = account.email;
-      
-      // Save to SharedPreferences
-      await saveTokens(accessToken, refreshToken, email, name);
-final profileResponse = await http.get(
-            Uri.parse(ApiConfig.profileStatusUrl),
-            headers: {
-              'Authorization': 'Bearer $accessToken',
-              'Content-Type': 'application/json',
-            },
-          );
-if (profileResponse.statusCode == 200){
-  final profileData = jsonDecode(profileResponse.body);
-            bool isProfileComplete =
-                profileData['is_profile_complete'] ?? false;
-                if (!isProfileComplete) {
-              // _showInfoDialog("Please verify your email");
-              Navigator.push(
-                context,
-                CupertinoPageRoute(
-                  builder:
-                      (context) =>
-                          ProfileRegistrationPage(),
-                ),
-              );
-            }else {
-              _showSuccessDialog("Login successful!");
+      if (response.statusCode == 200) {
+        String accessToken = data['tokens']['access'] ?? "";
+        String refreshToken = data['tokens']['refresh'] ?? "";
+        String name = data['name'] ?? "User";
+        String email = account.email;
+
+        await saveTokens(accessToken, refreshToken, email, name);
+        final profileResponse = await http.get(
+          Uri.parse(ApiConfig.profileStatusUrl),
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+            'Content-Type': 'application/json',
+          },
+        );
+        if (profileResponse.statusCode == 200) {
+          final profileData = jsonDecode(profileResponse.body);
+          bool isProfileComplete = profileData['is_profile_complete'] ?? false;
+          if (!isProfileComplete) {
+            Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (context) => ProfileRegistrationPage(),
+              ),
+            );
+          } else {
+            
+            _showSuccessDialog("Login successful!");
               await _initializeNotificationService();
-              Navigator.pushReplacement(
-                context,
-                CupertinoPageRoute(
-                  builder:
-                      (context) =>
-                          MainWrapper(),
-                ),
-              );
-            }
-}
-          
-      
-    } else {
-      _showErrorDialog(data['error'] ?? 'Google login failed');
-    }
-  } catch (e) {
-    _showErrorDialog('Something went wrong during Google Sign-In');
-  }
-}
 
+            Navigator.pushReplacement(
+              context,
+              CupertinoPageRoute(builder: (context) => const MainWrapper()),
+            );
+          }
+        } else {
+          _showErrorDialog("Could not verify profile status");
+        }
+      } else {
+        _showErrorDialog(data['error'] ?? 'Google login failed');
+      }
+    } catch (e) {
+      _showErrorDialog('Something went wrong during Google Sign-In');
+    }
+  }
 
   Future<void> loginUser() async {
-    if (_formkey.currentState!.validate()) {
+    if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
       try {
@@ -268,14 +879,15 @@ if (profileResponse.statusCode == 200){
               );
             } else {
               _showSuccessDialog("Login successful!");
-              await _initializeNotificationService();
+                await _initializeNotificationService();
+
               Navigator.pushReplacement(
                 context,
                 CupertinoPageRoute(
                   builder:
                       (context) =>
                           isProfileComplete
-                              ? MainWrapper()
+                              ? const MainWrapper()
                               : ProfileRegistrationPage(),
                 ),
               );
@@ -285,29 +897,10 @@ if (profileResponse.statusCode == 200){
           }
         } else {
           final responseData = jsonDecode(response.body);
-
-          // First, check for error message (e.g., incorrect credentials)
-          if (response.statusCode != 200) {
-            String errorMessage =
-                responseData['detail'] ??
-                "Login failed. Please check your credentials.";
-            _showErrorDialog(errorMessage);
-            return;
-          }
-
-          // If login is successful but email not verified
-          bool isEmailVerified = responseData['is_email_verified'] ?? false;
-
-          if (!isEmailVerified) {
-            _showInfoDialog("Please verify your email");
-            Navigator.push(
-              context,
-              CupertinoPageRoute(
-                builder:
-                    (context) => OtpVerification(email: _emailController.text),
-              ),
-            );
-          }
+          String errorMessage =
+              responseData['detail'] ??
+              "Login failed. Please check your credentials.";
+          _showErrorDialog(errorMessage);
         }
       } catch (e) {
         _showErrorDialog(
@@ -321,383 +914,458 @@ if (profileResponse.statusCode == 200){
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      // backgroundColor: CupertinoColors.white,
-      navigationBar: CupertinoNavigationBar(
-        // backgroundColor: CupertinoColors.white,
-        middle: Text(
-          appLanguage.get('login'),
-          style: TextStyle(color: primaryBlue, fontWeight: FontWeight.bold),
-        ),
-        border: Border(
-          bottom: BorderSide(color: lightBlue.withOpacity(0.2), width: 1.0),
-        ),
-      ),
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
-          child: Form(
-            key: _formkey,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Logo and Animation
-                Center(
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        height: 180,
-                        width: 180,
-                        child: Lottie.asset(
-                          'assets/Animation - 1746459409971.json',
-                        ),
-                      ),
-                      Text(
-                        appLanguage.get('app_name'),
-                        style: GoogleFonts.poppins(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                          color: primaryBlue,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        appLanguage.get('tagline'),
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: CupertinoColors.systemGrey,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        // Define gradient for dark mode
+        final backgroundDecoration =
+            themeProvider.isDarkMode
+                ? BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      darkmode, // Starting color: 0xFF2F197D
+                      const Color.fromARGB(
+                        255,
+                        43,
+                        33,
+                        99,
+                      ), // Ending color for gradient
                     ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
                   ),
-                ),
-                const SizedBox(height: 40),
+                )
+                : BoxDecoration(color: Colors.white);
 
-                // Email Field
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: CupertinoColors.white,
-                      borderRadius: BorderRadius.circular(16.0),
-                      border: Border.all(
-                        color: lightBlue.withOpacity(0.5),
-                        width: 1.0,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: lightBlue.withOpacity(0.1),
-                          blurRadius: 8.0,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: CupertinoFormRow(
-                      child: CupertinoTextFormFieldRow(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        placeholder: appLanguage.get('email_hint'),
-                        placeholderStyle: TextStyle(
-                          color: CupertinoColors.systemGrey,
-                          fontSize: 16.0,
-                        ),
-                        style: TextStyle(
-                          color: CupertinoColors.black,
-                          fontSize: 16.0,
-                        ),
-                        prefix: Container(
-                          padding: EdgeInsets.only(right: 12.0, left: 8.0),
-                          child: Icon(
-                            CupertinoIcons.mail,
-                            color: primaryBlue,
-                            size: 22,
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return appLanguage.get('enter_email');
-                          }
-                          if (!RegExp(
-                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                          ).hasMatch(value)) {
-                            return appLanguage.get('email_required');
-                          }
-                          return null;
-                        },
-                        decoration: BoxDecoration(border: null),
-                        padding: EdgeInsets.symmetric(vertical: 12.0),
-                      ),
-                    ),
+        return CupertinoPageScaffold(
+          backgroundColor: Colors.transparent, // Required for gradient to work
+          child: Container(
+            decoration: backgroundDecoration, // Apply gradient or solid color
+            child: SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
                   ),
-                ),
-                const SizedBox(height: 24),
-
-                // Password Field
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: CupertinoColors.white,
-                      borderRadius: BorderRadius.circular(16.0),
-                      border: Border.all(
-                        color: lightBlue.withOpacity(0.5),
-                        width: 1.0,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: lightBlue.withOpacity(0.1),
-                          blurRadius: 8.0,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: CupertinoFormRow(
-                      child: Stack(
-                        alignment: Alignment.centerRight,
-                        children: [
-                          CupertinoTextFormFieldRow(
-                            controller: _passwordController,
-                            obscureText: _obscurePassword,
-                            placeholder: appLanguage.get('password_hint'),
-                            placeholderStyle: TextStyle(
-                              color: CupertinoColors.systemGrey,
-                              fontSize: 16.0,
-                            ),
-                            style: TextStyle(
-                              color: CupertinoColors.black,
-                              fontSize: 16.0,
-                            ),
-                            prefix: Container(
-                              padding: EdgeInsets.only(right: 12.0, left: 8.0),
-                              child: Icon(
-                                CupertinoIcons.lock,
-                                color: primaryBlue,
-                                size: 22,
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Logo Section
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Center(
+                            child: SizedBox(
+                              height: 200,
+                              width: 120,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  // Positioned Lottie at the bottom (under the image)
+                                  Positioned(
+                                    top: 0,
+                                    child: SizedBox(
+                                      height: 200,
+                                      width: 120,
+                                      child: Lottie.asset(
+                                        'assets/lottietaskova.json',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  ),
+                                  // Image positioned at the top
+                                  Positioned(
+                                    bottom: 0,
+                                    child: SizedBox(
+                                      height:
+                                          110, // Increased size for the Lottie
+                                      width: 100,
+                                      child: Image.asset(
+                                        themeProvider.isDarkMode
+                                            ? 'assets/white-logo.png'
+                                            : 'assets/taskova-logo.png',
+                                        fit: BoxFit.contain,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return appLanguage.get('enter_password');
-                              }
-                              if (value.length < 6) {
-                                return appLanguage.get('password_required');
-                              }
-                              return null;
-                            },
-                            decoration: BoxDecoration(border: null),
-                            padding: EdgeInsets.symmetric(vertical: 12.0),
                           ),
-                          Padding(
-                            padding: EdgeInsets.only(right: 16.0),
-                            child: GestureDetector(
+                        ),
+
+                        const SizedBox(height: 62),
+
+                        // Title
+                        Text(
+                          appLanguage.get('login'),
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            fontSize: 25,
+                            fontWeight: FontWeight.w600,
+                            color:
+                                themeProvider.isDarkMode
+                                    ? CupertinoColors.white
+                                    : CupertinoColors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Sign Up Link
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              appLanguage.get('dont_have_account'),
+                              style: GoogleFonts.poppins(
+                                fontSize: 10,
+                                color:
+                                    themeProvider.isDarkMode
+                                        ? CupertinoColors.systemGrey2
+                                        : CupertinoColors.systemGrey,
+                              ),
+                            ),
+                            GestureDetector(
                               onTap: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
+                                Navigator.push(
+                                  context,
+                                  CupertinoPageRoute(
+                                    builder: (context) => const Registration(),
+                                  ),
+                                );
                               },
-                              child: Icon(
-                                _obscurePassword
-                                    ? CupertinoIcons.eye_slash
-                                    : CupertinoIcons.eye,
+                              child: Text(
+                                appLanguage.get('sign_up'),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10,
+                                  color: primaryBlue,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Email Field
+                        Container(
+                          decoration: BoxDecoration(
+                            color:
+                                themeProvider.isDarkMode
+                                    ? CupertinoColors.darkBackgroundGray
+                                    : CupertinoColors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color:
+                                  themeProvider.isDarkMode
+                                      ? CupertinoColors.systemGrey4
+                                      : CupertinoColors.systemGrey5,
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: CupertinoColors.systemGrey.withOpacity(
+                                  0.1,
+                                ),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                          ), // Added for spacing
+                          child: Row(
+                            children: [
+                              const Icon(
+                                CupertinoIcons.mail,
+                                size: 20,
+                                color: CupertinoColors.systemGrey,
+                              ),
+                              const SizedBox(
+                                width: 8,
+                              ), // Spacing between icon and text field
+                              Expanded(
+                                child: CupertinoTextFormFieldRow(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  placeholder: appLanguage.get('email_hint'),
+                                  placeholderStyle: GoogleFonts.poppins(
+                                    color:
+                                        themeProvider.isDarkMode
+                                            ? CupertinoColors.systemGrey2
+                                            : CupertinoColors.systemGrey,
+                                    fontSize: 14,
+                                  ),
+                                  style: GoogleFonts.poppins(
+                                    color:
+                                        themeProvider.isDarkMode
+                                            ? CupertinoColors.white
+                                            : CupertinoColors.black,
+                                    fontSize: 14,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 0,
+                                    vertical: 10,
+                                  ),
+                                  decoration: const BoxDecoration(),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return appLanguage.get('enter_email');
+                                    }
+                                    if (!RegExp(
+                                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                                    ).hasMatch(value)) {
+                                      return appLanguage.get('email_required');
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Password Field
+                        Container(
+                          decoration: BoxDecoration(
+                            color:
+                                themeProvider.isDarkMode
+                                    ? CupertinoColors.darkBackgroundGray
+                                    : CupertinoColors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color:
+                                  themeProvider.isDarkMode
+                                      ? CupertinoColors.systemGrey4
+                                      : CupertinoColors.systemGrey5,
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: CupertinoColors.systemGrey.withOpacity(
+                                  0.1,
+                                ),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(left: 16),
+                                child: Icon(
+                                  CupertinoIcons.lock,
+                                  color:
+                                      themeProvider.isDarkMode
+                                          ? CupertinoColors.systemGrey2
+                                          : CupertinoColors.systemGrey,
+                                  size: 16,
+                                ),
+                              ),
+                              Expanded(
+                                child: CupertinoTextFormFieldRow(
+                                  controller: _passwordController,
+                                  obscureText: _obscurePassword,
+                                  placeholder: appLanguage.get('password_hint'),
+                                  placeholderStyle: GoogleFonts.poppins(
+                                    color:
+                                        themeProvider.isDarkMode
+                                            ? CupertinoColors.systemGrey2
+                                            : CupertinoColors.systemGrey,
+                                    fontSize: 14,
+                                  ),
+                                  style: GoogleFonts.poppins(
+                                    color:
+                                        themeProvider.isDarkMode
+                                            ? CupertinoColors.white
+                                            : CupertinoColors.black,
+                                    fontSize: 14,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 10,
+                                  ),
+                                  decoration: const BoxDecoration(),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return appLanguage.get('enter_password');
+                                    }
+                                    if (value.length < 6) {
+                                      return appLanguage.get(
+                                        'password_required',
+                                      );
+                                    }
+                                    return null;
+                                  },
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(right: 16),
+                                child: GestureDetector(
+                                  onTap:
+                                      () => setState(
+                                        () =>
+                                            _obscurePassword =
+                                                !_obscurePassword,
+                                      ),
+                                  child: Icon(
+                                    _obscurePassword
+                                        ? CupertinoIcons.eye_slash
+                                        : CupertinoIcons.eye,
+                                    color:
+                                        themeProvider.isDarkMode
+                                            ? CupertinoColors.systemGrey2
+                                            : CupertinoColors.systemGrey,
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Forgot Password Link
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                CupertinoPageRoute(
+                                  builder:
+                                      (context) => const ForgotPasswordScreen(),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              appLanguage.get('forgot_password'),
+                              style: GoogleFonts.poppins(
                                 color: primaryBlue,
-                                size: 22,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Forgot Password Link
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: CupertinoButton(
-                    padding: EdgeInsets.zero,
-                    child: Text(
-                      appLanguage.get('forgot_password'),
-                      style: TextStyle(color: primaryBlue),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        CupertinoPageRoute(
-                          builder: (context) => const ForgotPasswordScreen(),
                         ),
-                      );
-                    },
-                  ),
-                ),
+                        const SizedBox(height: 16),
 
-                const SizedBox(height: 20),
+                        // Login Button
+                        Container(
+                          height: 44,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [primaryBlue, lightBlue],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: primaryBlue.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: CupertinoButton(
+                            padding: EdgeInsets.zero,
+                            borderRadius: BorderRadius.circular(12),
+                            onPressed: _isLoading ? null : loginUser,
+                            child:
+                                _isLoading
+                                    ? const CupertinoActivityIndicator(
+                                      color: CupertinoColors.white,
+                                    )
+                                    : Text(
+                                      appLanguage.get('login'),
+                                      style: GoogleFonts.poppins(
+                                        color: CupertinoColors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
 
-                // Login Button
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0),
-                  child: CupertinoButton(
-                    padding: EdgeInsets.symmetric(vertical: 14),
-                    color: primaryBlue,
-                    borderRadius: BorderRadius.circular(12),
-                    onPressed: _isLoading ? null : loginUser,
-                    child:
-                        _isLoading
-                            ? const CupertinoActivityIndicator(
-                              color: CupertinoColors.white,
-                            )
-                            : Text(
-                              appLanguage.get('login'),
-                              style: TextStyle(
-                                color: CupertinoColors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                        // Social Login Icons
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Apple
+                            GestureDetector(
+                              onTap:
+                                  _isLoading
+                                      ? null
+                                      : () => handleAppleSignIn(context),
+                              child: Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: CupertinoColors.black,
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                child: const Icon(
+                                  Icons.apple,
+                                  color: CupertinoColors.white,
+                                  size: 18,
+                                ),
                               ),
                             ),
-                  ),
-                ),
+                            const SizedBox(width: 12),
 
-                const SizedBox(height: 24),
-
-                // Divider
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        height: 1,
-                        color: CupertinoColors.systemGrey4,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        appLanguage.get('Or'),
-                        style: TextStyle(color: CupertinoColors.systemGrey),
-                      ),
-                    ),
-                    Expanded(
-                      child: Container(
-                        height: 1,
-                        color: CupertinoColors.systemGrey4,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Google Sign In Button
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0),
-                  child: CupertinoButton(
-                    onPressed: () async => _handleGoogleLogin(),
-                    color: CupertinoColors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: CupertinoColors.systemGrey5,
-                          width: 1.0,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Image.asset('assets/th.jpeg', height: 24, width: 24),
-                          const SizedBox(width: 12),
-                          Text(
-                            appLanguage.get('continue_with_google'),
-                            style: TextStyle(
-                              color: CupertinoColors.black,
-                              fontWeight: FontWeight.w500,
+                            // Facebook (Placeholder)
+                            const SizedBox(width: 12),
+                            // Google
+                            GestureDetector(
+                              onTap: _isLoading ? null : _handleGoogleLogin,
+                              child: Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color:
+                                      themeProvider.isDarkMode
+                                          ? CupertinoColors.darkBackgroundGray
+                                          : CupertinoColors.white,
+                                  borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color:
+                                        themeProvider.isDarkMode
+                                            ? CupertinoColors.systemGrey4
+                                            : CupertinoColors.systemGrey5,
+                                    width: 0.5,
+                                  ),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Image.asset(
+                                    'assets/google-logo.png',
+                                    width: 20,
+                                    height: 20,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                            const SizedBox(width: 12),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 16),
-
-                // Apple Sign In Button
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0),
-                  child: CupertinoButton(
-                    onPressed: () => handleAppleSignIn(context),
-                    color: CupertinoColors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: CupertinoColors.systemGrey5,
-                          width: 1.0,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const FaIcon(
-                            FontAwesomeIcons.apple,
-                            color: CupertinoColors.black,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            appLanguage.get('continue_with_apple'),
-                            style: TextStyle(
-                              color: CupertinoColors.black,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // Sign Up Link
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      appLanguage.get('dont_have_account'),
-                      style: TextStyle(color: CupertinoColors.systemGrey),
-                    ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: Text(
-                        appLanguage.get('sign_up'),
-                        style: TextStyle(
-                          color: primaryBlue,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          CupertinoPageRoute(
-                            builder: (context) => const Registration(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

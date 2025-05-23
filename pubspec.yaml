@@ -92,6 +92,11 @@ flutter:
     - assets/Animation - 1745663024143.json
     - assets/Animation - 1746459108040.json
     - assets/Animation - 1746459409971.json
+    - assets/taskova-logo.png
+    - assets/lottietaskova.json
+    - assets/google-logo.png
+    - assets/taskova-logo.png
+    - assets/white-logo.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

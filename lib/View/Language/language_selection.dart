@@ -2,7 +2,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Icons; // For icons not available in Cupertino
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskova_new/View/Authentication/login.dart';
+import 'package:taskova_new/View/BottomNavigation/bottomnavigation.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
 
 class LanguageSelectionScreen extends StatefulWidget {
@@ -21,8 +23,18 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
     super.initState();
     final appLanguage = Provider.of<AppLanguage>(context, listen: false);
     selectedLanguage = appLanguage.currentLanguage;
+    checkTokenAndNavigate();
   }
-
+Future<void> checkTokenAndNavigate() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
+    if (token != null) {
+      Navigator.pushReplacement(
+        context,
+        CupertinoPageRoute(builder: (context) => const MainWrapper()),
+      );
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final appLanguage = Provider.of<AppLanguage>(context);

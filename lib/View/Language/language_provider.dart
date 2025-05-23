@@ -134,6 +134,7 @@ class AppLanguage extends ChangeNotifier {
     'enter_postcode': 'Enter postcode',
     'driver_status': 'Driver Status',
     'profile_updated_successfully': 'Profile updated successfully',
+    'upload_certificate': 'Upload Certificate',
   };
   
   // Constructor
