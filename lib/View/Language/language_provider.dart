@@ -97,7 +97,7 @@ class AppLanguage extends ChangeNotifier {
     'select_working_area': 'Please select a preferred working area',
     'profile_registration': 'Profile Registration',
     'submitting_profile_information': 'Submitting profile information...',
-    'registration_failed': 'Registration Failed',
+    'registration_failed': 'This email is already registered. Please log in to continue.',
     'full_name': 'Full Name',
     'has_disability': 'Do you have any disability?',
     'please_enter_name': 'Please enter your name',
