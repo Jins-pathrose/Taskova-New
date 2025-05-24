@@ -1,6 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart'
-    show Icons, BoxDecoration, BorderRadius, Colors, BoxShadow, Gradient, LinearGradient, Offset;
+    show
+        Icons,
+        BoxDecoration,
+        BorderRadius,
+        Colors,
+        BoxShadow,
+        Gradient,
+        LinearGradient,
+        Offset;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:taskova_new/Model/api_config.dart';
@@ -19,7 +27,8 @@ class Registration extends StatefulWidget {
   State<Registration> createState() => _RegistrationState();
 }
 
-class _RegistrationState extends State<Registration> with SingleTickerProviderStateMixin {
+class _RegistrationState extends State<Registration>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -48,28 +57,24 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
     _visiblePassword = false;
     _visibleConfirmPassword = false;
     appLanguage = Provider.of<AppLanguage>(context, listen: false);
-    
+
     // Initialize animations
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.2),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
-    
+    ).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+
     _animationController.forward();
   }
 
@@ -90,19 +95,21 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
 
     print("Starting API call...");
     try {
-      var response = await http.post(
-        Uri.parse(ApiConfig.registerUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "email": _emailController.text,
-          "password": _passwordController.text,
-          "role": "DRIVER"
-        }),
-      ).timeout(const Duration(seconds: 10));
-      
+      var response = await http
+          .post(
+            Uri.parse(ApiConfig.registerUrl),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              "email": _emailController.text,
+              "password": _passwordController.text,
+              "role": "DRIVER",
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
       print("Response received with status: ${response.statusCode}");
       print("Response body: ${response.body}");
-      
+
       if (response.statusCode == 201) {
         Navigator.push(
           context,
@@ -142,93 +149,82 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
     String? label,
   }) {
     return Padding(
-  padding: const EdgeInsets.only(bottom: 16.0),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      if (label != null)
-        Padding(
-          padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
-          child: Text(
-            label,
-            style: GoogleFonts.poppins(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: textDarkBlue,
-            ),
-          ),
-        ),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 0.0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: cardWhite,
-            borderRadius: BorderRadius.circular(16.0),
-            border: Border.all(
-              color: Colors.blue.shade100,
-              width: 1.0,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.blue.shade100.withOpacity(0.25),
-                blurRadius: 8.0,
-                offset: Offset(0, 2),
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (label != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
+              child: Text(
+                label,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: textDarkBlue,
+                ),
               ),
-            ],
-          ),
-          child: CupertinoFormRow(
-            padding: EdgeInsets.zero,
-            child: Row(
-              children: [
-                Expanded(
-                  child: CupertinoTextFormFieldRow(
-                    controller: controller,
-                    obscureText: obscureText && !visibilityState,
-                    keyboardType: keyboardType,
-                    placeholder: placeholder,
-                    placeholderStyle: TextStyle(
-                      color: textLightGrey,
-                      fontSize: 16.0,
-                    ),
-                    style: TextStyle(
-                      color: textDarkBlue,
-                      fontSize: 16.0,
-                    ),
-                    prefix: Container(
-                      padding: EdgeInsets.only(right: 12.0, left: 8.0),
-                      child: Icon(
-                        icon,
-                        color: primaryBlue,
-                        size: 22,
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 0.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: cardWhite,
+                borderRadius: BorderRadius.circular(16.0),
+                border: Border.all(color: Colors.blue.shade100, width: 1.0),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.shade100.withOpacity(0.25),
+                    blurRadius: 8.0,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: CupertinoFormRow(
+                padding: EdgeInsets.zero,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: CupertinoTextFormFieldRow(
+                        controller: controller,
+                        obscureText: obscureText && !visibilityState,
+                        keyboardType: keyboardType,
+                        placeholder: placeholder,
+                        placeholderStyle: TextStyle(
+                          color: textLightGrey,
+                          fontSize: 16.0,
+                        ),
+                        style: TextStyle(color: textDarkBlue, fontSize: 16.0),
+                        prefix: Container(
+                          padding: EdgeInsets.only(right: 12.0, left: 8.0),
+                          child: Icon(icon, color: primaryBlue, size: 22),
+                        ),
+                        validator: validator,
+                        padding: EdgeInsets.symmetric(vertical: 12.0),
+                        decoration: BoxDecoration(border: null),
                       ),
                     ),
-                    validator: validator,
-                    padding: EdgeInsets.symmetric(vertical: 12.0),
-                    decoration: BoxDecoration(border: null),
-                  ),
+                    if (showVisibilityToggle)
+                      CupertinoButton(
+                        padding: EdgeInsets.only(right: 12.0),
+                        minSize: 0,
+                        onPressed: onVisibilityToggle,
+                        child: Icon(
+                          visibilityState
+                              ? CupertinoIcons.eye_slash
+                              : CupertinoIcons.eye,
+                          color: lightBlue,
+                          size: 22,
+                        ),
+                      ),
+                  ],
                 ),
-                if (showVisibilityToggle)
-                  CupertinoButton(
-                    padding: EdgeInsets.only(right: 12.0),
-                    minSize: 0,
-                    onPressed: onVisibilityToggle,
-                    child: Icon(
-                      visibilityState
-                          ? CupertinoIcons.eye_slash
-                          : CupertinoIcons.eye,
-                      color: lightBlue,
-                      size: 22,
-                    ),
-                  ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
-    ],
-  ),
-);
-
+    );
   }
 
   @override
@@ -238,10 +234,7 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
       navigationBar: CupertinoNavigationBar(
         backgroundColor: cardWhite,
         border: Border(
-          bottom: BorderSide(
-            color: Colors.blue.shade50,
-            width: 0.5,
-          ),
+          bottom: BorderSide(color: Colors.blue.shade50, width: 0.5),
         ),
         middle: Text(
           appLanguage.get('create_account'),
@@ -252,10 +245,7 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
         ),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
-          child: Icon(
-            CupertinoIcons.chevron_back,
-            color: primaryBlue,
-          ),
+          child: Icon(CupertinoIcons.chevron_back, color: primaryBlue),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -282,10 +272,7 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
                           gradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: [
-                              primaryBlue,
-                              lightBlue,
-                            ],
+                            colors: [primaryBlue, lightBlue],
                           ),
                           shape: BoxShape.circle,
                           boxShadow: [
@@ -360,14 +347,15 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              appLanguage.get('signup_subtitle') ?? "Please fill in your details",
+                              appLanguage.get('signup_subtitle') ??
+                                  "Please fill in your details",
                               style: TextStyle(
                                 fontSize: 14,
                                 color: textLightGrey,
                               ),
                             ),
                             const SizedBox(height: 24),
-                            
+
                             _buildInputField(
                               controller: _emailController,
                               placeholder: appLanguage.get('email_hint'),
@@ -376,8 +364,9 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
                                 if (value == null || value.isEmpty) {
                                   return appLanguage.get('enter_email');
                                 }
-                                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                                    .hasMatch(value)) {
+                                if (!RegExp(
+                                  r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                                ).hasMatch(value)) {
                                   return appLanguage.get('email_required');
                                 }
                                 return null;
@@ -385,7 +374,7 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
                               keyboardType: TextInputType.emailAddress,
                               label: appLanguage.get('email'),
                             ),
-                            
+
                             _buildInputField(
                               controller: _passwordController,
                               placeholder: appLanguage.get('password_hint'),
@@ -403,13 +392,15 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
                                   return appLanguage.get('enter_password');
                                 }
                                 if (value.length < 6) {
-                                  return appLanguage.get('password_length_error');
+                                  return appLanguage.get(
+                                    'password_length_error',
+                                  );
                                 }
                                 return null;
                               },
                               label: appLanguage.get('password'),
                             ),
-                            
+
                             _buildInputField(
                               controller: _confirmPass,
                               placeholder: appLanguage.get('confirm_password'),
@@ -419,14 +410,19 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
                               visibilityState: _visibleConfirmPassword,
                               onVisibilityToggle: () {
                                 setState(() {
-                                  _visibleConfirmPassword = !_visibleConfirmPassword;
+                                  _visibleConfirmPassword =
+                                      !_visibleConfirmPassword;
                                 });
                               },
                               validator: (val) {
                                 if (val == null || val.isEmpty)
-                                  return appLanguage.get('signup_confrm_password');
+                                  return appLanguage.get(
+                                    'signup_confrm_password',
+                                  );
                                 if (val != _passwordController.text)
-                                  return appLanguage.get('passwords_do_not_match');
+                                  return appLanguage.get(
+                                    'passwords_do_not_match',
+                                  );
                                 return null;
                               },
                               label: appLanguage.get('confirm_password'),
@@ -440,13 +436,14 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
                         Padding(
                           padding: const EdgeInsets.only(top: 16.0),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.red.shade50,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.red.shade200,
-                              ),
+                              border: Border.all(color: Colors.red.shade200),
                             ),
                             child: Row(
                               children: [
@@ -477,10 +474,7 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
                           gradient: LinearGradient(
-                            colors: [
-                              primaryBlue,
-                              lightBlue,
-                            ],
+                            colors: [primaryBlue, lightBlue],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -495,24 +489,30 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
                         child: CupertinoButton(
                           padding: EdgeInsets.zero,
                           borderRadius: BorderRadius.circular(16),
-                          onPressed: _isLoading
-                              ? null
-                              : () {
-                                  if (_formKey.currentState!.validate()) {
-                                    registerUser();
-                                  }
-                                },
-                          child: _isLoading
-                              ? const CupertinoActivityIndicator(color: Colors.white)
-                              : Text(
-                                  appLanguage.get('create_account').toUpperCase(),
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 1.0,
+                          onPressed:
+                              _isLoading
+                                  ? null
+                                  : () {
+                                    if (_formKey.currentState!.validate()) {
+                                      registerUser();
+                                    }
+                                  },
+                          child:
+                              _isLoading
+                                  ? const CupertinoActivityIndicator(
                                     color: Colors.white,
+                                  )
+                                  : Text(
+                                    appLanguage
+                                        .get('create_account')
+                                        .toUpperCase(),
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 1.0,
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                ),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -550,9 +550,7 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
                         decoration: BoxDecoration(
                           color: Colors.blue.shade50,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.blue.shade100,
-                          ),
+                          border: Border.all(color: Colors.blue.shade100),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -574,11 +572,12 @@ class _RegistrationState extends State<Registration> with SingleTickerProviderSt
                                 ),
                               ),
                               onPressed: () {
-                                Navigator.pushReplacement(
+                                Navigator.pushAndRemoveUntil(
                                   context,
                                   CupertinoPageRoute(
                                     builder: (context) => const LoginPage(),
                                   ),
+                                  (Route<dynamic> route) => false,
                                 );
                               },
                             ),

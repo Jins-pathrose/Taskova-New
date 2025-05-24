@@ -146,7 +146,8 @@ class _OtpVerificationState extends State<OtpVerification> with SingleTickerProv
         });
       } else {
         final errorResponse = jsonDecode(response.body);
-        _showErrorDialog((errorResponse['detail'] as String?) ?? appLanguage.get('email_verification_fail'));
+        _showErrorDialog(errorResponse['detail'] ?? 
+            appLanguage.get('email_verification_fail'));
       }
     } catch (e) {
       _showErrorDialog(appLanguage.get('connection_error'));
@@ -174,7 +175,7 @@ class _OtpVerificationState extends State<OtpVerification> with SingleTickerProv
         _showSuccessDialog(appLanguage.get('otp_sent'));
         _startResendTimer();
       } else {
-final errorResponse = jsonDecode(response.body) as Map<String, dynamic>? ?? {};
+        final errorResponse = jsonDecode(response.body);
         _showErrorDialog(errorResponse['detail'] ?? 
             appLanguage.get('otp_sent_fail'));
       }
@@ -268,7 +269,7 @@ final errorResponse = jsonDecode(response.body) as Map<String, dynamic>? ?? {};
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      // backgroundColor: backgroundWhite,
+      backgroundColor: backgroundWhite,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: cardWhite,
         border: Border(

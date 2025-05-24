@@ -42,7 +42,7 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     
     // Stop notification service when leaving the app
-    _notificationService.stopNotificationService();
+    // _notificationService.stopNotificationService();
     super.dispose();
   }
   
@@ -56,7 +56,7 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
         // App went to background, stop notifications
-        _notificationService.stopNotificationService();
+        // _notificationService.stopNotificationService();
         break;
       default:
         break;
