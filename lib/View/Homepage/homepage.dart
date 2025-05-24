@@ -82,6 +82,7 @@ class JobPost {
   final double businessLatitude;
   final double businessLongitude;
   double? distanceMiles; // Distance from driver in miles
+  final String? jobDate; // Added jobDate property
 
   JobPost({
     required this.id,
@@ -99,6 +100,7 @@ class JobPost {
     required this.businessLatitude,
     required this.businessLongitude,
     this.distanceMiles,
+    required this.jobDate,
   });
 
   Business get business => Business(
@@ -112,6 +114,7 @@ class JobPost {
       id: json['id'] ?? 0,
       title: json['title'] ?? 'Unnamed Job',
       description: json['description'],
+      jobDate: json['job_date'], // Added jobDate parsing
       startTime: json['start_time'],
       endTime: json['end_time'],
       hourlyRate: _parseDouble(json['hourly_rate']),

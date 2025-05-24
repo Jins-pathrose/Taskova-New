@@ -53,7 +53,7 @@ class AppLanguage extends ChangeNotifier {
     'dont_have_account': "Don't have an account?",
     'sign_up': 'Sign Up',
     'continue_text': 'Continue',
-    'email_verification_suc': 'Email verified successfully!',
+    'email_verification_suc': 'Account created successfully!🎉',
     'email_verification_fail': 'Verification failed. Please try again.',
     'connection_error': 'Connection error. Please check your internet connection.',
     'otp_sent': 'New verification code has been sent',

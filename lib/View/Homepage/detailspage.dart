@@ -18,7 +18,8 @@ class JobDetailPage extends StatefulWidget {
   State<JobDetailPage> createState() => _JobDetailPageState();
 }
 
-class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProviderStateMixin {
+class _JobDetailPageState extends State<JobDetailPage>
+    with SingleTickerProviderStateMixin {
   String? _jobRequestId;
   bool _isAccepted = false;
   bool _isLoading = false;
@@ -44,10 +45,9 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
     _slideAnimation = Tween<Offset>(
       begin: Offset(0, 0.1),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
     _animationController.forward();
     _checkIfAlreadyApplied();
   }
@@ -151,7 +151,10 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
           _rating = 0.0;
         });
       } else {
-        _showErrorMessage(context, 'Failed to submit review. Please try again.');
+        _showErrorMessage(
+          context,
+          'Failed to submit review. Please try again.',
+        );
       }
     } catch (e) {
       _showErrorMessage(context, 'Error submitting review: $e');
@@ -182,7 +185,10 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [const Color.fromARGB(255, 125, 140, 162), Colors.blue.shade600],
+            colors: [
+              const Color.fromARGB(255, 125, 140, 162),
+              Colors.blue.shade600,
+            ],
           ),
         ),
         child: SafeArea(
@@ -212,7 +218,8 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
                               opacity: _fadeAnimation,
                               child: _buildDetailSection(
                                 'Description',
-                                widget.jobPost.description ?? 'No description available',
+                                widget.jobPost.description ??
+                                    'No description available',
                               ),
                             ),
                           ),
@@ -238,6 +245,8 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
                               ),
                             ),
                           ),
+                          const SizedBox(height: 20),
+                          _buildJobDateSection(),
                           const SizedBox(height: 20),
                           SlideTransition(
                             position: _slideAnimation,
@@ -336,20 +345,24 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
         children: [
           ClipRRect(
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
-            child: widget.jobPost.businessImage != null && widget.jobPost.businessImage!.isNotEmpty
-                ? FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Image.network(
-                      widget.jobPost.businessImage!.startsWith('http')
-                          ? widget.jobPost.businessImage!
-                          : '${ApiConfig.getImageUrl}${widget.jobPost.businessImage}',
-                      width: double.infinity,
-                      height: 280,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(),
-                    ),
-                  )
-                : _buildPlaceholderImage(),
+            child:
+                widget.jobPost.businessImage != null &&
+                        widget.jobPost.businessImage!.isNotEmpty
+                    ? FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Image.network(
+                        widget.jobPost.businessImage!.startsWith('http')
+                            ? widget.jobPost.businessImage!
+                            : '${ApiConfig.getImageUrl}${widget.jobPost.businessImage}',
+                        width: double.infinity,
+                        height: 280,
+                        fit: BoxFit.cover,
+                        errorBuilder:
+                            (context, error, stackTrace) =>
+                                _buildPlaceholderImage(),
+                      ),
+                    )
+                    : _buildPlaceholderImage(),
           ),
           Positioned(
             bottom: 0,
@@ -361,7 +374,10 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.blue.shade900.withOpacity(0.7)],
+                  colors: [
+                    Colors.transparent,
+                    Colors.blue.shade900.withOpacity(0.7),
+                  ],
                 ),
               ),
             ),
@@ -510,7 +526,11 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
           SizedBox(height: 10),
           Row(
             children: [
-              Icon(CupertinoIcons.location_solid, color: Colors.blue.shade700, size: 24),
+              Icon(
+                CupertinoIcons.location_solid,
+                color: Colors.blue.shade700,
+                size: 24,
+              ),
               SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -525,7 +545,11 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
               padding: EdgeInsets.only(top: 12),
               child: Row(
                 children: [
-                  Icon(CupertinoIcons.map_fill, color: Colors.blue.shade700, size: 24),
+                  Icon(
+                    CupertinoIcons.map_fill,
+                    color: Colors.blue.shade700,
+                    size: 24,
+                  ),
                   SizedBox(width: 10),
                   Text(
                     'Distance: ${formatDistance(widget.jobPost.distanceMiles)}',
@@ -573,35 +597,40 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
           SizedBox(height: 10),
           benefits.isEmpty
               ? Text(
-                  'No benefits listed',
-                  style: TextStyle(color: Colors.blue.shade800, fontSize: 16),
-                )
+                'No benefits listed',
+                style: TextStyle(color: Colors.blue.shade800, fontSize: 16),
+              )
               : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: benefits
-                      .map(
-                        (benefit) => Padding(
-                          padding: EdgeInsets.symmetric(vertical: 6),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(CupertinoIcons.checkmark_circle_fill, color: Colors.blue.shade700, size: 20),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  benefit.toString(),
-                                  style: TextStyle(
-                                    color: Colors.blue.shade800,
-                                    fontSize: 16,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children:
+                    benefits
+                        .map(
+                          (benefit) => Padding(
+                            padding: EdgeInsets.symmetric(vertical: 6),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  CupertinoIcons.checkmark_circle_fill,
+                                  color: Colors.blue.shade700,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    benefit.toString(),
+                                    style: TextStyle(
+                                      color: Colors.blue.shade800,
+                                      fontSize: 16,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      )
-                      .toList(),
-                ),
+                        )
+                        .toList(),
+              ),
         ],
       ),
     );
@@ -646,7 +675,9 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 4),
                   child: Icon(
-                    index < _rating ? CupertinoIcons.star_fill : CupertinoIcons.star,
+                    index < _rating
+                        ? CupertinoIcons.star_fill
+                        : CupertinoIcons.star,
                     color: Colors.blue.shade700,
                     size: 32,
                   ),
@@ -672,14 +703,18 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
           Align(
             alignment: Alignment.centerRight,
             child: GestureDetector(
-              onTap: _rating > 0 && _reviewController.text.isNotEmpty ? _submitReview : null,
+              onTap:
+                  _rating > 0 && _reviewController.text.isNotEmpty
+                      ? _submitReview
+                      : null,
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: _rating > 0 && _reviewController.text.isNotEmpty
-                        ? [Colors.blue.shade600, Colors.blue.shade800]
-                        : [Colors.grey.shade400, Colors.grey.shade500],
+                    colors:
+                        _rating > 0 && _reviewController.text.isNotEmpty
+                            ? [Colors.blue.shade600, Colors.blue.shade800]
+                            : [Colors.grey.shade400, Colors.grey.shade500],
                   ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
@@ -708,20 +743,22 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
 
   Widget _buildChatButton() {
     return GestureDetector(
-      onTap: _chatRoomId != null
-          ? () {
-              Navigator.push(
-                context,
-                CupertinoPageRoute(
-                  builder: (context) => ChatPage(
-                    driverId: _driverId!,
-                    chatRoomId: _chatRoomId!,
-                    businessName: widget.jobPost.businessName,
+      onTap:
+          _chatRoomId != null
+              ? () {
+                Navigator.push(
+                  context,
+                  CupertinoPageRoute(
+                    builder:
+                        (context) => ChatPage(
+                          driverId: _driverId!,
+                          chatRoomId: _chatRoomId!,
+                          businessName: widget.jobPost.businessName,
+                        ),
                   ),
-                ),
-              );
-            }
-          : null,
+                );
+              }
+              : null,
       child: Container(
         height: 60,
         decoration: BoxDecoration(
@@ -742,7 +779,11 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(CupertinoIcons.chat_bubble_2_fill, color: Colors.white, size: 28),
+            Icon(
+              CupertinoIcons.chat_bubble_2_fill,
+              color: Colors.white,
+              size: 28,
+            ),
             SizedBox(width: 12),
             Text(
               'Chat with ${widget.jobPost.businessName}',
@@ -771,84 +812,107 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
           ),
         ],
       ),
-      child: _isLoading
-          ? Center(
-              child: CupertinoActivityIndicator(radius: 16, color: Colors.blue.shade700),
-            )
-          : GestureDetector(
-              onTap: _isAccepted ? null : () => _handleJobApplication(context),
-              child: Container(
-                height: 60,
-                decoration: BoxDecoration(
-                  gradient: _isAccepted
-                      ? LinearGradient(
-                          colors: [Colors.grey.shade500, Colors.grey.shade600],
-                        )
-                      : LinearGradient(
-                          colors: [Colors.blue.shade700, Colors.blue.shade500],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blue.shade900.withOpacity(0.4),
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
+      child:
+          _isLoading
+              ? Center(
+                child: CupertinoActivityIndicator(
+                  radius: 16,
+                  color: Colors.blue.shade700,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _isAccepted ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.paperplane_fill,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                    SizedBox(width: 12),
-                    Text(
-                      _isAccepted ? 'Application Accepted' : 'Apply for this Job',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
+              )
+              : GestureDetector(
+                onTap:
+                    _isAccepted ? null : () => _handleJobApplication(context),
+                child: Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                    gradient:
+                        _isAccepted
+                            ? LinearGradient(
+                              colors: [
+                                Colors.grey.shade500,
+                                Colors.grey.shade600,
+                              ],
+                            )
+                            : LinearGradient(
+                              colors: [
+                                Colors.blue.shade700,
+                                Colors.blue.shade500,
+                              ],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.shade900.withOpacity(0.4),
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _isAccepted
+                            ? CupertinoIcons.checkmark_circle_fill
+                            : CupertinoIcons.paperplane_fill,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        _isAccepted
+                            ? 'Application Accepted'
+                            : 'Apply for this Job',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
     );
   }
 
   void _handleJobApplication(BuildContext context) {
     showCupertinoDialog(
       context: context,
-      builder: (dialogContext) => CupertinoAlertDialog(
-        title: Text(
-          'Apply for ${widget.jobPost.title}',
-          style: TextStyle(color: Colors.blue.shade900),
-        ),
-        content: Text(
-          'Are you sure you want to apply for this job at ${widget.jobPost.businessName}?',
-          style: TextStyle(color: Colors.blue.shade800),
-        ),
-        actions: [
-          CupertinoDialogAction(
-            child: Text('Cancel', style: TextStyle(color: Colors.blue.shade700)),
-            onPressed: () => Navigator.pop(dialogContext),
+      builder:
+          (dialogContext) => CupertinoAlertDialog(
+            title: Text(
+              'Apply for ${widget.jobPost.title}',
+              style: TextStyle(color: Colors.blue.shade900),
+            ),
+            content: Text(
+              'Are you sure you want to apply for this job at ${widget.jobPost.businessName}?',
+              style: TextStyle(color: Colors.blue.shade800),
+            ),
+            actions: [
+              CupertinoDialogAction(
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.blue.shade700),
+                ),
+                onPressed: () => Navigator.pop(dialogContext),
+              ),
+              CupertinoDialogAction(
+                isDefaultAction: true,
+                child: Text(
+                  'Apply',
+                  style: TextStyle(color: Colors.blue.shade700),
+                ),
+                onPressed: () async {
+                  Navigator.pop(dialogContext);
+                  await _submitJobApplication(context);
+                },
+              ),
+            ],
           ),
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            child: Text('Apply', style: TextStyle(color: Colors.blue.shade700)),
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              await _submitJobApplication(context);
-            },
-          ),
-        ],
-      ),
     );
   }
 
@@ -868,7 +932,10 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: CupertinoActivityIndicator(radius: 16, color: Colors.blue.shade700),
+              child: CupertinoActivityIndicator(
+                radius: 16,
+                color: Colors.blue.shade700,
+              ),
             ),
           );
         },
@@ -877,6 +944,43 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
       final prefs = await SharedPreferences.getInstance();
       final accessToken = prefs.getString('access_token');
 
+      // Check profile approval status
+      final profileResponse = await http.get(
+        Uri.parse(ApiConfig.profileStatusUrl),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (profileResponse.statusCode == 200) {
+        final profileData = jsonDecode(profileResponse.body);
+        if (profileData['is_approved'] != true) {
+          if (loadingContext != null && Navigator.canPop(loadingContext!)) {
+            Navigator.pop(loadingContext!);
+          }
+          if (profileData['is_document_complete'] == true) {
+            Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (context) => DocumentVerificationPendingScreen(),
+              ),
+            );
+          } else {
+            Navigator.push(
+              context,
+              CupertinoPageRoute(
+                builder: (context) => DocumentRegistrationPage(),
+              ),
+            );
+          }
+          return;
+        }
+      } else {
+        throw Exception('Failed to check profile status');
+      }
+
+      // Continue with existing job application logic
       final requestBody = {'job': widget.jobPost.id};
 
       final response = await http.post(
@@ -902,176 +1006,195 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
         _showApplicationSuccessMessage(context);
       } else {
         final errorData = jsonDecode(response.body);
-        _showErrorMessage(context, errorData['detail'] ?? 'Failed to submit application. Please try again.');
+        _showErrorMessage(
+          context,
+          errorData['detail'] ??
+              'Failed to submit application. Please try again.',
+        );
       }
     } catch (e) {
       if (loadingContext != null && Navigator.canPop(loadingContext!)) {
         Navigator.pop(loadingContext!);
       }
-      _showErrorMessage(context, 'You have already applied for this job. Please wait for your request to be approved.');
+      _showErrorMessage(
+        context,
+        'You have already applied for this job or there was an error. Please try again.',
+      );
     }
   }
 
   void _showApplicationSuccessMessage(BuildContext context) {
     showCupertinoModalPopup(
       context: context,
-      builder: (context) => Container(
-        padding: EdgeInsets.all(24),
-        margin: EdgeInsets.symmetric(horizontal: 20, vertical: 100),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue.shade50, Colors.white],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.blue.shade900.withOpacity(0.3),
-              blurRadius: 12,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade600, Colors.blue.shade800],
+      builder:
+          (context) => Container(
+            padding: EdgeInsets.all(24),
+            margin: EdgeInsets.symmetric(horizontal: 20, vertical: 100),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade50, Colors.white],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.shade900.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
                 ),
-              ),
-              child: Icon(
-                CupertinoIcons.check_mark_circled,
-                color: Colors.white,
-                size: 48,
-              ),
+              ],
             ),
-            SizedBox(height: 16),
-            Text(
-              'Application Submitted!',
-              style: TextStyle(
-                color: Colors.blue.shade900,
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            SizedBox(height: 12),
-            Text(
-              'Your application for ${widget.jobPost.title} has been sent to ${widget.jobPost.businessName}.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.blue.shade800,
-                fontSize: 16,
-                height: 1.5,
-              ),
-            ),
-            SizedBox(height: 20),
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue.shade600, Colors.blue.shade800],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade600, Colors.blue.shade800],
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Got it',
-                  style: TextStyle(
+                  child: Icon(
+                    CupertinoIcons.check_mark_circled,
                     color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                    size: 48,
                   ),
                 ),
-              ),
+                SizedBox(height: 16),
+                Text(
+                  'Application Submitted!',
+                  style: TextStyle(
+                    color: Colors.blue.shade900,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Your application for ${widget.jobPost.title} has been sent to ${widget.jobPost.businessName}.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.blue.shade800,
+                    fontSize: 16,
+                    height: 1.5,
+                  ),
+                ),
+                SizedBox(height: 20),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade600, Colors.blue.shade800],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Got it',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
   void _showSuccessMessage(BuildContext context, String message) {
     showCupertinoModalPopup(
       context: context,
-      builder: (context) => Container(
-        padding: EdgeInsets.all(24),
-        margin: EdgeInsets.symmetric(horizontal: 20, vertical: 100),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue.shade50, Colors.white],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.blue.shade900.withOpacity(0.3),
-              blurRadius: 12,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade600, Colors.blue.shade800],
+      builder:
+          (context) => Container(
+            padding: EdgeInsets.all(24),
+            margin: EdgeInsets.symmetric(horizontal: 20, vertical: 100),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade50, Colors.white],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.shade900.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
                 ),
-              ),
-              child: Icon(
-                CupertinoIcons.check_mark_circled,
-                color: Colors.white,
-                size: 48,
-              ),
+              ],
             ),
-            SizedBox(height: 16),
-            Text(
-              'Success!',
-              style: TextStyle(
-                color: Colors.blue.shade900,
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            SizedBox(height: 12),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.blue.shade800,
-                fontSize: 16,
-                height: 1.5,
-              ),
-            ),
-            SizedBox(height: 20),
-            GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.blue.shade600, Colors.blue.shade800],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade600, Colors.blue.shade800],
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'OK',
-                  style: TextStyle(
+                  child: Icon(
+                    CupertinoIcons.check_mark_circled,
                     color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                    size: 48,
                   ),
                 ),
-              ),
+                SizedBox(height: 16),
+                Text(
+                  'Success!',
+                  style: TextStyle(
+                    color: Colors.blue.shade900,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.blue.shade800,
+                    fontSize: 16,
+                    height: 1.5,
+                  ),
+                ),
+                SizedBox(height: 20),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade600, Colors.blue.shade800],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'OK',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+    );
+  }
+
+  Widget _buildJobDateSection() {
+    return SlideTransition(
+      position: _slideAnimation,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: _buildDetailSection('Job Date', widget.jobPost.jobDate ?? 'N/A'),
       ),
     );
   }
@@ -1079,22 +1202,23 @@ class _JobDetailPageState extends State<JobDetailPage> with SingleTickerProvider
   void _showErrorMessage(BuildContext context, String message) {
     showCupertinoDialog(
       context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: Text(
-          'Oops!',
-          style: TextStyle(color: Colors.blue.shade900),
-        ),
-        content: Text(
-          message,
-          style: TextStyle(color: Colors.blue.shade800),
-        ),
-        actions: [
-          CupertinoDialogAction(
-            child: Text('OK', style: TextStyle(color: Colors.blue.shade700)),
-            onPressed: () => Navigator.pop(context),
+      builder:
+          (context) => CupertinoAlertDialog(
+            title: Text('Oops!', style: TextStyle(color: Colors.blue.shade900)),
+            content: Text(
+              message,
+              style: TextStyle(color: Colors.blue.shade800),
+            ),
+            actions: [
+              CupertinoDialogAction(
+                child: Text(
+                  'OK',
+                  style: TextStyle(color: Colors.blue.shade700),
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }
