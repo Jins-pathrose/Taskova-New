@@ -304,6 +304,19 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  bool _isValidUKPhoneNumber(String phone) {
+    // Remove spaces and country code for validation
+    String cleanPhone = phone.replaceAll(' ', '').replaceAll('+44', '');
+
+    // UK phone numbers are typically 10-11 digits after country code
+    if (cleanPhone.length < 10 || cleanPhone.length > 11) {
+      return false;
+    }
+
+    // Check if it contains only digits
+    return RegExp(r'^[0-9]+$').hasMatch(cleanPhone);
+  }
+
   // Show success dialog
   void _showSuccessDialog(String message) {
     showCupertinoDialog(
@@ -564,7 +577,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   CupertinoButton(
                                     padding: EdgeInsets.zero,
                                     child: Text(
-                                      appLanguage.get('edit'),
+                                      appLanguage.get('Edit'),
                                       style: TextStyle(
                                         color: primaryBlue,
                                         fontWeight: FontWeight.w600,
@@ -579,6 +592,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               ],
                             ),
                             SizedBox(height: 16),
+                            
                             _buildFormField(
                               controller: _nameController,
                               placeholder: appLanguage.get('name'),
@@ -586,6 +600,11 @@ class _ProfilePageState extends State<ProfilePage> {
                               validator: (value) {
                                 if (value == null || value.isEmpty) {
                                   return appLanguage.get('please_enter_name');
+                                }
+                                if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(value)) {
+                                  return appLanguage.get(
+                                    'name_must_contain_only_alphabets',
+                                  );
                                 }
                                 return null;
                               },
@@ -621,6 +640,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                 if (value == null || value.isEmpty) {
                                   return appLanguage.get(
                                     'please_enter_phone_number',
+                                  );
+                                }
+                                if (!_isValidUKPhoneNumber(value)) {
+                                  return appLanguage.get(
+                                    'please_enter_valid_uk_phone_number',
                                   );
                                 }
                                 return null;
@@ -793,7 +817,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 borderRadius: BorderRadius.circular(12),
                                 child: Text(
                                   appLanguage.get('cancel'),
-                                  style: TextStyle( 
+                                  style: TextStyle(
                                     color: primaryBlue,
                                     fontWeight: FontWeight.bold,
                                   ),

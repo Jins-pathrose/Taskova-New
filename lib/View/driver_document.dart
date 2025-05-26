@@ -1,8 +1,5 @@
-import 'dart:math';
-
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart'
-    show Icons; // Only for icons not available in Cupertino
+import 'package:flutter/material.dart' show  Colors;
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -59,8 +56,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
       TextEditingController();
   final TextEditingController _licenseDetailsController =
       TextEditingController();
-final TextEditingController _dvlaController =
-      TextEditingController();
+  final TextEditingController _dvlaController = TextEditingController();
 
   // Track completion status
   Map<String, bool> _documentStatus = {
@@ -69,19 +65,18 @@ final TextEditingController _dvlaController =
     'address': false,
     'insurance': false,
     'license': false,
+    'dvla': false,
   };
 
-  // Blue and White Color Scheme
-  final Color _primaryColor = CupertinoColors.systemBlue; // Main blue color
-  final Color _backgroundColor = CupertinoColors.white; // White background
-  final Color _accentColor = const Color(
-    0xFF007AFF,
-  ); // Slightly darker blue for accents
-  final Color _completedColor =
-      CupertinoColors.systemGreen; // Keep green for completed status
-  final Color _textColor = CupertinoColors.black; // Black for text readability
-  final Color _secondaryTextColor =
-      CupertinoColors.systemGrey; // Grey for secondary text
+  // Professional Color Scheme
+  final Color _primaryColor = const Color(0xFF0A66C2); // LinkedIn blue
+  final Color _backgroundColor = CupertinoColors.systemGroupedBackground;
+  final Color _cardColor = CupertinoColors.white;
+  final Color _successColor = const Color(0xFF057642); // Professional green
+  final Color _warningColor = const Color(0xFFE16F24); // Professional orange
+  final Color _textPrimary = const Color(0xFF000000);
+  final Color _textSecondary = const Color(0xFF666666);
+  final Color _borderColor = const Color(0xFFE0E0E0);
 
   @override
   void initState() {
@@ -91,44 +86,55 @@ final TextEditingController _dvlaController =
 
   @override
   void dispose() {
-    // Dispose of controllers when the widget is removed
     _identityDetailsController.dispose();
     _rightToWorkDetailsController.dispose();
     _addressDetailsController.dispose();
     _insuranceDetailsController.dispose();
     _licenseDetailsController.dispose();
+    _dvlaController.dispose();
     super.dispose();
   }
 
   void _updateDocumentStatus() {
     setState(() {
-      _documentStatus['identity'] = _idFront != null && _idBack != null;
-
+      _documentStatus['identity'] =
+          _idFront != null &&
+          _idBack != null &&
+          _identityDetailsController.text.trim().isNotEmpty;
       if (_isBritishCitizen != null) {
         _documentStatus['citizenship'] =
             _isBritishCitizen!
-                ? (_passportFront != null && _passportBack != null)
-                : (_rightToWorkUKFront != null && _rightToWorkUKBack != null);
+                ? (_passportFront != null &&
+                    _passportBack != null &&
+                    _rightToWorkDetailsController.text.trim().isNotEmpty)
+                : (_rightToWorkUKFront != null &&
+                    _rightToWorkUKBack != null &&
+                    _rightToWorkDetailsController.text.trim().isNotEmpty);
       }
-
       _documentStatus['address'] =
-          _addressProofFront != null && _addressProofBack != null;
+          _addressProofFront != null &&
+          _addressProofBack != null &&
+          _addressDetailsController.text.trim().isNotEmpty;
       _documentStatus['insurance'] =
-          _vehicleInsuranceFront != null && _vehicleInsuranceBack != null;
+          _vehicleInsuranceFront != null &&
+          _vehicleInsuranceBack != null &&
+          _insuranceDetailsController.text.trim().isNotEmpty;
       _documentStatus['license'] =
-          _drivingLicenseFront != null && _drivingLicenseBack != null;
+          _drivingLicenseFront != null &&
+          _drivingLicenseBack != null &&
+          _licenseDetailsController.text.trim().isNotEmpty;
       _documentStatus['dvla'] =
-          _dvlsFront != null && _dvlsBack != null;
+          _dvlsFront != null &&
+          _dvlsBack != null &&
+          _dvlaController.text.trim().isNotEmpty;
     });
   }
 
   Future<void> _fetchCitizenshipStatus() async {
     setState(() => _isLoading = true);
-
     try {
       final prefs = await SharedPreferences.getInstance();
       final accessToken = prefs.getString('access_token');
-
       if (accessToken == null) throw Exception('Access token not found');
 
       final response = await http.get(
@@ -142,20 +148,15 @@ final TextEditingController _dvlaController =
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         setState(() {
-          _isBritishCitizen = responseData['is_british_citizen'] as bool?;
-          if (_isBritishCitizen == null) {
-            _isBritishCitizen =
-                false; // Default to non-British if not specified
-          }
+          _isBritishCitizen =
+              responseData['is_british_citizen'] as bool? ?? false;
         });
       } else {
         throw Exception('Failed to load status: ${response.statusCode}');
       }
     } catch (e) {
       _showErrorDialog('Error loading profile: ${e.toString()}');
-      setState(
-        () => _isBritishCitizen = false,
-      ); // Default to non-British on error
+      setState(() => _isBritishCitizen = false);
     } finally {
       setState(() => _isLoading = false);
       _updateDocumentStatus();
@@ -166,27 +167,25 @@ final TextEditingController _dvlaController =
     showCupertinoDialog(
       context: context,
       builder:
-          (context) => CupertinoTheme(
-            data: const CupertinoThemeData(
-              brightness: Brightness.light, // Ensures white background
+          (context) => CupertinoAlertDialog(
+            title: const Text('Upload Required'),
+            content: Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(message, style: TextStyle(color: _textPrimary)),
             ),
-            child: CupertinoAlertDialog(
-              title: const Text('Please Upload All Documents'),
-              content: Text(message, style: TextStyle(color: _textColor)),
-              actions: [
-                CupertinoDialogAction(
-                  child: Text('Retry', style: TextStyle(color: _accentColor)),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _fetchCitizenshipStatus();
-                  },
-                ),
-                CupertinoDialogAction(
-                  child: Text('OK', style: TextStyle(color: _accentColor)),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
+            actions: [
+              CupertinoDialogAction(
+                child: Text('Retry', style: TextStyle(color: _primaryColor)),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _fetchCitizenshipStatus();
+                },
+              ),
+              CupertinoDialogAction(
+                child: Text('OK', style: TextStyle(color: _primaryColor)),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
           ),
     );
   }
@@ -195,30 +194,28 @@ final TextEditingController _dvlaController =
     showCupertinoDialog(
       context: context,
       builder:
-          (context) => CupertinoTheme(
-            data: const CupertinoThemeData(
-              brightness: Brightness.light, // Forces white background
+          (context) => CupertinoAlertDialog(
+            title: const Text('Success'),
+            content: Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text(message, style: TextStyle(color: _textPrimary)),
             ),
-            child: CupertinoAlertDialog(
-              title: const Text('Success'),
-              content: Text(message, style: TextStyle(color: _textColor)),
-              actions: [
-                CupertinoDialogAction(
-                  child: Text('OK', style: TextStyle(color: _accentColor)),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.pushReplacement(
-                      context,
-                      CupertinoPageRoute(
-                        builder:
-                            (context) =>
-                                const DocumentVerificationPendingScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+            actions: [
+              CupertinoDialogAction(
+                child: Text('Continue', style: TextStyle(color: _primaryColor)),
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacement(
+                    context,
+                    CupertinoPageRoute(
+                      builder:
+                          (context) =>
+                              const DocumentVerificationPendingScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
     );
   }
@@ -236,94 +233,24 @@ final TextEditingController _dvlaController =
     }
   }
 
-  void _promptForDetails(String documentType, Function(String) onSave) {
-    TextEditingController tempController = TextEditingController();
-
-    showCupertinoDialog(
-      context: context,
-      builder:
-          (context) => CupertinoTheme(
-            data: const CupertinoThemeData(
-              brightness: Brightness.light, // Ensures white background
-            ),
-            child: CupertinoAlertDialog(
-              title: Text(
-                '${_getDocumentTitle(documentType)} Details',
-                style: const TextStyle(
-                  color: CupertinoColors.black,
-                ), // Changed to black for visibility on white
-              ),
-              content: Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: CupertinoTextField(
-                  controller: tempController,
-                  placeholder: 'Enter document details',
-                  maxLines: 3,
-                  style: const TextStyle(color: CupertinoColors.black),
-                  placeholderStyle: const TextStyle(
-                    color: CupertinoColors.systemGrey,
-                  ),
-                  decoration: BoxDecoration(
-                    color: CupertinoColors.white,
-                    border: Border.all(
-                      color: CupertinoColors.activeBlue.withOpacity(0.5),
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-              actions: [
-  CupertinoDialogAction(
-    child: const Text(
-      'Cancel',
-      style: TextStyle(color: CupertinoColors.systemRed),
-    ),
-    onPressed: () => Navigator.pop(context),
-    isDestructiveAction: true,
-  ),
-  CupertinoDialogAction(
-    child: const Text(
-      'Save',
-      style: TextStyle(color: CupertinoColors.activeBlue),
-    ),
-    onPressed: () {
-      // Close the dialog first
-      Navigator.of(context).pop();
-      
-      // Then perform save operation
-      Future.microtask(() {
-        try {
-          onSave(tempController.text);
-        } catch (e) {
-          print('Error during save: $e');
-        }
-      });
-    },
-  ),
-],
-            ),
-          ),
-    );
-  }
-
-  String _getDocumentTitle(String documentType) {
-    switch (documentType) {
-      case 'IDENTITY':
-        return 'Identity';
-      case 'RIGHT_TO_WORK':
-        return 'Right to Work';
-      case 'ADDRESS':
-        return 'Address Proof';
-      case 'INSURANCE':
-        return 'Vehicle Insurance';
-      case 'LICENSE':
-        return 'Driving License';
-      case 'DVLA':
-        return 'DVLA Electronic Counterpart';
-      default:
-        return 'Document';
-    }
-  }
+  // String _getDocumentTitle(String documentType) {
+  //   switch (documentType) {
+  //     case 'IDENTITY':
+  //       return 'Identity';
+  //     case 'RIGHT_TO_WORK':
+  //       return 'Right to Work';
+  //     case 'ADDRESS':
+  //       return 'Address Proof';
+  //     case 'INSURANCE':
+  //       return 'Vehicle Insurance';
+  //     case 'LICENSE':
+  //       return 'Driving License';
+  //     case 'DVLA':
+  //       return 'DVLA Electronic Counterpart';
+  //     default:
+  //       return 'Document';
+  //   }
+  // }
 
   Future<bool> _uploadDocument({
     required String documentType,
@@ -357,6 +284,7 @@ final TextEditingController _dvlaController =
           break;
         case 'LICENSE':
           request.fields['license_details'] = details;
+          break;
         case 'DVLA':
           request.fields['dvla_details'] = details;
           break;
@@ -372,13 +300,13 @@ final TextEditingController _dvlaController =
       final response = await request.send();
       final responseString = await response.stream.bytesToString();
 
-      if (response.statusCode == 201 || response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         debugPrint('Upload success: $responseString');
         return true;
+      } else {
+        debugPrint('Upload failed: $responseString');
+        return false;
       }
-
-      debugPrint('Upload failed: $responseString');
-      return false;
     } catch (e) {
       debugPrint('Upload error: $e');
       return false;
@@ -387,31 +315,22 @@ final TextEditingController _dvlaController =
 
   Future<void> _submitAllDocuments() async {
     setState(() => _isLoading = true);
-
     try {
-      // Check all required documents are uploaded
       if (_idFront == null || _idBack == null) {
         throw Exception('Please upload both sides of your Proof of Identity');
       }
-
+      if (_identityDetailsController.text.trim().isEmpty) {
+        throw Exception('Please provide details for Proof of Identity');
+      }
       if (_isBritishCitizen == null) {
         throw Exception('Citizenship status not loaded. Please try again.');
       }
-
-      // Check identity details
-      if (_identityDetailsController.text.isEmpty) {
-        _promptForDetails('IDENTITY', (details) {
-          _identityDetailsController.text = details;
-          _submitAllDocuments();
-        });
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      // Check right to work documents and details
       if (_isBritishCitizen!) {
         if (_passportFront == null || _passportBack == null) {
           throw Exception('Please upload both sides of your British Passport');
+        }
+        if (_rightToWorkDetailsController.text.trim().isEmpty) {
+          throw Exception('Please provide details for British Passport');
         }
       } else {
         if (_rightToWorkUKFront == null || _rightToWorkUKBack == null) {
@@ -419,73 +338,39 @@ final TextEditingController _dvlaController =
             'Please upload both sides of your Right to Work document',
           );
         }
+        if (_rightToWorkDetailsController.text.trim().isEmpty) {
+          throw Exception('Please provide details for Right to Work');
+        }
       }
-
-      if (_rightToWorkDetailsController.text.isEmpty) {
-        _promptForDetails('RIGHT_TO_WORK', (details) {
-          _rightToWorkDetailsController.text = details;
-          _submitAllDocuments();
-        });
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      // Check address proof documents and details
       if (_addressProofFront == null || _addressProofBack == null) {
         throw Exception('Please upload both sides of your Address Proof');
       }
-
-      if (_addressDetailsController.text.isEmpty) {
-        _promptForDetails('ADDRESS', (details) {
-          _addressDetailsController.text = details;
-          _submitAllDocuments();
-        });
-        setState(() => _isLoading = false);
-        return;
+      if (_addressDetailsController.text.trim().isEmpty) {
+        throw Exception('Please provide details for Address Proof');
       }
-
-      // Check vehicle insurance documents and details
       if (_vehicleInsuranceFront == null || _vehicleInsuranceBack == null) {
         throw Exception('Please upload both sides of your Vehicle Insurance');
       }
-
-      if (_insuranceDetailsController.text.isEmpty) {
-        _promptForDetails('INSURANCE', (details) {
-          _insuranceDetailsController.text = details;
-          _submitAllDocuments();
-        });
-        setState(() => _isLoading = false);
-        return;
-
-      
+      if (_insuranceDetailsController.text.trim().isEmpty) {
+        throw Exception('Please provide details for Vehicle Insurance');
       }
-
-      // Check driving license documents and details
       if (_drivingLicenseFront == null || _drivingLicenseBack == null) {
         throw Exception('Please upload both sides of your Driving License');
       }
-
-      if (_licenseDetailsController.text.isEmpty) {
-        _promptForDetails('LICENSE', (details) {
-          _licenseDetailsController.text = details;
-          _submitAllDocuments();
-        });
-        setState(() => _isLoading = false);
-        return;
+      if (_licenseDetailsController.text.trim().isEmpty) {
+        throw Exception('Please provide details for Driving License');
       }
-      if(_dvlsFront == null || _dvlsBack == null) {
-        throw Exception('Please upload both sides of your DVLA Electronic Counterpart');
+      if (_dvlsFront == null || _dvlsBack == null) {
+        throw Exception(
+          'Please upload both sides of your DVLA Electronic Counterpart',
+        );
       }
-      if (_dvlaController.text.isEmpty) {
-        _promptForDetails('DVLA', (details) {
-          _dvlaController.text = details;
-          _submitAllDocuments();
-        });
-        setState(() => _isLoading = false);
-        return;
+      if (_dvlaController.text.trim().isEmpty) {
+        throw Exception(
+          'Please provide details for DVLA Electronic Counterpart',
+        );
       }
 
-      // All documents and details are present, proceed with upload
       List<Future<bool>> uploads = [
         _uploadDocument(
           documentType: 'IDENTITY',
@@ -539,277 +424,429 @@ final TextEditingController _dvlaController =
     }
   }
 
-  Widget _buildProgressIndicator() {
-    final completedDocs = _documentStatus.values.where((v) => v).length;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Document Completion',
-                style: TextStyle(
-                  // color: _textColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              Text(
-                '$completedDocs/${_documentStatus.length}',
-                style: TextStyle(
-                  color: _accentColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          CupertinoActivityIndicator.partiallyRevealed(
-            progress: completedDocs / _documentStatus.length,
-            color: _accentColor,
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDocumentCard({
-  required String title,
-  required IconData icon,
-  required File? frontFile,
-  required File? backFile,
-  required Function(File?) onFrontUploaded,
-  required Function(File?) onBackUploaded,
-  bool isRequired = true,
-  TextEditingController? detailsController,
-  String documentType = '',
-}) {
-  final isComplete = frontFile != null && backFile != null;
-
-  return Container(
-    margin: const EdgeInsets.only(bottom: 16),
-    decoration: BoxDecoration(
-      color: _backgroundColor,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: isComplete ? _completedColor : _accentColor.withOpacity(0.5),
-        width: isComplete ? 2 : 1,
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: _accentColor.withOpacity(0.1),
-          blurRadius: 8,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isComplete ? _completedColor : _accentColor,
-                  borderRadius: BorderRadius.circular(8),
+                  color: _primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  isComplete ? CupertinoIcons.checkmark_alt : icon,
-                  color: _backgroundColor,
-                  size: 20,
+                  CupertinoIcons.doc_text_fill,
+                  color: _primaryColor,
+                  size: 24,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      title,
+                      'Document Verification',
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: _textColor,
-                        fontSize: 16,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        color: _textPrimary,
                       ),
                     ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      minSize: 0,
-                      child: Text(
-                        "What is this?",
-                        style: TextStyle(
-                          color: _accentColor,
-                          fontSize: 12,
-                        ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Complete your application by uploading all required documents',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: _textSecondary,
+                        height: 1.3,
                       ),
-                      onPressed: () {
-                        // Navigate based on title
-                        if (title == "Proof of Identity") {
-                          Navigator.push(
-                            context, 
-                            CupertinoPageRoute(builder: (context) => IdentityVerificationScreen())
-                          );
-                        } else if (title == "British Passport") {
-                          Navigator.push(
-                            context, 
-                            CupertinoPageRoute(builder: (context) => BritishPassport())
-                          );
-                        } else if (title == "Right to Work in UK") {
-                          Navigator.push(
-                            context, 
-                            CupertinoPageRoute(builder: (context) => RightToWork())
-                          );
-                        } else if (title == "Proof of Address") {
-                          Navigator.push(
-                            context, 
-                            CupertinoPageRoute(builder: (context) => ProofOfAddress())
-                          );
-                        } else if (title == "Vehicle Insurance") {
-                          Navigator.push(
-                            context, 
-                            CupertinoPageRoute(builder: (context) => VehicleInsurance())
-                          );
-                        } else if (title == "Driving License") {
-                          Navigator.push(
-                            context, 
-                            CupertinoPageRoute(builder: (context) => DriverLicence())
-                          );
-                        }
-                        else if (title == "DVLA Electronic Counterpart") {
-                          Navigator.push(
-                            context, 
-                            CupertinoPageRoute(builder: (context) => DvlsDocument())
-                          );
-                        }
-                      },
                     ),
                   ],
                 ),
               ),
-              if (isComplete)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _completedColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Complete',
-                    style: TextStyle(
-                      color: _completedColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressSection() {
+    final completedDocs = _documentStatus.values.where((v) => v).length;
+    final totalDocs = _documentStatus.length;
+    final progress = completedDocs / totalDocs;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Application Progress',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: _textPrimary,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: progress == 1.0 ? _successColor : _primaryColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$completedDocs/$totalDocs Complete',
+                  style: const TextStyle(
+                    color: CupertinoColors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-              if (isRequired)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: CupertinoColors.systemRed.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Required',
-                    style: TextStyle(
-                      color: CupertinoColors.systemRed,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildImageUpload(
-                label: 'Front',
-                file: frontFile,
-                onPressed: () async {
-                  final file = await _pickImage();
-                  if (file != null) {
-                    onFrontUploaded(file);
-                    _updateDocumentStatus();
-                  }
-                },
+          Container(
+            height: 8,
+            decoration: BoxDecoration(
+              color: _borderColor,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: progress,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: progress == 1.0 ? _successColor : _primaryColor,
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
-              const SizedBox(width: 16),
-              _buildImageUpload(
-                label: 'Back',
-                file: backFile,
-                onPressed: () async {
-                  final file = await _pickImage();
-                  if (file != null) {
-                    onBackUploaded(file);
-                    _updateDocumentStatus();
-                  }
-                },
-              ),
-            ],
+            ),
           ),
-          // if (detailsController != null && isComplete)
-            Padding(
-              padding: const EdgeInsets.only(top: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 12),
+          Text(
+            progress == 1.0
+                ? 'All documents uploaded! Ready to submit.'
+                : 'Upload ${totalDocs - completedDocs} more documents to complete your application.',
+            style: TextStyle(
+              fontSize: 14,
+              color: progress == 1.0 ? _successColor : _textSecondary,
+              fontWeight: progress == 1.0 ? FontWeight.w500 : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, String subtitle) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: _textPrimary,
+            ),
+          ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(fontSize: 15, color: _textSecondary),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDocumentCard({
+    required String title,
+    required IconData icon,
+    required File? frontFile,
+    required File? backFile,
+    required Function(File?) onFrontUploaded,
+    required Function(File?) onBackUploaded,
+    bool isRequired = true,
+    TextEditingController? detailsController,
+    String documentType = '',
+  }) {
+    final isComplete =
+        frontFile != null &&
+        backFile != null &&
+        (detailsController == null || detailsController.text.trim().isNotEmpty);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isComplete ? _successColor : _borderColor,
+          width: isComplete ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color:
+                        isComplete
+                            ? _successColor.withOpacity(0.1)
+                            : _primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    isComplete
+                        ? CupertinoIcons.checkmark_alt_circle_fill
+                        : icon,
+                    color: isComplete ? _successColor : _primaryColor,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                color: _textPrimary,
+                              ),
+                            ),
+                          ),
+                          if (isComplete)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _successColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Complete',
+                                style: TextStyle(
+                                  color: _successColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          if (!isComplete && isRequired)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _warningColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                'Required',
+                                style: TextStyle(
+                                  color: _warningColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        minSize: 0,
+                        child: Text(
+                          "Learn more about this document",
+                          style: TextStyle(
+                            color: _primaryColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        onPressed: () => _navigateToDocumentInfo(title),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Upload Section
+            Row(
+              children: [
+                _buildImageUpload(
+                  label: 'Front Side',
+                  file: frontFile,
+                  onPressed: () async {
+                    final file = await _pickImage();
+                    if (file != null) {
+                      onFrontUploaded(file);
+                      _updateDocumentStatus();
+                    }
+                  },
+                ),
+                const SizedBox(width: 12),
+                _buildImageUpload(
+                  label: 'Back Side',
+                  file: backFile,
+                  onPressed: () async {
+                    final file = await _pickImage();
+                    if (file != null) {
+                      onBackUploaded(file);
+                      _updateDocumentStatus();
+                    }
+                  },
+                ),
+              ],
+            ),
+            // Details Section
+            if (detailsController != null) ...[
+              const SizedBox(height: 20),
+              Row(
                 children: [
                   Text(
-                    'Document Details',
-                    style: TextStyle(color: _textColor, fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  CupertinoTextField(
-                    controller: detailsController,
-                    placeholder: 'Enter document details',
-                    maxLines: 3,
-                    style: TextStyle(color: _textColor),
-                    placeholderStyle: TextStyle(color: _secondaryTextColor),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: _accentColor.withOpacity(0.5),
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                      color: _backgroundColor,
+                    'Additional Details',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: _textPrimary,
                     ),
                   ),
-                  // if (detailsController.text.isEmpty)
+                  if (isRequired && detailsController.text.trim().isEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        child: Text(
-                          'Add Details',
-                          style: TextStyle(color: _accentColor),
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Text(
+                        '(Required)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: _warningColor,
                         ),
-                        onPressed:(){}
-                            // () => _promptForDetails(
-                            //   documentType,
-                            //   (details) => setState(
-                            //     () => detailsController.text = details,
-                            //   ),
-                            // ),
                       ),
                     ),
                 ],
               ),
-            ),
-        ],
+              const SizedBox(height: 8),
+              CupertinoTextField(
+                controller: detailsController,
+                placeholder: 'Add any relevant details about this document...',
+                maxLines: 2,
+                style: TextStyle(color: _textPrimary, fontSize: 15),
+                placeholderStyle: TextStyle(color: _textSecondary),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color:
+                        detailsController.text.trim().isEmpty && isRequired
+                            ? _warningColor
+                            : _borderColor,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  color: _cardColor,
+                ),
+                padding: const EdgeInsets.all(12),
+                onChanged: (value) {
+                  _updateDocumentStatus();
+                },
+              ),
+            ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
+
+  void _navigateToDocumentInfo(String title) {
+    Widget page;
+    switch (title) {
+      case 'Proof of Identity':
+        page = const IdentityVerificationScreen();
+        break;
+      case 'British Passport':
+        page = const BritishPassport();
+        break;
+      case 'Right to Work in UK':
+        page = const RightToWork();
+        break;
+      case 'Proof of Address':
+        page = const ProofOfAddress();
+        break;
+      case 'Vehicle Insurance':
+        page = const VehicleInsurance();
+        break;
+      case 'Driving License':
+        page = const DriverLicence();
+        break;
+      case 'DVLA Electronic Counterpart':
+        page = const DvlsDocument();
+        break;
+      default:
+        return;
+    }
+    Navigator.push(context, CupertinoPageRoute(builder: (context) => page));
+  }
 
   Widget _buildImageUpload({
     required String label,
@@ -820,27 +857,68 @@ final TextEditingController _dvlaController =
       child: GestureDetector(
         onTap: onPressed,
         child: Container(
-          height: 120,
+          height: 140,
           decoration: BoxDecoration(
-            color: file != null ? null : _accentColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            color: file != null ? null : CupertinoColors.systemGrey6,
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color:
-                  file != null ? _accentColor : _accentColor.withOpacity(0.5),
+              color: file != null ? _successColor : _borderColor,
+              width: file != null ? 2 : 1,
             ),
           ),
           child:
               file != null
-                  ? ClipRRect(
-                    borderRadius: BorderRadius.circular(7),
-                    child: Image.file(file, fit: BoxFit.cover),
+                  ? Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: Image.file(
+                          file,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: _successColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            CupertinoIcons.checkmark,
+                            color: CupertinoColors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
                   )
                   : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(CupertinoIcons.photo, size: 32, color: _accentColor),
+                      Icon(
+                        CupertinoIcons.camera_fill,
+                        color: _textSecondary,
+                        size: 28,
+                      ),
                       const SizedBox(height: 8),
-                      Text(label, style: TextStyle(color: _textColor)),
+                      Text(
+                        label,
+                        style: TextStyle(
+                          color: _textSecondary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tap to upload',
+                        style: TextStyle(color: _textSecondary, fontSize: 12),
+                      ),
                     ],
                   ),
         ),
@@ -848,231 +926,264 @@ final TextEditingController _dvlaController =
     );
   }
 
+  Widget _buildSubmitButton() {
+    final allComplete = _documentStatus.values.every((status) => status);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Final Step',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: _textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            allComplete
+                ? 'All documents are ready. Submit your application for review.'
+                : 'Please complete all document uploads and details before submitting.',
+            style: TextStyle(fontSize: 15, color: _textSecondary),
+          ),
+          const SizedBox(height: 20),
+          CupertinoButton(
+            onPressed: _isLoading || !allComplete ? null : _submitAllDocuments,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            borderRadius: BorderRadius.circular(12),
+            color: allComplete ? _primaryColor : _borderColor,
+            child:
+                _isLoading
+                    ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CupertinoActivityIndicator(
+                            color: CupertinoColors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Submitting...',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                            color: CupertinoColors.white,
+                          ),
+                        ),
+                      ],
+                    )
+                    : Text(
+                      'Submit Application',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            allComplete
+                                ? CupertinoColors.white
+                                : _textSecondary,
+                      ),
+                    ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
-      // backgroundColor: _backgroundColor,
+      backgroundColor: _backgroundColor,
       navigationBar: CupertinoNavigationBar(
-        middle: Text(
-          'Document Registrations',
-          style: TextStyle(color: _textColor),
-        ),
-         trailing: CupertinoButton(
-          padding: EdgeInsets.zero,
-          child: Icon(CupertinoIcons.refresh, color: _accentColor),
-          onPressed: _fetchCitizenshipStatus,
-        ),
-        backgroundColor: _backgroundColor,
+        backgroundColor: _cardColor.withOpacity(0.8),
         border: Border(
-          bottom: BorderSide(color: _accentColor.withOpacity(0.2)),
+          bottom: BorderSide(color: _borderColor.withOpacity(0.3), width: 0.5),
+        ),
+        middle: Text(
+          'Document Upload',
+          style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w600),
+        ),
+        leading: CupertinoButton(
+          padding: EdgeInsets.zero,
+          child: Icon(CupertinoIcons.back, color: _primaryColor),
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       child: SafeArea(
         child: Stack(
           children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: _primaryColor,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _accentColor.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(CupertinoIcons.doc_text, color: _backgroundColor),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Document Verification',
-                                style: TextStyle(
-                                  color: _backgroundColor,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 18,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Upload all required documents',
-                                style: TextStyle(
-                                  color: _backgroundColor.withOpacity(0.9),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _buildProgressIndicator(),
-                  Text(
-                    'All documents are required for registration',
-                    style: TextStyle(
-                      color: CupertinoColors.systemRed,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Required Documents',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: _textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildDocumentCard(
-                    title: 'Proof of Identity',
-                    icon: CupertinoIcons.person_alt_circle,
-                    frontFile: _idFront,
-                    backFile: _idBack,
-                    onFrontUploaded: (file) => setState(() => _idFront = file),
-                    onBackUploaded: (file) => setState(() => _idBack = file),
-                    isRequired: true,
-                    detailsController: _identityDetailsController,
-                    documentType: 'IDENTITY',
-                  ),
-                  if (_isBritishCitizen == null)
-                    Center(
-                      child: CupertinoActivityIndicator(color: _accentColor),
-                    )
-                  else if (_isBritishCitizen!)
-                    _buildDocumentCard(
-                      title: 'British Passport',
-                      icon: CupertinoIcons.airplane,
-                      frontFile: _passportFront,
-                      backFile: _passportBack,
-                      onFrontUploaded:
-                          (file) => setState(() => _passportFront = file),
-                      onBackUploaded:
-                          (file) => setState(() => _passportBack = file),
-                      isRequired: true,
-                      detailsController: _rightToWorkDetailsController,
-                      documentType: 'RIGHT_TO_WORK',
-                    )
-                  else
-                    _buildDocumentCard(
-                      title: 'Right to Work in UK',
-                      icon: CupertinoIcons.briefcase,
-                      frontFile: _rightToWorkUKFront,
-                      backFile: _rightToWorkUKBack,
-                      onFrontUploaded:
-                          (file) => setState(() => _rightToWorkUKFront = file),
-                      onBackUploaded:
-                          (file) => setState(() => _rightToWorkUKBack = file),
-                      isRequired: true,
-                      detailsController: _rightToWorkDetailsController,
-                      documentType: 'RIGHT_TO_WORK',
-                    ),
-                  Text(
-                    'Additional Documents',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: _textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildDocumentCard(
-                    title: 'Proof of Address',
-                    icon: CupertinoIcons.home,
-                    frontFile: _addressProofFront,
-                    backFile: _addressProofBack,
-                    onFrontUploaded:
-                        (file) => setState(() => _addressProofFront = file),
-                    onBackUploaded:
-                        (file) => setState(() => _addressProofBack = file),
-                    isRequired: true,
-                    detailsController: _addressDetailsController,
-                    documentType: 'ADDRESS',
-                  ),
-                  _buildDocumentCard(
-                    title: 'Vehicle Insurance',
-                    icon: CupertinoIcons.car_detailed,
-                    frontFile: _vehicleInsuranceFront,
-                    backFile: _vehicleInsuranceBack,
-                    onFrontUploaded:
-                        (file) => setState(() => _vehicleInsuranceFront = file),
-                    onBackUploaded:
-                        (file) => setState(() => _vehicleInsuranceBack = file),
-                    isRequired: true,
-                    detailsController: _insuranceDetailsController,
-                    documentType: 'INSURANCE',
-                  ),
-                  _buildDocumentCard(
-                    title: 'Driving License',
-                    icon: CupertinoIcons.car,
-                    frontFile: _drivingLicenseFront,
-                    backFile: _drivingLicenseBack,
-                    onFrontUploaded:
-                        (file) => setState(() => _drivingLicenseFront = file),
-                    onBackUploaded:
-                        (file) => setState(() => _drivingLicenseBack = file),
-                    isRequired: true,
-                    detailsController: _licenseDetailsController,
-                    documentType: 'LICENSE',
-                  ),
-                   _buildDocumentCard(
-                    title: 'DVLA Electronic Counterpart',
-                    icon: CupertinoIcons.car_detailed,
-                    frontFile: _dvlsFront,
-                    backFile: _dvlsBack,
-                    onFrontUploaded:
-                        (file) => setState(() => _dvlsFront = file),
-                    onBackUploaded:
-                        (file) => setState(() => _dvlsBack = file),
-                    isRequired: true,
-                    detailsController: _dvlaController,
-                    documentType: 'DVLA',
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: CupertinoButton.filled(
-                        child:
-                            _isLoading
-                                ? CupertinoActivityIndicator(
-                                  color: _backgroundColor,
-                                )
-                                : Text(
-                                  'Submit Documents',
-                                  style: TextStyle(color: _backgroundColor),
-                                ),
-                        onPressed: _submitAllDocuments,
-                        borderRadius: BorderRadius.circular(8),
+            _isLoading && _isBritishCitizen == null
+                ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CupertinoActivityIndicator(
+                        radius: 16,
+                        color: _primaryColor,
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Loading your profile...',
+                        style: TextStyle(fontSize: 16, color: _textSecondary),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            if (_isLoading)
+                )
+                : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 20),
+                      _buildProgressSection(),
+                      const SizedBox(height: 32),
+                      _buildSectionHeader(
+                        'Identity Verification',
+                        'Required documents to verify your identity',
+                      ),
+                      _buildDocumentCard(
+                        title: 'Proof of Identity',
+                        icon: CupertinoIcons.person_badge_plus,
+                        frontFile: _idFront,
+                        backFile: _idBack,
+                        onFrontUploaded:
+                            (file) => setState(() => _idFront = file),
+                        onBackUploaded:
+                            (file) => setState(() => _idBack = file),
+                        isRequired: true,
+                        detailsController: _identityDetailsController,
+                        documentType: 'IDENTITY',
+                      ),
+                      _buildSectionHeader(
+                        'Citizenship & Work Authorization',
+                        _isBritishCitizen == true
+                            ? 'British passport required for citizens'
+                            : 'Right to work documentation required',
+                      ),
+                      if (_isBritishCitizen == true)
+                        _buildDocumentCard(
+                          title: 'British Passport',
+                          icon: CupertinoIcons.doc_text,
+                          frontFile: _passportFront,
+                          backFile: _passportBack,
+                          onFrontUploaded:
+                              (file) => setState(() => _passportFront = file),
+                          onBackUploaded:
+                              (file) => setState(() => _passportBack = file),
+                          isRequired: true,
+                          detailsController: _rightToWorkDetailsController,
+                          documentType: 'RIGHT_TO_WORK',
+                        )
+                      else
+                        _buildDocumentCard(
+                          title: 'Right to Work in UK',
+                          icon: CupertinoIcons.globe,
+                          frontFile: _rightToWorkUKFront,
+                          backFile: _rightToWorkUKBack,
+                          onFrontUploaded:
+                              (file) =>
+                                  setState(() => _rightToWorkUKFront = file),
+                          onBackUploaded:
+                              (file) =>
+                                  setState(() => _rightToWorkUKBack = file),
+                          isRequired: true,
+                          detailsController: _rightToWorkDetailsController,
+                          documentType: 'RIGHT_TO_WORK',
+                        ),
+                      _buildSectionHeader(
+                        'Address Verification',
+                        'Proof of your current residential address',
+                      ),
+                      _buildDocumentCard(
+                        title: 'Proof of Address',
+                        icon: CupertinoIcons.location_solid,
+                        frontFile: _addressProofFront,
+                        backFile: _addressProofBack,
+                        onFrontUploaded:
+                            (file) => setState(() => _addressProofFront = file),
+                        onBackUploaded:
+                            (file) => setState(() => _addressProofBack = file),
+                        isRequired: true,
+                        detailsController: _addressDetailsController,
+                        documentType: 'ADDRESS',
+                      ),
+                      _buildSectionHeader(
+                        'Driving Documentation',
+                        'Required documents for vehicle operation',
+                      ),
+                      _buildDocumentCard(
+                        title: 'Vehicle Insurance',
+                        icon: CupertinoIcons.car_detailed,
+                        frontFile: _vehicleInsuranceFront,
+                        backFile: _vehicleInsuranceBack,
+                        onFrontUploaded:
+                            (file) =>
+                                setState(() => _vehicleInsuranceFront = file),
+                        onBackUploaded:
+                            (file) =>
+                                setState(() => _vehicleInsuranceBack = file),
+                        isRequired: true,
+                        detailsController: _insuranceDetailsController,
+                        documentType: 'INSURANCE',
+                      ),
+                      _buildDocumentCard(
+                        title: 'Driving License',
+                        icon: CupertinoIcons.creditcard,
+                        frontFile: _drivingLicenseFront,
+                        backFile: _drivingLicenseBack,
+                        onFrontUploaded:
+                            (file) =>
+                                setState(() => _drivingLicenseFront = file),
+                        onBackUploaded:
+                            (file) =>
+                                setState(() => _drivingLicenseBack = file),
+                        isRequired: true,
+                        detailsController: _licenseDetailsController,
+                        documentType: 'LICENSE',
+                      ),
+                      _buildDocumentCard(
+                        title: 'DVLA Electronic Counterpart',
+                        icon: CupertinoIcons.doc_checkmark,
+                        frontFile: _dvlsFront,
+                        backFile: _dvlsBack,
+                        onFrontUploaded:
+                            (file) => setState(() => _dvlsFront = file),
+                        onBackUploaded:
+                            (file) => setState(() => _dvlsBack = file),
+                        isRequired: true,
+                        detailsController: _dvlaController,
+                        documentType: 'DVLA',
+                      ),
+                      const SizedBox(height: 32),
+                      _buildSubmitButton(),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+            if (_isLoading && _isBritishCitizen != null)
               Container(
-                
-                color: _textColor.withOpacity(0.5),
+                color: Colors.black.withOpacity(0.4),
                 child: Center(
-                  child: CupertinoAlertDialog(
-                    title: Text(
-                      "Processing",
-                      style: TextStyle(color: _textColor),
-                    ),
-                    content: CupertinoActivityIndicator(color: _accentColor),
+                  child: CupertinoActivityIndicator(
+                    radius: 16,
+                    color: _primaryColor,
                   ),
                 ),
               ),

@@ -165,7 +165,7 @@ class _LoginPageState extends State<LoginPage> {
       if (response.statusCode == 200) {
         String accessToken = data['tokens']['access'] ?? "";
         String refreshToken = data['tokens']['refresh'] ?? "";
-        String name = data['name'] ?? "User";
+        String name = data['name'] ?? "";
         String email = account.email;
 
         await saveTokens(accessToken, refreshToken, email, name);

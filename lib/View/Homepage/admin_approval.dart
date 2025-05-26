@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import 'package:taskova_new/View/Homepage/homepage.dart';
 
 class DocumentVerificationPendingScreen extends StatelessWidget {
   const DocumentVerificationPendingScreen({Key? key}) : super(key: key);
@@ -110,6 +111,48 @@ class DocumentVerificationPendingScreen extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
+                  // Go to Homepage Button
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    child: CupertinoButton(
+                      onPressed: () {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HomePage(),
+                          ),
+                          (Route<dynamic> route) =>
+                              false, // Remove all previous routes
+                        );
+                      },
+                      color: CupertinoColors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            CupertinoIcons.home,
+                            color: const Color(0xFF1A535C),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "Go to Homepage",
+                            style: TextStyle(
+                              color: const Color(0xFF1A535C),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                   // Estimated Time
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -124,9 +167,9 @@ class DocumentVerificationPendingScreen extends StatelessWidget {
                       ),
                     ),
                     margin: const EdgeInsets.only(
-                      left: 24, 
-                      right: 24, 
-                      bottom: 24
+                      left: 24,
+                      right: 24,
+                      bottom: 24,
                     ),
                     child: Row(
                       children: [

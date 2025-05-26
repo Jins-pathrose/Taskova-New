@@ -163,7 +163,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
       // backgroundColor: AppColors.white,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: AppColors.primaryBlue,
-        middle: Text(
+        middle: Text( 
           appLanguage.get('reset_password'),
           style: TextStyle(color: AppColors.white, fontWeight: FontWeight.w600),
         ),

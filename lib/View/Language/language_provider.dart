@@ -123,6 +123,7 @@ class AppLanguage extends ChangeNotifier {
     'home_address': 'Home Address',
     'home_postcode': 'Home Postcode',
     'loading_profile': 'Loading profile...',
+    'name_must_contain_only_alphabets': 'Name must contain only alphabets',
     'personal_information': 'Personal Information',
     'are_you_sure_you_want_to_logout': 'Are you sure you want to logout?',
     'logout_confirmation': 'Logout Confirmation',
@@ -135,6 +136,8 @@ class AppLanguage extends ChangeNotifier {
     'driver_status': 'Driver Status',
     'profile_updated_successfully': 'Profile updated successfully',
     'upload_certificate': 'Upload Certificate',
+    'selected_home_address': 'Selected Home Address',
+    'please_enter_valid_uk_phone_number': 'Please enter a valid UK phone number',
   };
   
   // Constructor

@@ -15,11 +15,11 @@ import 'package:taskova_new/View/Language/language_provider.dart';
 
 class ProfileRegistrationPage extends StatefulWidget {
   @override
-  _ProfileRegistrationPageState createState() =>
-      _ProfileRegistrationPageState();
+  _ProfileRegistrationPageState createState() => _ProfileRegistrationPageState();
 }
 
-class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
+class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -57,34 +57,47 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     super.initState();
     appLanguage = Provider.of<AppLanguage>(context, listen: false);
     _loadSavedUserData();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      _clearAccessTokenSync();
+    }
+  }
+
+  // Synchronous function to clear access token
+  void _clearAccessTokenSync() {
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.remove('access_token');
+    });
   }
 
   Future<bool> _onWillPop() async {
     final shouldExit = await showCupertinoDialog<bool>(
       context: context,
-      builder:
-          (context) => CupertinoAlertDialog(
-            title: Text('Exit Profile Registration?'),
-            content: Text(
-              'Are you sure you want to exit? Your progress will be lost.',
-            ),
-            actions: [
-              CupertinoDialogAction(
-                child: Text('Cancel'),
-                onPressed: () => Navigator.of(context).pop(false),
-              ),
-              CupertinoDialogAction(
-                child: Text('Exit'),
-                isDestructiveAction: true,
-                onPressed: () => Navigator.of(context).pop(true),
-              ),
-            ],
+      builder: (context) => CupertinoAlertDialog(
+        title: Text('Exit Profile Registration?'),
+        content: Text(
+          'Are you sure you want to exit? Your progress will be lost.',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: Text('Cancel'),
+            onPressed: () => Navigator.of(context).pop(false),
           ),
+          CupertinoDialogAction(
+            child: Text('Exit'),
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+        ],
+      ),
     );
 
     if (shouldExit ?? false) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('access_token'); 
+      _clearAccessTokenSync();
       return true;
     }
     return false;
@@ -276,9 +289,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                   }
                 });
                 _errorMessage =
-                    errors.isNotEmpty
-                        ? errors.join('\n')
-                        : 'Unknown error occurred';
+                    errors.isNotEmpty ? errors.join('\n') : 'Unknown error occurred';
               }
             } else {
               _errorMessage = 'Server returned an unexpected response format';
@@ -331,58 +342,55 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
   void _showErrorDialog(String message) {
     showCupertinoDialog(
       context: context,
-      builder:
-          (context) => CupertinoTheme(
-            data: CupertinoThemeData(brightness: Brightness.light),
-            child: CupertinoAlertDialog(
-              title: Text(
-                appLanguage.get('Please submit all required fields'),
-                style: TextStyle(color: CupertinoColors.destructiveRed),
-              ),
-              content: Text(message),
-              actions: [
-                CupertinoDialogAction(
-                  child: Text(
-                    appLanguage.get('ok'),
-                    style: TextStyle(color: primaryBlue),
-                  ),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
+      builder: (context) => CupertinoTheme(
+        data: CupertinoThemeData(brightness: Brightness.light),
+        child: CupertinoAlertDialog(
+          title: Text(
+            appLanguage.get('Please submit all required fields'),
+            style: TextStyle(color: CupertinoColors.destructiveRed),
           ),
+          content: Text(message),
+          actions: [
+            CupertinoDialogAction(
+              child: Text(
+                appLanguage.get('ok'),
+                style: TextStyle(color: primaryBlue),
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   void _showSuccessDialog(String message) {
     showCupertinoDialog(
       context: context,
-      builder:
-          (context) => CupertinoAlertDialog(
-            title: Text(
-              appLanguage.get('success'),
+      builder: (context) => CupertinoAlertDialog(
+        title: Text(
+          appLanguage.get('success'),
+          style: TextStyle(color: primaryBlue),
+        ),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            child: Text(
+              appLanguage.get('ok'),
               style: TextStyle(color: primaryBlue),
             ),
-            content: Text(message),
-            actions: [
-              CupertinoDialogAction(
-                child: Text(
-                  appLanguage.get('ok'),
-                  style: TextStyle(color: primaryBlue),
-                ),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
+            onPressed: () => Navigator.pop(context),
           ),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // ignore: deprecated_member_use
     return WillPopScope(
-  onWillPop: _onWillPop,
-  child: CupertinoPageScaffold(
+      onWillPop: _onWillPop,
+      child: CupertinoPageScaffold(
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -450,404 +458,384 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                   ),
                 ),
               ),
-      
+
               // Main Content
               Expanded(
-                child:
-                    _isSubmitting
-                        ? Container(
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
+                child: _isSubmitting
+                    ? Container(
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      primaryBlue.withOpacity(0.1),
+                                      whiteColor,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: primaryBlue.withOpacity(0.2),
+                                      blurRadius: 20,
+                                      spreadRadius: 5,
+                                    ),
+                                  ],
+                                ),
+                                child: CupertinoActivityIndicator(
+                                  color: primaryBlue,
+                                  radius: 20,
+                                ),
+                              ),
+                              SizedBox(height: 24),
+                              Text(
+                                appLanguage.get('submitting_profile_information'),
+                                style: TextStyle(
+                                  color: primaryBlue,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        padding: EdgeInsets.all(20),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (_errorMessage != null)
+                                Container(
+                                  padding: EdgeInsets.all(16),
+                                  margin: EdgeInsets.only(bottom: 20),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        CupertinoColors.destructiveRed
+                                            .withOpacity(0.1),
+                                        CupertinoColors.destructiveRed
+                                            .withOpacity(0.05),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: CupertinoColors.destructiveRed
+                                          .withOpacity(0.5),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        appLanguage.get('registration_failed'),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: CupertinoColors.destructiveRed,
+                                        ),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        _errorMessage!,
+                                        style: TextStyle(
+                                          color: CupertinoColors.destructiveRed,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              // Enhanced Profile Picture Section
+                              Center(
+                                child: Container(
+                                  padding: EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [primaryBlue, accentBlue],
+                                    ),
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: primaryBlue.withOpacity(0.4),
+                                        blurRadius: 20,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        width: 150,
+                                        height: 150,
+                                        decoration: BoxDecoration(
+                                          color: whiteColor,
+                                          shape: BoxShape.circle,
+                                          image: _imageFile != null
+                                              ? DecorationImage(
+                                                  image: FileImage(_imageFile!),
+                                                  fit: BoxFit.cover,
+                                                )
+                                              : null,
+                                        ),
+                                        child: _imageFile == null
+                                            ? Icon(
+                                                CupertinoIcons.person_solid,
+                                                size: 70,
+                                                color:
+                                                    primaryBlue.withOpacity(0.7),
+                                              )
+                                            : null,
+                                      ),
+                                      Positioned(
+                                        bottom: 0,
+                                        right: 0,
+                                        child: CupertinoButton(
+                                          padding: EdgeInsets.zero,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  accentBlue,
+                                                  primaryBlue,
+                                                ],
+                                              ),
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: whiteColor,
+                                                width: 3,
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: primaryBlue
+                                                      .withOpacity(0.3),
+                                                  blurRadius: 8,
+                                                  spreadRadius: 1,
+                                                ),
+                                              ],
+                                            ),
+                                            padding: EdgeInsets.all(10),
+                                            child: Icon(
+                                              CupertinoIcons.camera_fill,
+                                              color: whiteColor,
+                                              size: 20,
+                                            ),
+                                          ),
+                                          onPressed: () =>
+                                              _getImage(ImageSource.camera),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              SizedBox(height: 40),
+
+                              // Enhanced Form Fields
+                              _buildGradientFormField(
+                                controller: _nameController,
+                                placeholder: appLanguage.get('name'),
+                                icon: CupertinoIcons.person_fill,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return appLanguage.get('please_enter_name');
+                                  }
+                                  if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(value)) {
+                                    return appLanguage.get(
+                                        'name_must_contain_only_alphabets');
+                                  }
+                                  return null;
+                                },
+                              ),
+
+                              SizedBox(height: 20),
+
+                              _buildGradientFormField(
+                                controller: _emailController,
+                                placeholder: appLanguage.get('email'),
+                                icon: CupertinoIcons.mail_solid,
+                                keyboardType: TextInputType.emailAddress,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return appLanguage.get('please_enter_email');
+                                  }
+                                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                      .hasMatch(value)) {
+                                    return appLanguage.get(
+                                        'please_enter_valid_email');
+                                  }
+                                  return null;
+                                },
+                              ),
+
+                              SizedBox(height: 20),
+
+                              _buildGradientFormField(
+                                controller: _phoneController,
+                                placeholder: appLanguage.get('phone_number'),
+                                icon: CupertinoIcons.phone_fill,
+                                keyboardType: TextInputType.phone,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return appLanguage.get(
+                                        'please_enter_phone_number');
+                                  }
+                                  if (!_isValidUKPhoneNumber(value)) {
+                                    return 'Please enter a valid UK phone number';
+                                  }
+                                  return null;
+                                },
+                                onChanged: (value) {
+                                  // Ensure UK country code is always present
+                                  if (!value.startsWith('+44')) {
+                                    _phoneController.text = '+44 ' +
+                                        value.replaceAll('+44', '').trim();
+                                    _phoneController.selection =
+                                        TextSelection.fromPosition(
+                                      TextPosition(
+                                          offset: _phoneController.text.length),
+                                    );
+                                  }
+                                },
+                              ),
+
+                              SizedBox(height: 24),
+
+                              // Enhanced Home Address Section
+                              _buildGradientSection(
+                                title: appLanguage.get('home_address'),
+                                icon: CupertinoIcons.home,
+                                child: Column(
+                                  children: [
+                                    PostcodeSearchWidget(
+                                      placeholderText:
+                                          appLanguage.get('home_postcode'),
+                                      onAddressSelected:
+                                          (latitude, longitude, address) {
+                                        setState(() {
+                                          _selectedHomeAddress = address;
+                                          _homeLatitude = latitude;
+                                          _homeLongitude = longitude;
+                                        });
+                                      },
+                                    ),
+                                    if (_selectedHomeAddress != null) ...[
+                                      SizedBox(height: 16),
+                                      _buildSelectedAddressCard(
+                                        title: appLanguage.get(
+                                            'selected_home_address'),
+                                        address: _selectedHomeAddress!,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+
+                              SizedBox(height: 24),
+
+                              // Enhanced Toggle Switches
+                              _buildGradientToggleRow(
+                                text: appLanguage.get('are_u_british'),
+                                value: _isBritishCitizen,
+                                icon: CupertinoIcons.flag,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _isBritishCitizen = value;
+                                  });
+                                },
+                              ),
+
+                              SizedBox(height: 16),
+
+                              _buildGradientToggleRow(
+                                text: appLanguage.get('criminal_record'),
+                                value: _hasCriminalHistory,
+                                icon: CupertinoIcons.doc_checkmark,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _hasCriminalHistory = value;
+                                  });
+                                },
+                              ),
+
+                              SizedBox(height: 16),
+
+                              _buildGradientToggleRow(
+                                text: appLanguage.get('has_disability'),
+                                value: _hasDisability,
+                                icon: CupertinoIcons.heart,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _hasDisability = value;
+                                    if (!value) {
+                                      _disabilityCertificateFile = null;
+                                    }
+                                  });
+                                },
+                              ),
+
+                              // Enhanced Disability Certificate Upload
+                              if (_hasDisability) ...[
+                                SizedBox(height: 20),
                                 Container(
                                   padding: EdgeInsets.all(20),
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
-                                      colors: [
-                                        primaryBlue.withOpacity(0.1),
-                                        whiteColor,
-                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [lightBlue, whiteColor],
                                     ),
-                                    borderRadius: BorderRadius.circular(20),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: primaryBlue.withOpacity(0.3),
+                                    ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: primaryBlue.withOpacity(0.2),
-                                        blurRadius: 20,
-                                        spreadRadius: 5,
+                                        color: primaryBlue.withOpacity(0.1),
+                                        blurRadius: 10,
+                                        spreadRadius: 1,
                                       ),
                                     ],
                                   ),
-                                  child: CupertinoActivityIndicator(
-                                    color: primaryBlue,
-                                    radius: 20,
-                                  ),
-                                ),
-                                SizedBox(height: 24),
-                                Text(
-                                  appLanguage.get(
-                                    'submitting_profile_information',
-                                  ),
-                                  style: TextStyle(
-                                    color: primaryBlue,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                        : SingleChildScrollView(
-                          padding: EdgeInsets.all(20),
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (_errorMessage != null)
-                                  Container(
-                                    padding: EdgeInsets.all(16),
-                                    margin: EdgeInsets.only(bottom: 20),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          CupertinoColors.destructiveRed
-                                              .withOpacity(0.1),
-                                          CupertinoColors.destructiveRed
-                                              .withOpacity(0.05),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            CupertinoIcons.doc_text,
+                                            color: primaryBlue,
+                                            size: 20,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            appLanguage.get(
+                                                'disability_certificate'),
+                                            style: TextStyle(
+                                              color: primaryBlue,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
                                         ],
                                       ),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: CupertinoColors.destructiveRed
-                                            .withOpacity(0.5),
-                                      ),
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          appLanguage.get('registration_failed'),
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: CupertinoColors.destructiveRed,
-                                          ),
-                                        ),
-                                        SizedBox(height: 8),
-                                        Text(
-                                          _errorMessage!,
-                                          style: TextStyle(
-                                            color: CupertinoColors.destructiveRed,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-      
-                                // Enhanced Profile Picture Section
-                                Center(
-                                  child: Container(
-                                    padding: EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [primaryBlue, accentBlue],
-                                      ),
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: primaryBlue.withOpacity(0.4),
-                                          blurRadius: 20,
-                                          spreadRadius: 2,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Stack(
-                                      children: [
-                                        Container(
-                                          width: 150,
-                                          height: 150,
-                                          decoration: BoxDecoration(
-                                            color: whiteColor,
-                                            shape: BoxShape.circle,
-                                            image:
-                                                _imageFile != null
-                                                    ? DecorationImage(
-                                                      image: FileImage(
-                                                        _imageFile!,
-                                                      ),
-                                                      fit: BoxFit.cover,
-                                                    )
-                                                    : null,
-                                          ),
-                                          child:
-                                              _imageFile == null
-                                                  ? Icon(
-                                                    CupertinoIcons.person_solid,
-                                                    size: 70,
-                                                    color: primaryBlue
-                                                        .withOpacity(0.7),
-                                                  )
-                                                  : null,
-                                        ),
-                                        Positioned(
-                                          bottom: 0,
-                                          right: 0,
-                                          child: CupertinoButton(
-                                            padding: EdgeInsets.zero,
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    accentBlue,
-                                                    primaryBlue,
-                                                  ],
-                                                ),
-                                                shape: BoxShape.circle,
-                                                border: Border.all(
-                                                  color: whiteColor,
-                                                  width: 3,
-                                                ),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: primaryBlue
-                                                        .withOpacity(0.3),
-                                                    blurRadius: 8,
-                                                    spreadRadius: 1,
-                                                  ),
-                                                ],
-                                              ),
-                                              padding: EdgeInsets.all(10),
-                                              child: Icon(
-                                                CupertinoIcons.camera_fill,
-                                                color: whiteColor,
-                                                size: 20,
-                                              ),
-                                            ),
-                                            onPressed:
-                                                () =>
-                                                    _getImage(ImageSource.camera),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-      
-                                SizedBox(height: 40),
-      
-                                // Enhanced Form Fields
-                                _buildGradientFormField(
-                                  controller: _nameController,
-                                  placeholder: appLanguage.get('name'),
-                                  icon: CupertinoIcons.person_fill,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return appLanguage.get('please_enter_name');
-                                    }
-                                    return null;
-                                  },
-                                ),
-      
-                                SizedBox(height: 20),
-      
-                                _buildGradientFormField(
-                                  controller: _emailController,
-                                  placeholder: appLanguage.get('email'),
-                                  icon: CupertinoIcons.mail_solid,
-                                  keyboardType: TextInputType.emailAddress,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return appLanguage.get(
-                                        'please_enter_email',
-                                      );
-                                    }
-                                    if (!RegExp(
-                                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                                    ).hasMatch(value)) {
-                                      return appLanguage.get(
-                                        'please_enter_valid_email',
-                                      );
-                                    }
-                                    return null;
-                                  },
-                                ),
-      
-                                SizedBox(height: 20),
-      
-                                _buildGradientFormField(
-                                  controller: _phoneController,
-                                  placeholder: appLanguage.get('phone_number'),
-                                  icon: CupertinoIcons.phone_fill,
-                                  keyboardType: TextInputType.phone,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return appLanguage.get(
-                                        'please_enter_phone_number',
-                                      );
-                                    }
-                                    if (!_isValidUKPhoneNumber(value)) {
-                                      return 'Please enter a valid UK phone number';
-                                    }
-                                    return null;
-                                  },
-                                  onChanged: (value) {
-                                    // Ensure UK country code is always present
-                                    if (!value.startsWith('+44')) {
-                                      _phoneController.text =
-                                          '+44 ' +
-                                          value.replaceAll('+44', '').trim();
-                                      _phoneController
-                                          .selection = TextSelection.fromPosition(
-                                        TextPosition(
-                                          offset: _phoneController.text.length,
-                                        ),
-                                      );
-                                    }
-                                  },
-                                ),
-      
-                                SizedBox(height: 24),
-      
-                                // Enhanced Home Address Section
-                                _buildGradientSection(
-                                  title: appLanguage.get('home_address'),
-                                  icon: CupertinoIcons.home,
-                                  child: Column(
-                                    children: [
-                                      PostcodeSearchWidget(
-                                        placeholderText: appLanguage.get(
-                                          'home_postcode',
-                                        ),
-                                        onAddressSelected: (
-                                          latitude,
-                                          longitude,
-                                          address,
-                                        ) {
-                                          setState(() {
-                                            _selectedHomeAddress = address;
-                                            _homeLatitude = latitude;
-                                            _homeLongitude = longitude;
-                                          });
-                                        },
-                                      ),
-                                      if (_selectedHomeAddress != null) ...[
-                                        SizedBox(height: 16),
-                                        _buildSelectedAddressCard(
-                                          title: appLanguage.get(
-                                            'selected_home_address',
-                                          ),
-                                          address: _selectedHomeAddress!,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-      
-                                SizedBox(height: 24),
-      
-                                // Enhanced Toggle Switches
-                                _buildGradientToggleRow(
-                                  text: appLanguage.get('are_u_british'),
-                                  value: _isBritishCitizen,
-                                  icon: CupertinoIcons.flag,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _isBritishCitizen = value;
-                                    });
-                                  },
-                                ),
-      
-                                SizedBox(height: 16),
-      
-                                _buildGradientToggleRow(
-                                  text: appLanguage.get('criminal_record'),
-                                  value: _hasCriminalHistory,
-                                  icon: CupertinoIcons.doc_checkmark,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _hasCriminalHistory = value;
-                                    });
-                                  },
-                                ),
-      
-                                SizedBox(height: 16),
-      
-                                _buildGradientToggleRow(
-                                  text: appLanguage.get('has_disability'),
-                                  value: _hasDisability,
-                                  icon: CupertinoIcons.heart,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _hasDisability = value;
-                                      if (!value) {
-                                        _disabilityCertificateFile = null;
-                                      }
-                                    });
-                                  },
-                                ),
-      
-                                // Enhanced Disability Certificate Upload
-                                if (_hasDisability) ...[
-                                  SizedBox(height: 20),
-                                  Container(
-                                    padding: EdgeInsets.all(20),
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: [lightBlue, whiteColor],
-                                      ),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: primaryBlue.withOpacity(0.3),
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: primaryBlue.withOpacity(0.1),
-                                          blurRadius: 10,
-                                          spreadRadius: 1,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              CupertinoIcons.doc_text,
-                                              color: primaryBlue,
-                                              size: 20,
-                                            ),
-                                            SizedBox(width: 8),
-                                            Text(
-                                              appLanguage.get(
-                                                'disability_certificate',
-                                              ),
-                                              style: TextStyle(
-                                                color: primaryBlue,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        SizedBox(height: 16),
-                                        _disabilityCertificateFile != null
-                                            ? Container(
+                                      SizedBox(height: 16),
+                                      _disabilityCertificateFile != null
+                                          ? Container(
                                               padding: EdgeInsets.all(12),
                                               decoration: BoxDecoration(
                                                 color: whiteColor,
                                                 borderRadius:
                                                     BorderRadius.circular(12),
                                                 border: Border.all(
-                                                  color: primaryBlue.withOpacity(
-                                                    0.3,
-                                                  ),
+                                                  color: primaryBlue
+                                                      .withOpacity(0.3),
                                                 ),
                                               ),
                                               child: Row(
@@ -877,9 +865,8 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                                     padding: EdgeInsets.zero,
                                                     child: Icon(
                                                       CupertinoIcons.trash,
-                                                      color:
-                                                          CupertinoColors
-                                                              .destructiveRed,
+                                                      color: CupertinoColors
+                                                          .destructiveRed,
                                                     ),
                                                     onPressed: () {
                                                       setState(() {
@@ -891,7 +878,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                                 ],
                                               ),
                                             )
-                                            : CupertinoButton(
+                                          : CupertinoButton(
                                               padding: EdgeInsets.zero,
                                               child: Container(
                                                 width: double.infinity,
@@ -914,12 +901,10 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                                   ],
                                                 ),
                                                 padding: EdgeInsets.symmetric(
-                                                  vertical: 16,
-                                                ),
+                                                    vertical: 16),
                                                 child: Text(
                                                   appLanguage.get(
-                                                    'upload_certificate',
-                                                  ),
+                                                      'upload_certificate'),
                                                   textAlign: TextAlign.center,
                                                   style: TextStyle(
                                                     color: whiteColor,
@@ -927,113 +912,105 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                                   ),
                                                 ),
                                               ),
-                                              onPressed:
-                                                  () => _getImage(
-                                                    ImageSource.gallery,
-                                                    isDisabilityCertificate: true,
-                                                  ),
+                                              onPressed: () => _getImage(
+                                                ImageSource.gallery,
+                                                isDisabilityCertificate: true,
+                                              ),
                                             ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-      
-                                SizedBox(height: 24),
-      
-                                // Enhanced Working Area Section
-                                _buildGradientSection(
-                                  title: appLanguage.get('working_area'),
-                                  icon: CupertinoIcons.location,
-                                  child: Column(
-                                    children: [
-                                      PostcodeSearchWidget(
-                                        postcodeController: _postcodeController,
-                                        placeholderText: appLanguage.get(
-                                          'postcode',
-                                        ),
-                                        onAddressSelected: (
-                                          latitude,
-                                          longitude,
-                                          address,
-                                        ) {
-                                          setState(() {
-                                            _selectedAddress = address;
-                                            _latitude = latitude;
-                                            _longitude = longitude;
-                                          });
-                                        },
-                                      ),
-                                      if (_selectedAddress != null) ...[
-                                        SizedBox(height: 16),
-                                        _buildSelectedAddressCard(
-                                          title: appLanguage.get(
-                                            'selected_working_area',
-                                          ),
-                                          address: _selectedAddress!,
-                                        ),
-                                      ],
                                     ],
                                   ),
                                 ),
-      
-                                SizedBox(height: 40),
-      
-                                // Enhanced Submit Button
-                                Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        primaryBlue,
-                                        accentBlue,
-                                        secondaryBlue,
-                                      ],
-                                    ),
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: primaryBlue.withOpacity(0.4),
-                                        blurRadius: 15,
-                                        spreadRadius: 2,
-                                        offset: Offset(0, 5),
-                                      ),
-                                    ],
-                                  ),
-                                  child: CupertinoButton(
-                                    padding: EdgeInsets.symmetric(vertical: 18),
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          CupertinoIcons.checkmark_circle_fill,
-                                          color: whiteColor,
-                                          size: 20,
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          appLanguage
-                                              .get('confirm')
-                                              .toUpperCase(),
-                                          style: TextStyle(
-                                            color: whiteColor,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 18,
-                                            letterSpacing: 1.2,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    onPressed: _submitForm,
-                                  ),
-                                ),
-      
-                                SizedBox(height: 40),
                               ],
-                            ),
+
+                              SizedBox(height: 24),
+
+                              // Enhanced Working Area Section
+                              _buildGradientSection(
+                                title: appLanguage.get('working_area'),
+                                icon: CupertinoIcons.location,
+                                child: Column(
+                                  children: [
+                                    PostcodeSearchWidget(
+                                      postcodeController: _postcodeController,
+                                      placeholderText:
+                                          appLanguage.get('postcode'),
+                                      onAddressSelected:
+                                          (latitude, longitude, address) {
+                                        setState(() {
+                                          _selectedAddress = address;
+                                          _latitude = latitude;
+                                          _longitude = longitude;
+                                        });
+                                      },
+                                    ),
+                                    if (_selectedAddress != null) ...[
+                                      SizedBox(height: 16),
+                                      _buildSelectedAddressCard(
+                                        title: appLanguage.get(
+                                            'selected_working_area'),
+                                        address: _selectedAddress!,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+
+                              SizedBox(height: 40),
+
+                              // Enhanced Submit Button
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      primaryBlue,
+                                      accentBlue,
+                                      secondaryBlue,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: primaryBlue.withOpacity(0.4),
+                                      blurRadius: 15,
+                                      spreadRadius: 2,
+                                      offset: Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: CupertinoButton(
+                                  padding: EdgeInsets.symmetric(vertical: 18),
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        CupertinoIcons.checkmark_circle_fill,
+                                        color: whiteColor,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        appLanguage.get('confirm').toUpperCase(),
+                                        style: TextStyle(
+                                          color: whiteColor,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  onPressed: _submitForm,
+                                ),
+                              ),
+
+                              SizedBox(height: 40),
+                            ],
                           ),
                         ),
+                      ),
               ),
             ],
           ),
@@ -1177,9 +1154,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color:
-              value
-                  ? primaryBlue.withOpacity(0.5)
-                  : primaryBlue.withOpacity(0.2),
+              value ? primaryBlue.withOpacity(0.5) : primaryBlue.withOpacity(0.2),
         ),
         boxShadow: [
           BoxShadow(
@@ -1195,10 +1170,9 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
             padding: EdgeInsets.all(6),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors:
-                    value
-                        ? [primaryBlue, accentBlue]
-                        : [Colors.grey.shade400, Colors.grey.shade500],
+                colors: value
+                    ? [primaryBlue, accentBlue]
+                    : [Colors.grey.shade400, Colors.grey.shade500],
               ),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -1290,7 +1264,10 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _clearAccessTokenSync();
     _nameController.dispose();
+    
     _phoneController.dispose();
     _emailController.dispose();
     _addressController.dispose();

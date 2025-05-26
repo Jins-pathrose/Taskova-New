@@ -23,7 +23,7 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
 
   final List<Widget> _pages = [
     const HomePage(),
-     Chatpage(),
+    //  Chatpage(),
     const CommunityPage(),
      ProfilePage(),
   ];
@@ -85,20 +85,15 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
                   : CupertinoIcons.house),
               label: appLanguage.get('Home'),
             ),
+            
             BottomNavigationBarItem(
               icon: Icon(_currentIndex == 1 
-                  ? CupertinoIcons.bubble_left_fill 
-                  : CupertinoIcons.bubble_left),
-              label: appLanguage.get('Chat'),
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(_currentIndex == 2 
                   ? CupertinoIcons.person_2_fill 
                   : CupertinoIcons.person_2),
               label: appLanguage.get('Community'),
             ),
             BottomNavigationBarItem(
-              icon: Icon(_currentIndex == 3 
+              icon: Icon(_currentIndex == 2 
                   ? CupertinoIcons.person_fill 
                   : CupertinoIcons.person),
               label: appLanguage.get('Profile'),
