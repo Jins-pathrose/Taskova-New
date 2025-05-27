@@ -104,6 +104,7 @@ class AppLanguage extends ChangeNotifier {
     'phone_number': 'Phone Number',
     'please_enter_phone_number': 'Please enter your phone number',
     'address': 'Address',
+    'Applied_Jobs': 'Applied Jobs',
     'please_enter_address': 'Please enter your address',
     'are_u_british': 'Are you a British citizen?',
     'criminal_record': 'Do you have a criminal record?',

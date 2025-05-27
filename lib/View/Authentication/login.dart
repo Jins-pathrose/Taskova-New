@@ -180,12 +180,10 @@ class _LoginPageState extends State<LoginPage> {
           final profileData = jsonDecode(profileResponse.body);
           bool isProfileComplete = profileData['is_profile_complete'] ?? false;
           if (!isProfileComplete) {
-            Navigator.push(
-              context,
-              CupertinoPageRoute(
-                builder: (context) => ProfileRegistrationPage(),
-              ),
-            );
+            Navigator.of(context).pushAndRemoveUntil(
+    CupertinoPageRoute(builder: (context) => ProfileRegistrationPage()),
+    (Route<dynamic> route) => false,
+  );
           } else {
             _showSuccessDialog("Login successful!");
             await _initializeNotificationService();

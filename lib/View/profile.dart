@@ -1,6 +1,8 @@
+
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart'; // For icons and Colors not available in Cupertino
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
@@ -10,16 +12,17 @@ import 'dart:convert';
 import 'package:http_parser/http_parser.dart';
 import 'package:taskova_new/Model/api_config.dart';
 import 'package:taskova_new/Model/postcode.dart';
+import 'package:taskova_new/View/Authentication/login.dart';
 import 'package:taskova_new/View/BottomNavigation/bottomnavigation.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
 
 class ProfileRegistrationPage extends StatefulWidget {
   @override
-  _ProfileRegistrationPageState createState() => _ProfileRegistrationPageState();
+  _ProfileRegistrationPageState createState() =>
+      _ProfileRegistrationPageState();
 }
 
-class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
-    with WidgetsBindingObserver {
+class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -44,6 +47,8 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
   String? _selectedHomeAddress;
   double? _homeLatitude;
   double? _homeLongitude;
+   bool _formSubmittedSuccessfully = false; // Add this flag
+
 
   // Enhanced gradient colors
   final Color primaryBlue = Color(0xFF1A5DC1);
@@ -57,51 +62,41 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
     super.initState();
     appLanguage = Provider.of<AppLanguage>(context, listen: false);
     _loadSavedUserData();
-    WidgetsBinding.instance.addObserver(this);
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
-      _clearAccessTokenSync();
-    }
-  }
-
-  // Synchronous function to clear access token
-  void _clearAccessTokenSync() {
-    SharedPreferences.getInstance().then((prefs) {
-      prefs.remove('access_token');
-    });
   }
 
   Future<bool> _onWillPop() async {
-    final shouldExit = await showCupertinoDialog<bool>(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: Text('Exit Profile Registration?'),
-        content: Text(
-          'Are you sure you want to exit? Your progress will be lost.',
-        ),
-        actions: [
-          CupertinoDialogAction(
-            child: Text('Cancel'),
-            onPressed: () => Navigator.of(context).pop(false),
-          ),
-          CupertinoDialogAction(
-            child: Text('Exit'),
-            isDestructiveAction: true,
-            onPressed: () => Navigator.of(context).pop(true),
-          ),
-        ],
-      ),
-    );
+  // If form was already submitted successfully, allow back navigation
+  if (_formSubmittedSuccessfully) return true;
 
-    if (shouldExit ?? false) {
-      _clearAccessTokenSync();
-      return true;
-    }
-    return false;
+  final shouldExit = await showCupertinoDialog<bool>(
+    context: context,
+    builder: (context) => CupertinoAlertDialog(
+      title: Text('Exit Profile Registration?'),
+      content: Text(
+        'Are you sure you want to exit? Your progress will be lost.',
+      ),
+      actions: [
+        CupertinoDialogAction(
+          child: Text('Cancel'),
+          onPressed: () => Navigator.of(context).pop(false),
+        ),
+        CupertinoDialogAction(
+          child: Text('Exit'),
+          isDestructiveAction: true,
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
+      ],
+    ),
+  );
+
+  if (shouldExit ?? false) {
+    await _clearAccessToken();
+    // Navigate to LoginPage instead of popping
+   SystemNavigator.pop();
+    return true;
   }
+  return false;
+}
 
   // Load saved user data from SharedPreferences
   Future<void> _loadSavedUserData() async {
@@ -183,7 +178,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
         }
       }
     } catch (e) {
-      _showErrorDialog('Error searching postcode: $e');
+      // _showErrorDialog('Error searching postcode: $e');
     } finally {
       setState(() {
         _isSearching = false;
@@ -202,7 +197,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
       final accessToken = prefs.getString('access_token');
 
       if (accessToken == null) {
-        throw Exception('Authentication token not found. Please login again.');
+        // throw Exception('Authentication token not found. Please login again.');
       }
 
       final url = Uri.parse(ApiConfig.driverProfileUrl);
@@ -266,12 +261,19 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        _showSuccessDialog('Profile registered successfully!');
+        setState(() {
+          _formSubmittedSuccessfully = true;
+        });
+        // Navigate immediately without waiting
+      WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.pushAndRemoveUntil(
           context,
           CupertinoPageRoute(builder: (context) => const MainWrapper()),
           (Route<dynamic> route) => false,
         );
+      });
+        _showSuccessDialog('Profile registered successfully!');
+        
       } else {
         setState(() {
           try {
@@ -384,6 +386,29 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    // Only clear the token if the form wasn't submitted successfully
+    if (!_formSubmittedSuccessfully) {
+      _clearAccessToken();
+    }
+    _nameController.dispose();
+    _phoneController.dispose();
+    _emailController.dispose();
+    _addressController.dispose();
+    _postcodeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _clearAccessToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('access_token');
+    } catch (e) {
+      print('Error clearing access token: $e');
+    }
   }
 
   @override
@@ -530,23 +555,26 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                     ),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        appLanguage.get('registration_failed'),
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: CupertinoColors.destructiveRed,
-                                        ),
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        _errorMessage!,
-                                        style: TextStyle(
-                                          color: CupertinoColors.destructiveRed,
-                                        ),
-                                      ),
+                                      // Text(
+                                      //   appLanguage.get('registration_failed'),
+                                      //   style: TextStyle(
+                                      //     fontWeight: FontWeight.bold,
+                                      //     fontSize: 16,
+                                      //     color:
+                                      //         CupertinoColors.destructiveRed,
+                                      //   ),
+                                      // ),
+                                      // SizedBox(height: 8),
+                                      // Text(
+                                      //   _errorMessage!,
+                                      //   style: TextStyle(
+                                      //     color:
+                                      //         CupertinoColors.destructiveRed,
+                                      //   ),
+                                      // ),
                                     ],
                                   ),
                                 ),
@@ -578,7 +606,9 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                           shape: BoxShape.circle,
                                           image: _imageFile != null
                                               ? DecorationImage(
-                                                  image: FileImage(_imageFile!),
+                                                  image: FileImage(
+                                                    _imageFile!,
+                                                  ),
                                                   fit: BoxFit.cover,
                                                 )
                                               : null,
@@ -587,8 +617,8 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                             ? Icon(
                                                 CupertinoIcons.person_solid,
                                                 size: 70,
-                                                color:
-                                                    primaryBlue.withOpacity(0.7),
+                                                color: primaryBlue
+                                                    .withOpacity(0.7),
                                               )
                                             : null,
                                       ),
@@ -626,8 +656,9 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                               size: 20,
                                             ),
                                           ),
-                                          onPressed: () =>
-                                              _getImage(ImageSource.camera),
+                                          onPressed: () => _getImage(
+                                            ImageSource.camera,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -665,7 +696,8 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                   if (value == null || value.isEmpty) {
                                     return appLanguage.get('please_enter_email');
                                   }
-                                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                  if (!RegExp(
+                                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
                                       .hasMatch(value)) {
                                     return appLanguage.get(
                                         'please_enter_valid_email');
@@ -694,12 +726,13 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                 onChanged: (value) {
                                   // Ensure UK country code is always present
                                   if (!value.startsWith('+44')) {
-                                    _phoneController.text = '+44 ' +
-                                        value.replaceAll('+44', '').trim();
+                                    _phoneController.text =
+                                        '+44 ' + value.replaceAll('+44', '').trim();
                                     _phoneController.selection =
                                         TextSelection.fromPosition(
                                       TextPosition(
-                                          offset: _phoneController.text.length),
+                                        offset: _phoneController.text.length,
+                                      ),
                                     );
                                   }
                                 },
@@ -714,10 +747,14 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                 child: Column(
                                   children: [
                                     PostcodeSearchWidget(
-                                      placeholderText:
-                                          appLanguage.get('home_postcode'),
-                                      onAddressSelected:
-                                          (latitude, longitude, address) {
+                                      placeholderText: appLanguage.get(
+                                        'home_postcode',
+                                      ),
+                                      onAddressSelected: (
+                                        latitude,
+                                        longitude,
+                                        address,
+                                      ) {
                                         setState(() {
                                           _selectedHomeAddress = address;
                                           _homeLatitude = latitude;
@@ -729,7 +766,8 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                       SizedBox(height: 16),
                                       _buildSelectedAddressCard(
                                         title: appLanguage.get(
-                                            'selected_home_address'),
+                                          'selected_home_address',
+                                        ),
                                         address: _selectedHomeAddress!,
                                       ),
                                     ],
@@ -804,7 +842,8 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                     ],
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
@@ -816,7 +855,8 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                           SizedBox(width: 8),
                                           Text(
                                             appLanguage.get(
-                                                'disability_certificate'),
+                                              'disability_certificate',
+                                            ),
                                             style: TextStyle(
                                               color: primaryBlue,
                                               fontWeight: FontWeight.bold,
@@ -865,8 +905,9 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                                     padding: EdgeInsets.zero,
                                                     child: Icon(
                                                       CupertinoIcons.trash,
-                                                      color: CupertinoColors
-                                                          .destructiveRed,
+                                                      color:
+                                                          CupertinoColors
+                                                              .destructiveRed,
                                                     ),
                                                     onPressed: () {
                                                       setState(() {
@@ -901,10 +942,12 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                                   ],
                                                 ),
                                                 padding: EdgeInsets.symmetric(
-                                                    vertical: 16),
+                                                  vertical: 16,
+                                                ),
                                                 child: Text(
                                                   appLanguage.get(
-                                                      'upload_certificate'),
+                                                    'upload_certificate',
+                                                  ),
                                                   textAlign: TextAlign.center,
                                                   style: TextStyle(
                                                     color: whiteColor,
@@ -932,10 +975,14 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                   children: [
                                     PostcodeSearchWidget(
                                       postcodeController: _postcodeController,
-                                      placeholderText:
-                                          appLanguage.get('postcode'),
-                                      onAddressSelected:
-                                          (latitude, longitude, address) {
+                                      placeholderText: appLanguage.get(
+                                        'postcode',
+                                      ),
+                                      onAddressSelected: (
+                                        latitude,
+                                        longitude,
+                                        address,
+                                      ) {
                                         setState(() {
                                           _selectedAddress = address;
                                           _latitude = latitude;
@@ -947,7 +994,8 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
                                       SizedBox(height: 16),
                                       _buildSelectedAddressCard(
                                         title: appLanguage.get(
-                                            'selected_working_area'),
+                                          'selected_working_area',
+                                        ),
                                         address: _selectedAddress!,
                                       ),
                                     ],
@@ -1153,8 +1201,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color:
-              value ? primaryBlue.withOpacity(0.5) : primaryBlue.withOpacity(0.2),
+          color: value ? primaryBlue.withOpacity(0.5) : primaryBlue.withOpacity(0.2),
         ),
         boxShadow: [
           BoxShadow(
@@ -1170,9 +1217,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
             padding: EdgeInsets.all(6),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: value
-                    ? [primaryBlue, accentBlue]
-                    : [Colors.grey.shade400, Colors.grey.shade500],
+                colors: value ? [primaryBlue, accentBlue] : [Colors.grey.shade400, Colors.grey.shade500],
               ),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -1260,19 +1305,6 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage>
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _clearAccessTokenSync();
-    _nameController.dispose();
-    
-    _phoneController.dispose();
-    _emailController.dispose();
-    _addressController.dispose();
-    _postcodeController.dispose();
-    super.dispose();
   }
 }
 

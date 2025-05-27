@@ -99,12 +99,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskova_new/Controller/Theme/theme.dart';
+import 'package:taskova_new/Model/Notifications/notification_helper.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
 import 'package:taskova_new/View/splashscreen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  await NotificationHelper.initialize();
   await runZonedGuarded(() async {
     try {
       // Load environment variables
@@ -115,9 +116,6 @@ void main() async {
 
       // Initialize Firebase
       await Firebase.initializeApp();
-
-      // Initialize shared preferences
-      final prefs = await SharedPreferences.getInstance();
 
       runApp(
         MultiProvider(

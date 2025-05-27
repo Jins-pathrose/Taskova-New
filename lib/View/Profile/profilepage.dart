@@ -13,6 +13,7 @@ import 'package:taskova_new/Model/api_config.dart';
 import 'package:taskova_new/Model/postcode.dart';
 import 'package:taskova_new/View/Authentication/login.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
+import 'package:taskova_new/View/appliedjobs.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -772,9 +773,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             SizedBox(height: 16),
                             _buildSettingsItem(
                               icon: CupertinoIcons.bell,
-                              title: appLanguage.get('notifications'),
+                              title: appLanguage.get('Applied_Jobs'),
                               onTap: () {
-                                // Navigate to notifications settings
+                               Navigator.push(context, MaterialPageRoute(builder: (context) => AppliedJobsPage()));
                               },
                             ),
                             _buildDivider(),

@@ -1,13 +1,16 @@
+import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'package:taskova_new/Model/api_config.dart';
 import 'package:taskova_new/View/Authentication/login.dart';
 import 'package:taskova_new/View/BottomNavigation/bottomnavigation.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
 import 'package:taskova_new/View/Language/language_selection.dart';
-
+import 'package:taskova_new/View/profile.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -57,29 +60,68 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     if (languageSelected == null) {
       navigateToLanguageSelection();
     } else if (accessToken != null && accessToken.isNotEmpty) {
-      navigateToHome();
+      // Check profile completion status
+      final isProfileComplete = await checkProfileStatus(accessToken);
+      if (isProfileComplete) {
+        navigateToHome();
+      } else {
+        navigateToProfileRegistration();
+      }
     } else {
       navigateToLogin();
     }
   }
 
+  Future<bool> checkProfileStatus(String accessToken) async {
+    try {
+      final profileResponse = await http.get(
+        Uri.parse(ApiConfig.profileStatusUrl),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (profileResponse.statusCode == 200) {
+        final responseData = jsonDecode(profileResponse.body);
+        return responseData['is_profile_complete'] == true;
+      } else {
+        // Handle API error by assuming profile is incomplete
+        return false;
+      }
+    } catch (e) {
+      // Handle network or other errors by assuming profile is incomplete
+      return false;
+    }
+  }
+
   void navigateToHome() {
-    Navigator.of(context).pushReplacement(
-      CupertinoPageRoute(builder: (context) => const MainWrapper()),
-    );
-  }
+  Navigator.of(context).pushAndRemoveUntil(
+    CupertinoPageRoute(builder: (context) => const MainWrapper()),
+    (Route<dynamic> route) => false,
+  );
+}
 
-  void navigateToLogin() {
-    Navigator.of(context).pushReplacement(
-      CupertinoPageRoute(builder: (context) => const LoginPage()),
-    );
-  }
+void navigateToLogin() {
+  Navigator.of(context).pushAndRemoveUntil(
+    CupertinoPageRoute(builder: (context) => const LoginPage()),
+    (Route<dynamic> route) => false,
+  );
+}
 
-  void navigateToLanguageSelection() {
-    Navigator.of(context).pushReplacement(
-      CupertinoPageRoute(builder: (context) => const LanguageSelectionScreen()),
-    );
-  }
+void navigateToLanguageSelection() {
+  Navigator.of(context).pushAndRemoveUntil(
+    CupertinoPageRoute(builder: (context) => const LanguageSelectionScreen()),
+    (Route<dynamic> route) => false,
+  );
+}
+
+void navigateToProfileRegistration() {
+  Navigator.of(context).pushAndRemoveUntil(
+    CupertinoPageRoute(builder: (context) => ProfileRegistrationPage()),
+    (Route<dynamic> route) => false,
+  );
+}
 
   @override
   Widget build(BuildContext context) {

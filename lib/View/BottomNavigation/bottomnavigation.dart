@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:taskova_new/Model/Notifications/notification_service.dart';
 import 'package:taskova_new/View/ChatPage/chatpage.dart';
 import 'package:taskova_new/View/Community/community_page.dart';
+import 'package:taskova_new/View/Homepage/admin_approval.dart';
 import 'package:taskova_new/View/Homepage/homepage.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
 import 'package:taskova_new/View/Profile/profilepage.dart';
@@ -23,9 +24,9 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
 
   final List<Widget> _pages = [
     const HomePage(),
-    //  Chatpage(),
     const CommunityPage(),
      ProfilePage(),
+
   ];
 
   @override

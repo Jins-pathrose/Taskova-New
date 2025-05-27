@@ -169,10 +169,10 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
       builder:
           (context) => CupertinoAlertDialog(
             title: const Text('Upload Required'),
-            content: Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text(message, style: TextStyle(color: _textPrimary)),
-            ),
+            // content: Padding(
+            //   padding: const EdgeInsets.only(top: 8.0),
+            //   child: Text(message, style: TextStyle(color: _textPrimary)),
+            // ),
             actions: [
               CupertinoDialogAction(
                 child: Text('Retry', style: TextStyle(color: _primaryColor)),
@@ -228,7 +228,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
       );
       return image != null ? File(image.path) : null;
     } catch (e) {
-      _showErrorDialog('Error selecting image: ${e.toString()}');
+      // _showErrorDialog('Error selecting image: ${e.toString()}');
       return null;
     }
   }
