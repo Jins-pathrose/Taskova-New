@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:taskova_new/Model/api_config.dart';
 import 'notification_helper.dart';
 
 class NotificationService {
@@ -32,7 +33,7 @@ class NotificationService {
       if (token == null) return;
       
       final response = await http.get(
-        Uri.parse('http://192.168.20.29:8001/api/notifications/'), // Replace with your API URL
+        Uri.parse(ApiConfig.notificaionUrl), // Replace with your API URL
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

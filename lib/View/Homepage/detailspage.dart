@@ -1410,41 +1410,80 @@ class _JobDetailPageState extends State<JobDetailPage>
     }
   }
 
-  Future<void> _submitReview() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final accessToken = prefs.getString('access_token');
+Future<void> _submitReview() async {
+  try {
+    // Retrieve access token
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('access_token');
 
-      final response = await http.post(
-        Uri.parse('${ApiConfig.jobRequestUrl}/$_jobRequestId/reviews'),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'rating': _rating,
-          'comment': _reviewController.text,
-        }),
-      );
-
-      if (response.statusCode == 201) {
-        _showSuccessMessage(context, 'Review submitted successfully!');
-        if (mounted) {
-          setState(() {
-            _reviewController.clear();
-            _rating = 0.0;
-          });
-        }
-      } else {
-        _showErrorMessage(
-          context,
-          'Failed to submit review. Please try again.',
-        );
-      }
-    } catch (e) {
-      _showErrorMessage(context, 'Error submitting review: $e');
+    if (accessToken == null || accessToken.isEmpty) {
+      _showErrorMessage(context, 'Authentication error: Access token is missing.');
+      return;
     }
+
+    // Validate required fields
+    if (widget.jobPost.id == null || widget.jobPost.businessId == null) {
+      _showErrorMessage(context, 'Error: Job ID or Business ID is missing.');
+      return;
+    }
+    if (_rating <= 0) {
+      _showErrorMessage(context, 'Please provide a rating.');
+      return;
+    }
+    if (_reviewController.text.trim().isEmpty) {
+      _showErrorMessage(context, 'Please enter your feedback.');
+      return;
+    }
+
+    // Prepare request body
+    final requestBody = {
+      'rater_type': 'user',
+      'ratee_type': 'business',
+      'job': widget.jobPost.id,
+      'ratee': widget.jobPost.businessId,
+      'rating': _rating.toInt(), // Convert rating to integer
+      'comment': _reviewController.text.trim(),
+    };
+
+    print('Submitting review with body: $requestBody'); // Log request body for debugging
+
+    // Make HTTP POST request
+    final response = await http.post(
+      Uri.parse('http://192.168.20.29:8001/api/ratings/'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(requestBody),
+    );
+
+    print('Response status: ${response.statusCode}'); // Log status code
+    print('Response body: ${response.body}'); // Log response body
+
+    if (response.statusCode == 201) {
+      _showSuccessMessage(context, 'Review submitted successfully!');
+      if (mounted) {
+        setState(() {
+          _reviewController.clear();
+          _rating = 0.0;
+        });
+      }
+    } else {
+      // Parse error message from response if available
+      String errorMessage = 'Failed to submit review. Please try again.';
+      try {
+        final errorData = jsonDecode(response.body);
+        errorMessage = errorData['detail'] ?? errorData['message'] ?? errorMessage;
+      } catch (_) {
+        // If response body is not JSON, use default message
+      }
+      // _showErrorMessage(context, errorMessage);
+    }
+  } catch (e, stackTrace) {
+    print('Error submitting review: $e\n$stackTrace'); // Log error and stack trace
+    _showErrorMessage(context, 'Error submitting review: $e');
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -1494,17 +1533,7 @@ class _JobDetailPageState extends State<JobDetailPage>
         ),
         onPressed: () => Navigator.pop(context),
       ),
-      trailing: CupertinoButton(
-        padding: EdgeInsets.zero,
-        child: Icon(
-          CupertinoIcons.share,
-          color: CupertinoColors.activeBlue,
-          size: 28,
-        ),
-        onPressed: () {
-          // Add share functionality
-        },
-      ),
+   
     );
   }
 
@@ -1903,7 +1932,7 @@ class _JobDetailPageState extends State<JobDetailPage>
                         SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Coordinates: ${widget.jobPost.businessLatitude.toStringAsFixed(6)}, ${widget.jobPost.businessLongitude.toStringAsFixed(6)}',
+                            '${widget.jobPost.address}',
                             style: TextStyle(
                               color: CupertinoColors.systemGrey,
                               fontSize: 14,
@@ -2056,98 +2085,127 @@ class _JobDetailPageState extends State<JobDetailPage>
   }
 
   Widget _buildReviewSection() {
-    return SlideTransition(
-      position: _slideAnimation,
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: CupertinoColors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: CupertinoColors.systemYellow.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+  return SlideTransition(
+    position: _slideAnimation,
+    child: FadeTransition(
+      opacity: _fadeAnimation,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: CupertinoColors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemYellow.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    CupertinoIcons.star_fill,
+                    color: CupertinoColors.systemYellow,
+                    size: 20,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text(
+                  'Leave a Review',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: CupertinoColors.black,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            Text(
+              'Rate your experience',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: CupertinoColors.systemGrey,
+              ),
+            ),
+            SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) {
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _rating = index + 1.0;
+                    });
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4),
                     child: Icon(
-                      CupertinoIcons.star_fill,
+                      index < _rating
+                          ? CupertinoIcons.star_fill
+                          : CupertinoIcons.star,
                       color: CupertinoColors.systemYellow,
-                      size: 20,
+                      size: 32,
                     ),
                   ),
-                  SizedBox(width: 12),
-                  Text(
-                    'Leave a Review',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: CupertinoColors.black,
-                    ),
-                  ),
-                ],
+                );
+              }),
+            ),
+            SizedBox(height: 20),
+            Text(
+              'Your Feedback',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: CupertinoColors.systemGrey,
               ),
-              SizedBox(height: 20),
-              Text(
-                'Rate your experience',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: CupertinoColors.systemGrey,
+            ),
+            SizedBox(height: 12),
+            CupertinoTextField(
+              controller: _reviewController,
+              placeholder: 'Share your experience...',
+              placeholderStyle: TextStyle(
+                color: CupertinoColors.systemGrey2,
+                fontSize: 16,
+              ),
+              minLines: 3,
+              maxLines: 5,
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemGrey6,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: CupertinoColors.systemGrey5),
+              ),
+              style: TextStyle(
+                color: CupertinoColors.black,
+                fontSize: 16,
+              ),
+            ),
+            SizedBox(height: 20),
+            Align(
+              alignment: Alignment.centerRight,
+              child: CupertinoButton(
+                onPressed: _rating > 0 && _reviewController.text.isNotEmpty
+                    ? _submitReview
+                    : null,
+                color: CupertinoColors.activeBlue,
+                child: Text(
+                  'Submit Review',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600,color: Colors.white),
                 ),
               ),
-              SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(5, (index) {
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _rating = index + 1.0;
-                      });
-                    },
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 4),
-                      child: Icon(
-                        index < _rating
-                            ? CupertinoIcons.star_fill
-                            : CupertinoIcons.star,
-                        color: CupertinoColors.systemYellow,
-                        size: 32,
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerRight,
-                child: CupertinoButton(
-                  onPressed: _rating > 0 && _reviewController.text.isNotEmpty
-                      ? _submitReview
-                      : null,
-                  color: CupertinoColors.activeBlue,
-                  child: Text(
-                    'Submit Review',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
-
+    ),
+  );
+}
   Widget _buildBottomActions() {
     return Container(
       padding: EdgeInsets.all(16),

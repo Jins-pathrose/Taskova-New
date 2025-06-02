@@ -106,20 +106,20 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
             } else {
               print('Failed to fetch job details for job ID ${request['job']}: ${jobResponse.statusCode}');
               // Optionally add a placeholder job to show the request even if job details fail
-              enrichedJobRequests.add({
-                'request': request,
-                'job': JobPost(
-                  id: request['job'],
-                  title: 'Job Details Unavailable',
-                  businessName: 'Unknown',
-                  complimentaryBenefits: [],
-                  createdAt: '',
-                  businessId: 0,
-                  businessLatitude: 0.0,
-                  businessLongitude: 0.0,
-                  jobDate: request['created_at']?.substring(0, 10) ?? 'TBD',
-                ),
-              });
+              // enrichedJobRequests.add({
+              //   'request': request,
+              //   'job': JobPost(
+              //     id: request['job'],
+              //     title: 'Job Details Unavailable',
+              //     businessName: 'Unknown',
+              //     complimentaryBenefits: [],
+              //     createdAt: '',
+              //     businessId: 0,
+              //     businessLatitude: 0.0,
+              //     businessLongitude: 0.0,
+              //     jobDate: request['created_at']?.substring(0, 10) ?? 'TBD',
+              //   ),
+              // });
             }
           } catch (e) {
             print('Error fetching job details for job ID ${request['job']}: $e');

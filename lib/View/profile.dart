@@ -1,4 +1,3 @@
-
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart'; // For icons and Colors not available in Cupertino
@@ -29,6 +28,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _postcodeController = TextEditingController();
+  final TextEditingController _customExperienceController = TextEditingController();
 
   bool _isBritishCitizen = false;
   bool _hasCriminalHistory = false;
@@ -47,8 +47,28 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
   String? _selectedHomeAddress;
   double? _homeLatitude;
   double? _homeLongitude;
-   bool _formSubmittedSuccessfully = false; // Add this flag
+  bool _formSubmittedSuccessfully = false;
+  String? _selectedExperienceType;
+  String? _selectedDrivingDuration;
+  bool _isCustomExperienceSelected = false;
 
+  // Experience types options based on Django model
+  final List<Map<String, String>> _experienceTypeOptions = [
+    {'value': 'food_delivery', 'label': 'Food delivery (Uber Eats, Just Eat, etc.)'},
+    {'value': 'parcel_delivery', 'label': 'Parcel or courier delivery (Amazon, Evri, etc.)'},
+    {'value': 'freelance', 'label': 'Freelance/delivery for local shops'},
+    {'value': 'friends_family', 'label': 'I help friends and family with deliveries'},
+    {'value': 'no_experience', 'label': 'No experience yet — but ready to roll!'},
+    {'value': 'custom', 'label': 'Other (specify)'},
+  ];
+
+  // Driving duration options based on Django model
+  final List<Map<String, String>> _drivingDurationOptions = [
+    {'value': '<1', 'label': 'Less than 1 year'},
+    {'value': '1-2', 'label': '1–2 years'},
+    {'value': '3-5', 'label': '3–5 years'},
+    {'value': '5+', 'label': '5+ years'},
+  ];
 
   // Enhanced gradient colors
   final Color primaryBlue = Color(0xFF1A5DC1);
@@ -65,40 +85,37 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
   }
 
   Future<bool> _onWillPop() async {
-  // If form was already submitted successfully, allow back navigation
-  if (_formSubmittedSuccessfully) return true;
+    if (_formSubmittedSuccessfully) return true;
 
-  final shouldExit = await showCupertinoDialog<bool>(
-    context: context,
-    builder: (context) => CupertinoAlertDialog(
-      title: Text('Exit Profile Registration?'),
-      content: Text(
-        'Are you sure you want to exit? Your progress will be lost.',
+    final shouldExit = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: Text('Exit Profile Registration?'),
+        content: Text(
+          'Are you sure you want to exit? Your progress will be lost.',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: Text('Cancel'),
+            onPressed: () => Navigator.of(context).pop(false),
+          ),
+          CupertinoDialogAction(
+            child: Text('Exit'),
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+        ],
       ),
-      actions: [
-        CupertinoDialogAction(
-          child: Text('Cancel'),
-          onPressed: () => Navigator.of(context).pop(false),
-        ),
-        CupertinoDialogAction(
-          child: Text('Exit'),
-          isDestructiveAction: true,
-          onPressed: () => Navigator.of(context).pop(true),
-        ),
-      ],
-    ),
-  );
+    );
 
-  if (shouldExit ?? false) {
-    await _clearAccessToken();
-    // Navigate to LoginPage instead of popping
-   SystemNavigator.pop();
-    return true;
+    if (shouldExit ?? false) {
+      await _clearAccessToken();
+      SystemNavigator.pop();
+      return true;
+    }
+    return false;
   }
-  return false;
-}
 
-  // Load saved user data from SharedPreferences
   Future<void> _loadSavedUserData() async {
     final prefs = await SharedPreferences.getInstance();
     final savedEmail = prefs.getString('user_email');
@@ -111,22 +128,15 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
       if (savedName != null && savedName.isNotEmpty) {
         _nameController.text = savedName;
       }
-      // Set UK country code as default
       _phoneController.text = '+44 ';
     });
   }
 
-  // UK phone number validation
   bool _isValidUKPhoneNumber(String phone) {
-    // Remove spaces and country code for validation
     String cleanPhone = phone.replaceAll(' ', '').replaceAll('+44', '');
-
-    // UK phone numbers are typically 10-11 digits after country code
     if (cleanPhone.length < 10 || cleanPhone.length > 11) {
       return false;
     }
-
-    // Check if it contains only digits
     return RegExp(r'^[0-9]+$').hasMatch(cleanPhone);
   }
 
@@ -220,6 +230,13 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
       request.fields['has_criminal_history'] =
           _hasCriminalHistory ? 'true' : 'false';
       request.fields['has_disability'] = _hasDisability ? 'true' : 'false';
+      // Add new fields
+      request.fields['experience_types'] = jsonEncode(
+      _selectedExperienceType == 'custom'
+          ? [_customExperienceController.text]
+          : [_selectedExperienceType],
+    );
+      request.fields['driving_duration'] = _selectedDrivingDuration ?? '';
 
       if (_imageFile != null) {
         final fileName = _imageFile!.path.split('/').last;
@@ -234,7 +251,6 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
 
         request.files.add(multipartFile);
       }
-
       if (_hasDisability && _disabilityCertificateFile != null) {
         final fileName = _disabilityCertificateFile!.path.split('/').last;
         final extension = fileName.split('.').last.toLowerCase();
@@ -259,22 +275,23 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
       );
 
       final response = await http.Response.fromStream(streamedResponse);
-
+      
       if (response.statusCode == 200 || response.statusCode == 201) {
-        setState(() {
-          _formSubmittedSuccessfully = true;
-        });
-        // Navigate immediately without waiting
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          CupertinoPageRoute(builder: (context) => const MainWrapper()),
-          (Route<dynamic> route) => false,
-        );
-      });
-        _showSuccessDialog('Profile registered successfully!');
-        
-      } else {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('user_name', _nameController.text);
+ 
+  setState(() {
+    _formSubmittedSuccessfully = true;
+  });
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      CupertinoPageRoute(builder: (context) => const MainWrapper()),
+      (Route<dynamic> route) => false,
+    );
+  });
+  _showSuccessDialog('Profile registered successfully!');
+}else {
         setState(() {
           try {
             final responseData = json.decode(response.body);
@@ -337,6 +354,18 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
         return;
       }
 
+      if (_selectedExperienceType == null) {
+      _showErrorDialog('Please select an experience type');
+      return;
+    }
+
+      if (_selectedDrivingDuration == null) {
+        _showErrorDialog('Please select driving duration');
+        return;
+      }
+
+      
+
       await _submitMultipartForm();
     }
   }
@@ -390,7 +419,6 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
 
   @override
   void dispose() {
-    // Only clear the token if the form wasn't submitted successfully
     if (!_formSubmittedSuccessfully) {
       _clearAccessToken();
     }
@@ -399,6 +427,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     _emailController.dispose();
     _addressController.dispose();
     _postcodeController.dispose();
+    _customExperienceController.dispose();
     super.dispose();
   }
 
@@ -431,7 +460,6 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
           ),
           child: Column(
             children: [
-              // Custom Navigation Bar with Gradient
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -477,14 +505,12 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                             ),
                           ),
                         ),
-                        SizedBox(width: 44), // Balance the back button
+                        SizedBox(width: 44),
                       ],
                     ),
                   ),
                 ),
               ),
-
-              // Main Content
               Expanded(
                 child: _isSubmitting
                     ? Container(
@@ -557,29 +583,9 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
-                                    children: [
-                                      // Text(
-                                      //   appLanguage.get('registration_failed'),
-                                      //   style: TextStyle(
-                                      //     fontWeight: FontWeight.bold,
-                                      //     fontSize: 16,
-                                      //     color:
-                                      //         CupertinoColors.destructiveRed,
-                                      //   ),
-                                      // ),
-                                      // SizedBox(height: 8),
-                                      // Text(
-                                      //   _errorMessage!,
-                                      //   style: TextStyle(
-                                      //     color:
-                                      //         CupertinoColors.destructiveRed,
-                                      //   ),
-                                      // ),
-                                    ],
+                                    children: [],
                                   ),
                                 ),
-
-                              // Enhanced Profile Picture Section
                               Center(
                                 child: Container(
                                   padding: EdgeInsets.all(4),
@@ -665,10 +671,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                   ),
                                 ),
                               ),
-
                               SizedBox(height: 40),
-
-                              // Enhanced Form Fields
                               _buildGradientFormField(
                                 controller: _nameController,
                                 placeholder: appLanguage.get('name'),
@@ -682,32 +685,17 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                         'name_must_contain_only_alphabets');
                                   }
                                   return null;
-                                },
+                                }, readOnly: false,
                               ),
-
                               SizedBox(height: 20),
-
-                              _buildGradientFormField(
-                                controller: _emailController,
-                                placeholder: appLanguage.get('email'),
-                                icon: CupertinoIcons.mail_solid,
-                                keyboardType: TextInputType.emailAddress,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return appLanguage.get('please_enter_email');
-                                  }
-                                  if (!RegExp(
-                                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                                      .hasMatch(value)) {
-                                    return appLanguage.get(
-                                        'please_enter_valid_email');
-                                  }
-                                  return null;
-                                },
-                              ),
-
+                             _buildGradientFormField(
+      controller: _emailController,
+      placeholder: appLanguage.get('email'),
+      icon: CupertinoIcons.mail_solid,
+      keyboardType: TextInputType.emailAddress,
+      readOnly: true, // Make email field read-only
+    ),
                               SizedBox(height: 20),
-
                               _buildGradientFormField(
                                 controller: _phoneController,
                                 placeholder: appLanguage.get('phone_number'),
@@ -724,7 +712,6 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                   return null;
                                 },
                                 onChanged: (value) {
-                                  // Ensure UK country code is always present
                                   if (!value.startsWith('+44')) {
                                     _phoneController.text =
                                         '+44 ' + value.replaceAll('+44', '').trim();
@@ -735,12 +722,9 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                       ),
                                     );
                                   }
-                                },
+                                }, readOnly: false,
                               ),
-
                               SizedBox(height: 24),
-
-                              // Enhanced Home Address Section
                               _buildGradientSection(
                                 title: appLanguage.get('home_address'),
                                 icon: CupertinoIcons.home,
@@ -774,10 +758,234 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                   ],
                                 ),
                               ),
-
                               SizedBox(height: 24),
-
-                              // Enhanced Toggle Switches
+                              // New Experience Types Section
+                              _buildGradientSection(
+      title: 'Delivery Experience',
+      icon: CupertinoIcons.car_detailed,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Select one option',
+            style: TextStyle(
+              color: primaryBlue.withOpacity(0.7),
+              fontSize: 14,
+            ),
+          ),
+          SizedBox(height: 12),
+          ..._experienceTypeOptions.map((option) {
+            final isSelected = _selectedExperienceType == option['value'];
+            return Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedExperienceType = option['value'];
+                    _isCustomExperienceSelected = option['value'] == 'custom';
+                    if (!_isCustomExperienceSelected) {
+                      _customExperienceController.clear();
+                    }
+                  });
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        isSelected
+                            ? primaryBlue.withOpacity(0.1)
+                            : lightBlue.withOpacity(0.3),
+                        whiteColor,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? primaryBlue
+                          : primaryBlue.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isSelected
+                            ? CupertinoIcons.checkmark_circle_fill
+                            : CupertinoIcons.circle,
+                        color: isSelected
+                            ? primaryBlue
+                            : primaryBlue.withOpacity(0.6),
+                        size: 20,
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          option['label']!,
+                          style: TextStyle(
+                            color: primaryBlue,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+          if (_isCustomExperienceSelected) ...[
+            SizedBox(height: 12),
+            _buildGradientFormField(
+              controller: _customExperienceController,
+              placeholder: 'Specify other experience',
+              icon: CupertinoIcons.textbox,
+              validator: (value) {
+                if (_selectedExperienceType == 'custom' &&
+                    (value == null || value.isEmpty)) {
+                  return 'Please specify custom experience';
+                }
+                return null;
+              }, readOnly: false,
+            ),
+          ],
+        ],
+      ),
+    ),
+                              SizedBox(height: 24),
+                              // New Driving Duration Section
+                              _buildGradientSection(
+                                title: 'Driving Experience',
+                                icon: CupertinoIcons.time,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    CupertinoButton(
+                                      padding: EdgeInsets.zero,
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 16,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              whiteColor,
+                                              lightBlue.withOpacity(0.5),
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: primaryBlue.withOpacity(0.2),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              CupertinoIcons.time,
+                                              color: primaryBlue,
+                                              size: 22,
+                                            ),
+                                            SizedBox(width: 12),
+                                            Expanded(
+                                              child: Text(
+                                                _selectedDrivingDuration == null
+                                                    ? 'Select driving duration'
+                                                    : _drivingDurationOptions
+                                                        .firstWhere((option) =>
+                                                            option['value'] ==
+                                                            _selectedDrivingDuration)['label']!,
+                                                style: TextStyle(
+                                                  color: _selectedDrivingDuration == null
+                                                      ? primaryBlue.withOpacity(0.6)
+                                                      : primaryBlue,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                            Icon(
+                                              CupertinoIcons.chevron_down,
+                                              color: primaryBlue,
+                                              size: 20,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      onPressed: () {
+                                        showCupertinoModalPopup(
+                                          context: context,
+                                          builder: (context) => CupertinoActionSheet(
+                                            title: Text(
+                                              'Driving Duration',
+                                              style: TextStyle(
+                                                color: primaryBlue,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            actions: _drivingDurationOptions
+                                                .map(
+                                                  (option) => CupertinoActionSheetAction(
+                                                    child: Text(
+                                                      option['label']!,
+                                                      style: TextStyle(
+                                                        color: primaryBlue,
+                                                      ),
+                                                    ),
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        _selectedDrivingDuration = option['value'];
+                                                      });
+                                                      Navigator.pop(context);
+                                                    },
+                                                  ),
+                                                )
+                                                .toList(),
+                                            cancelButton: CupertinoActionSheetAction(
+                                              child: Text(
+                                                'Cancel',
+                                                style: TextStyle(
+                                                  color: CupertinoColors.destructiveRed,
+                                                ),
+                                              ),
+                                              onPressed: () => Navigator.pop(context),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    if (_selectedDrivingDuration != null) ...[
+                                      SizedBox(height: 12),
+                                      Container(
+                                        padding: EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              whiteColor,
+                                              primaryBlue.withOpacity(0.05),
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: primaryBlue.withOpacity(0.3),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _drivingDurationOptions.firstWhere((option) =>
+                                              option['value'] == _selectedDrivingDuration)['label']!,
+                                          style: TextStyle(
+                                            color: secondaryBlue,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: 24),
                               _buildGradientToggleRow(
                                 text: appLanguage.get('are_u_british'),
                                 value: _isBritishCitizen,
@@ -788,11 +996,9 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                   });
                                 },
                               ),
-
                               SizedBox(height: 16),
-
                               _buildGradientToggleRow(
-                                text: appLanguage.get('criminal_record'),
+                                text: appLanguage.get('Have you ever been convicted of a criminal offence?'),
                                 value: _hasCriminalHistory,
                                 icon: CupertinoIcons.doc_checkmark,
                                 onChanged: (value) {
@@ -801,11 +1007,9 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                   });
                                 },
                               ),
-
                               SizedBox(height: 16),
-
                               _buildGradientToggleRow(
-                                text: appLanguage.get('has_disability'),
+                                text: appLanguage.get('Do you have a disability or accessibility need?'),
                                 value: _hasDisability,
                                 icon: CupertinoIcons.heart,
                                 onChanged: (value) {
@@ -817,8 +1021,6 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                   });
                                 },
                               ),
-
-                              // Enhanced Disability Certificate Upload
                               if (_hasDisability) ...[
                                 SizedBox(height: 20),
                                 Container(
@@ -964,10 +1166,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                   ),
                                 ),
                               ],
-
                               SizedBox(height: 24),
-
-                              // Enhanced Working Area Section
                               _buildGradientSection(
                                 title: appLanguage.get('working_area'),
                                 icon: CupertinoIcons.location,
@@ -1002,10 +1201,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                   ],
                                 ),
                               ),
-
                               SizedBox(height: 40),
-
-                              // Enhanced Submit Button
                               Container(
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
@@ -1053,7 +1249,6 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                   onPressed: _submitForm,
                                 ),
                               ),
-
                               SizedBox(height: 40),
                             ],
                           ),
@@ -1067,7 +1262,6 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     );
   }
 
-  // Enhanced form field with gradient background
   Widget _buildGradientFormField({
     required TextEditingController controller,
     required String placeholder,
@@ -1075,7 +1269,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
     String? Function(String?)? validator,
-    Function(String)? onChanged,
+    Function(String)? onChanged, required bool readOnly,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -1122,7 +1316,6 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     );
   }
 
-  // Enhanced gradient section container
   Widget _buildGradientSection({
     required String title,
     required IconData icon,
@@ -1181,7 +1374,6 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     );
   }
 
-  // Enhanced toggle row with gradient
   Widget _buildGradientToggleRow({
     required String text,
     required bool value,
@@ -1257,7 +1449,6 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     );
   }
 
-  // Enhanced selected address card
   Widget _buildSelectedAddressCard({
     required String title,
     required String address,
