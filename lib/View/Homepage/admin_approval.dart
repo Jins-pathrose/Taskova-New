@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import 'package:taskova_new/View/BottomNavigation/bottomnavigation.dart';
 import 'package:taskova_new/View/Homepage/homepage.dart';
 
 class DocumentVerificationPendingScreen extends StatelessWidget {
@@ -120,13 +121,13 @@ class DocumentVerificationPendingScreen extends StatelessWidget {
                     ),
                     child: CupertinoButton(
                       onPressed: () {
-                        Navigator.pushAndRemoveUntil(
-                          context,
+                        // Use the root navigator to replace the entire stack
+                        Navigator.of(context, rootNavigator: true)
+                            .pushAndRemoveUntil(
                           MaterialPageRoute(
-                            builder: (context) => const HomePage(),
+                            builder: (context) => const MainWrapper(),
                           ),
-                          (Route<dynamic> route) =>
-                              false, // Remove all previous routes
+                          (Route<dynamic> route) => false,
                         );
                       },
                       color: CupertinoColors.white,
@@ -197,14 +198,6 @@ class DocumentVerificationPendingScreen extends StatelessWidget {
                                   color: CupertinoColors.white.withOpacity(0.8),
                                 ),
                               ),
-                              // Text(
-                              //   "7 Days",
-                              //   style: TextStyle(
-                              //     fontSize: 18,
-                              //     fontWeight: FontWeight.bold,
-                              //     color: CupertinoColors.white,
-                              //   ),
-                              // ),
                             ],
                           ),
                         ),

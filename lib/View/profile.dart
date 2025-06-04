@@ -64,18 +64,17 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
 
   // Driving duration options based on Django model
   final List<Map<String, String>> _drivingDurationOptions = [
-    {'value': '<1', 'label': 'Less than 1 year'},
+    {'value': '0-1', 'label': 'Less than 1 year'},
     {'value': '1-2', 'label': '1–2 years'},
     {'value': '3-5', 'label': '3–5 years'},
     {'value': '5+', 'label': '5+ years'},
   ];
 
-  // Enhanced gradient colors
-  final Color primaryBlue = Color(0xFF1A5DC1);
-  final Color secondaryBlue = Color(0xFF0E4DA4);
-  final Color lightBlue = Color(0xFFE6F0FF);
-  final Color accentBlue = Color(0xFF2E7BF6);
-  final Color whiteColor = CupertinoColors.white;
+  // Updated color scheme
+  final Color primaryBlue = Color(0xFF1565C0); // Deep blue
+  final Color lightBlue = Color(0xFFE3F2FD); // Very light blue
+  final Color whiteColor = Colors.white; // Pure white
+  final Color accentBlue = Color(0xFF42A5F5); // Lighter blue for accents
 
   @override
   void initState() {
@@ -188,7 +187,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
         }
       }
     } catch (e) {
-      // _showErrorDialog('Error searching postcode: $e');
+      // Handle error silently or show a subtle message
     } finally {
       setState(() {
         _isSearching = false;
@@ -205,10 +204,6 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final accessToken = prefs.getString('access_token');
-
-      if (accessToken == null) {
-        // throw Exception('Authentication token not found. Please login again.');
-      }
 
       final url = Uri.parse(ApiConfig.driverProfileUrl);
       final request = http.MultipartRequest('POST', url);
@@ -230,12 +225,11 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
       request.fields['has_criminal_history'] =
           _hasCriminalHistory ? 'true' : 'false';
       request.fields['has_disability'] = _hasDisability ? 'true' : 'false';
-      // Add new fields
       request.fields['experience_types'] = jsonEncode(
-      _selectedExperienceType == 'custom'
-          ? [_customExperienceController.text]
-          : [_selectedExperienceType],
-    );
+        _selectedExperienceType == 'custom'
+            ? [_customExperienceController.text]
+            : [_selectedExperienceType],
+      );
       request.fields['driving_duration'] = _selectedDrivingDuration ?? '';
 
       if (_imageFile != null) {
@@ -275,23 +269,23 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
       );
 
       final response = await http.Response.fromStream(streamedResponse);
-      
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString('user_name', _nameController.text);
- 
-  setState(() {
-    _formSubmittedSuccessfully = true;
-  });
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      CupertinoPageRoute(builder: (context) => const MainWrapper()),
-      (Route<dynamic> route) => false,
-    );
-  });
-  _showSuccessDialog('Profile registered successfully!');
-}else {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_name', _nameController.text);
+
+        setState(() {
+          _formSubmittedSuccessfully = true;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            CupertinoPageRoute(builder: (context) => const MainWrapper()),
+            (Route<dynamic> route) => false,
+          );
+        });
+        _showSuccessDialog('Profile registered successfully!');
+      } else {
         setState(() {
           try {
             final responseData = json.decode(response.body);
@@ -355,16 +349,14 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
       }
 
       if (_selectedExperienceType == null) {
-      _showErrorDialog('Please select an experience type');
-      return;
-    }
+        _showErrorDialog('Please select an experience type');
+        return;
+      }
 
       if (_selectedDrivingDuration == null) {
         _showErrorDialog('Please select driving duration');
         return;
       }
-
-      
 
       await _submitMultipartForm();
     }
@@ -446,31 +438,16 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
       onWillPop: _onWillPop,
       child: CupertinoPageScaffold(
         child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                primaryBlue.withOpacity(0.1),
-                whiteColor,
-                lightBlue.withOpacity(0.3),
-              ],
-              stops: [0.0, 0.3, 1.0],
-            ),
-          ),
+          color: whiteColor, // Solid white background
           child: Column(
             children: [
               Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [primaryBlue, accentBlue, secondaryBlue],
-                  ),
+                  color: primaryBlue, // Solid blue header
                   boxShadow: [
                     BoxShadow(
                       color: primaryBlue.withOpacity(0.3),
-                      blurRadius: 10,
+                      blurRadius: 8,
                       offset: Offset(0, 2),
                     ),
                   ],
@@ -514,6 +491,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
               Expanded(
                 child: _isSubmitting
                     ? Container(
+                        color: whiteColor,
                         child: Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -521,12 +499,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                               Container(
                                 padding: EdgeInsets.all(20),
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      primaryBlue.withOpacity(0.1),
-                                      whiteColor,
-                                    ],
-                                  ),
+                                  color: lightBlue,
                                   borderRadius: BorderRadius.circular(20),
                                   boxShadow: [
                                     BoxShadow(
@@ -566,38 +539,30 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                   padding: EdgeInsets.all(16),
                                   margin: EdgeInsets.only(bottom: 20),
                                   decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        CupertinoColors.destructiveRed
-                                            .withOpacity(0.1),
-                                        CupertinoColors.destructiveRed
-                                            .withOpacity(0.05),
-                                      ],
-                                    ),
+                                    color: CupertinoColors.destructiveRed.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: CupertinoColors.destructiveRed
-                                          .withOpacity(0.5),
+                                      color: CupertinoColors.destructiveRed.withOpacity(0.5),
                                     ),
                                   ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [],
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: TextStyle(
+                                      color: CupertinoColors.destructiveRed,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                 ),
                               Center(
                                 child: Container(
                                   padding: EdgeInsets.all(4),
                                   decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [primaryBlue, accentBlue],
-                                    ),
+                                    color: whiteColor,
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: primaryBlue.withOpacity(0.4),
-                                        blurRadius: 20,
+                                        color: primaryBlue.withOpacity(0.3),
+                                        blurRadius: 12,
                                         spreadRadius: 2,
                                       ),
                                     ],
@@ -608,13 +573,11 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                         width: 150,
                                         height: 150,
                                         decoration: BoxDecoration(
-                                          color: whiteColor,
+                                          color: lightBlue,
                                           shape: BoxShape.circle,
                                           image: _imageFile != null
                                               ? DecorationImage(
-                                                  image: FileImage(
-                                                    _imageFile!,
-                                                  ),
+                                                  image: FileImage(_imageFile!),
                                                   fit: BoxFit.cover,
                                                 )
                                               : null,
@@ -623,8 +586,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                             ? Icon(
                                                 CupertinoIcons.person_solid,
                                                 size: 70,
-                                                color: primaryBlue
-                                                    .withOpacity(0.7),
+                                                color: primaryBlue.withOpacity(0.7),
                                               )
                                             : null,
                                       ),
@@ -635,12 +597,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                           padding: EdgeInsets.zero,
                                           child: Container(
                                             decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [
-                                                  accentBlue,
-                                                  primaryBlue,
-                                                ],
-                                              ),
+                                              color: accentBlue,
                                               shape: BoxShape.circle,
                                               border: Border.all(
                                                 color: whiteColor,
@@ -648,8 +605,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                               ),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: primaryBlue
-                                                      .withOpacity(0.3),
+                                                  color: primaryBlue.withOpacity(0.3),
                                                   blurRadius: 8,
                                                   spreadRadius: 1,
                                                 ),
@@ -662,9 +618,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                               size: 20,
                                             ),
                                           ),
-                                          onPressed: () => _getImage(
-                                            ImageSource.camera,
-                                          ),
+                                          onPressed: () => _getImage(ImageSource.camera),
                                         ),
                                       ),
                                     ],
@@ -672,7 +626,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                 ),
                               ),
                               SizedBox(height: 40),
-                              _buildGradientFormField(
+                              _buildFormField(
                                 controller: _nameController,
                                 placeholder: appLanguage.get('name'),
                                 icon: CupertinoIcons.person_fill,
@@ -681,30 +635,29 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                     return appLanguage.get('please_enter_name');
                                   }
                                   if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(value)) {
-                                    return appLanguage.get(
-                                        'name_must_contain_only_alphabets');
+                                    return appLanguage.get('name_must_contain_only_alphabets');
                                   }
                                   return null;
-                                }, readOnly: false,
+                                },
+                                readOnly: false,
                               ),
                               SizedBox(height: 20),
-                             _buildGradientFormField(
-      controller: _emailController,
-      placeholder: appLanguage.get('email'),
-      icon: CupertinoIcons.mail_solid,
-      keyboardType: TextInputType.emailAddress,
-      readOnly: true, // Make email field read-only
-    ),
+                              _buildFormField(
+                                controller: _emailController,
+                                placeholder: appLanguage.get('email'),
+                                icon: CupertinoIcons.mail_solid,
+                                keyboardType: TextInputType.emailAddress,
+                                readOnly: true,
+                              ),
                               SizedBox(height: 20),
-                              _buildGradientFormField(
+                              _buildFormField(
                                 controller: _phoneController,
                                 placeholder: appLanguage.get('phone_number'),
                                 icon: CupertinoIcons.phone_fill,
                                 keyboardType: TextInputType.phone,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return appLanguage.get(
-                                        'please_enter_phone_number');
+                                    return appLanguage.get('please_enter_phone_number');
                                   }
                                   if (!_isValidUKPhoneNumber(value)) {
                                     return 'Please enter a valid UK phone number';
@@ -717,28 +670,21 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                         '+44 ' + value.replaceAll('+44', '').trim();
                                     _phoneController.selection =
                                         TextSelection.fromPosition(
-                                      TextPosition(
-                                        offset: _phoneController.text.length,
-                                      ),
+                                      TextPosition(offset: _phoneController.text.length),
                                     );
                                   }
-                                }, readOnly: false,
+                                },
+                                readOnly: false,
                               ),
                               SizedBox(height: 24),
-                              _buildGradientSection(
+                              _buildSection(
                                 title: appLanguage.get('home_address'),
                                 icon: CupertinoIcons.home,
                                 child: Column(
                                   children: [
                                     PostcodeSearchWidget(
-                                      placeholderText: appLanguage.get(
-                                        'home_postcode',
-                                      ),
-                                      onAddressSelected: (
-                                        latitude,
-                                        longitude,
-                                        address,
-                                      ) {
+                                      placeholderText: appLanguage.get('home_postcode'),
+                                      onAddressSelected: (latitude, longitude, address) {
                                         setState(() {
                                           _selectedHomeAddress = address;
                                           _homeLatitude = latitude;
@@ -749,9 +695,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                     if (_selectedHomeAddress != null) ...[
                                       SizedBox(height: 16),
                                       _buildSelectedAddressCard(
-                                        title: appLanguage.get(
-                                          'selected_home_address',
-                                        ),
+                                        title: appLanguage.get('selected_home_address'),
                                         address: _selectedHomeAddress!,
                                       ),
                                     ],
@@ -759,104 +703,96 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                 ),
                               ),
                               SizedBox(height: 24),
-                              // New Experience Types Section
-                              _buildGradientSection(
-      title: 'Delivery Experience',
-      icon: CupertinoIcons.car_detailed,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Select one option',
-            style: TextStyle(
-              color: primaryBlue.withOpacity(0.7),
-              fontSize: 14,
-            ),
-          ),
-          SizedBox(height: 12),
-          ..._experienceTypeOptions.map((option) {
-            final isSelected = _selectedExperienceType == option['value'];
-            return Padding(
-              padding: EdgeInsets.only(bottom: 12),
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedExperienceType = option['value'];
-                    _isCustomExperienceSelected = option['value'] == 'custom';
-                    if (!_isCustomExperienceSelected) {
-                      _customExperienceController.clear();
-                    }
-                  });
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        isSelected
-                            ? primaryBlue.withOpacity(0.1)
-                            : lightBlue.withOpacity(0.3),
-                        whiteColor,
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected
-                          ? primaryBlue
-                          : primaryBlue.withOpacity(0.2),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        isSelected
-                            ? CupertinoIcons.checkmark_circle_fill
-                            : CupertinoIcons.circle,
-                        color: isSelected
-                            ? primaryBlue
-                            : primaryBlue.withOpacity(0.6),
-                        size: 20,
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          option['label']!,
-                          style: TextStyle(
-                            color: primaryBlue,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-          if (_isCustomExperienceSelected) ...[
-            SizedBox(height: 12),
-            _buildGradientFormField(
-              controller: _customExperienceController,
-              placeholder: 'Specify other experience',
-              icon: CupertinoIcons.textbox,
-              validator: (value) {
-                if (_selectedExperienceType == 'custom' &&
-                    (value == null || value.isEmpty)) {
-                  return 'Please specify custom experience';
-                }
-                return null;
-              }, readOnly: false,
-            ),
-          ],
-        ],
-      ),
-    ),
+                              _buildSection(
+                                title: 'Delivery Experience',
+                                icon: CupertinoIcons.car_detailed,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Select one option',
+                                      style: TextStyle(
+                                        color: primaryBlue.withOpacity(0.7),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    SizedBox(height: 12),
+                                    ..._experienceTypeOptions.map((option) {
+                                      final isSelected = _selectedExperienceType == option['value'];
+                                      return Padding(
+                                        padding: EdgeInsets.only(bottom: 12),
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _selectedExperienceType = option['value'];
+                                              _isCustomExperienceSelected = option['value'] == 'custom';
+                                              if (!_isCustomExperienceSelected) {
+                                                _customExperienceController.clear();
+                                              }
+                                            });
+                                          },
+                                          child: Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: isSelected ? lightBlue : whiteColor,
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: isSelected
+                                                    ? primaryBlue
+                                                    : primaryBlue.withOpacity(0.2),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  isSelected
+                                                      ? CupertinoIcons.checkmark_circle_fill
+                                                      : CupertinoIcons.circle,
+                                                  color: isSelected
+                                                      ? primaryBlue
+                                                      : primaryBlue.withOpacity(0.6),
+                                                  size: 20,
+                                                ),
+                                                SizedBox(width: 12),
+                                                Expanded(
+                                                  child: Text(
+                                                    option['label']!,
+                                                    style: TextStyle(
+                                                      color: primaryBlue,
+                                                      fontSize: 16,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                    if (_isCustomExperienceSelected) ...[
+                                      SizedBox(height: 12),
+                                      _buildFormField(
+                                        controller: _customExperienceController,
+                                        placeholder: 'Specify other experience',
+                                        icon: CupertinoIcons.textbox,
+                                        validator: (value) {
+                                          if (_selectedExperienceType == 'custom' &&
+                                              (value == null || value.isEmpty)) {
+                                            return 'Please specify custom experience';
+                                          }
+                                          return null;
+                                        },
+                                        readOnly: false,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
                               SizedBox(height: 24),
-                              // New Driving Duration Section
-                              _buildGradientSection(
+                              _buildSection(
                                 title: 'Driving Experience',
                                 icon: CupertinoIcons.time,
                                 child: Column(
@@ -870,12 +806,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                           vertical: 16,
                                         ),
                                         decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              whiteColor,
-                                              lightBlue.withOpacity(0.5),
-                                            ],
-                                          ),
+                                          color: whiteColor,
                                           borderRadius: BorderRadius.circular(16),
                                           border: Border.all(
                                             color: primaryBlue.withOpacity(0.2),
@@ -919,7 +850,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                           context: context,
                                           builder: (context) => CupertinoActionSheet(
                                             title: Text(
-                                              'Driving Duration',
+                                              'Driving Experience',
                                               style: TextStyle(
                                                 color: primaryBlue,
                                                 fontWeight: FontWeight.bold,
@@ -961,12 +892,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                       Container(
                                         padding: EdgeInsets.all(12),
                                         decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              whiteColor,
-                                              primaryBlue.withOpacity(0.05),
-                                            ],
-                                          ),
+                                          color: lightBlue,
                                           borderRadius: BorderRadius.circular(12),
                                           border: Border.all(
                                             color: primaryBlue.withOpacity(0.3),
@@ -976,7 +902,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                           _drivingDurationOptions.firstWhere((option) =>
                                               option['value'] == _selectedDrivingDuration)['label']!,
                                           style: TextStyle(
-                                            color: secondaryBlue,
+                                            color: primaryBlue,
                                             fontSize: 14,
                                           ),
                                         ),
@@ -986,7 +912,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                 ),
                               ),
                               SizedBox(height: 24),
-                              _buildGradientToggleRow(
+                              _buildToggleRow(
                                 text: appLanguage.get('are_u_british'),
                                 value: _isBritishCitizen,
                                 icon: CupertinoIcons.flag,
@@ -997,7 +923,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                 },
                               ),
                               SizedBox(height: 16),
-                              _buildGradientToggleRow(
+                              _buildToggleRow(
                                 text: appLanguage.get('Have you ever been convicted of a criminal offence?'),
                                 value: _hasCriminalHistory,
                                 icon: CupertinoIcons.doc_checkmark,
@@ -1008,7 +934,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                 },
                               ),
                               SizedBox(height: 16),
-                              _buildGradientToggleRow(
+                              _buildToggleRow(
                                 text: appLanguage.get('Do you have a disability or accessibility need?'),
                                 value: _hasDisability,
                                 icon: CupertinoIcons.heart,
@@ -1026,11 +952,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                 Container(
                                   padding: EdgeInsets.all(20),
                                   decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [lightBlue, whiteColor],
-                                    ),
+                                    color: whiteColor,
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
                                       color: primaryBlue.withOpacity(0.3),
@@ -1044,8 +966,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                     ],
                                   ),
                                   child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
@@ -1056,9 +977,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                           ),
                                           SizedBox(width: 8),
                                           Text(
-                                            appLanguage.get(
-                                              'disability_certificate',
-                                            ),
+                                            appLanguage.get('disability_certificate'),
                                             style: TextStyle(
                                               color: primaryBlue,
                                               fontWeight: FontWeight.bold,
@@ -1072,12 +991,10 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                           ? Container(
                                               padding: EdgeInsets.all(12),
                                               decoration: BoxDecoration(
-                                                color: whiteColor,
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
+                                                color: lightBlue,
+                                                borderRadius: BorderRadius.circular(12),
                                                 border: Border.all(
-                                                  color: primaryBlue
-                                                      .withOpacity(0.3),
+                                                  color: primaryBlue.withOpacity(0.3),
                                                 ),
                                               ),
                                               child: Row(
@@ -1090,16 +1007,11 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                                   SizedBox(width: 12),
                                                   Expanded(
                                                     child: Text(
-                                                      _disabilityCertificateFile!
-                                                          .path
-                                                          .split('/')
-                                                          .last,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
+                                                      _disabilityCertificateFile!.path.split('/').last,
+                                                      overflow: TextOverflow.ellipsis,
                                                       style: TextStyle(
                                                         color: primaryBlue,
-                                                        fontWeight:
-                                                            FontWeight.w500,
+                                                        fontWeight: FontWeight.w500,
                                                       ),
                                                     ),
                                                   ),
@@ -1107,14 +1019,11 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                                     padding: EdgeInsets.zero,
                                                     child: Icon(
                                                       CupertinoIcons.trash,
-                                                      color:
-                                                          CupertinoColors
-                                                              .destructiveRed,
+                                                      color: CupertinoColors.destructiveRed,
                                                     ),
                                                     onPressed: () {
                                                       setState(() {
-                                                        _disabilityCertificateFile =
-                                                            null;
+                                                        _disabilityCertificateFile = null;
                                                       });
                                                     },
                                                   ),
@@ -1126,30 +1035,19 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                               child: Container(
                                                 width: double.infinity,
                                                 decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    colors: [
-                                                      primaryBlue,
-                                                      accentBlue,
-                                                    ],
-                                                  ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
+                                                  color: primaryBlue,
+                                                  borderRadius: BorderRadius.circular(12),
                                                   boxShadow: [
                                                     BoxShadow(
-                                                      color: primaryBlue
-                                                          .withOpacity(0.3),
+                                                      color: primaryBlue.withOpacity(0.3),
                                                       blurRadius: 8,
                                                       spreadRadius: 1,
                                                     ),
                                                   ],
                                                 ),
-                                                padding: EdgeInsets.symmetric(
-                                                  vertical: 16,
-                                                ),
+                                                padding: EdgeInsets.symmetric(vertical: 16),
                                                 child: Text(
-                                                  appLanguage.get(
-                                                    'upload_certificate',
-                                                  ),
+                                                  appLanguage.get('upload_certificate'),
                                                   textAlign: TextAlign.center,
                                                   style: TextStyle(
                                                     color: whiteColor,
@@ -1167,21 +1065,15 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                 ),
                               ],
                               SizedBox(height: 24),
-                              _buildGradientSection(
+                              _buildSection(
                                 title: appLanguage.get('working_area'),
                                 icon: CupertinoIcons.location,
                                 child: Column(
                                   children: [
                                     PostcodeSearchWidget(
                                       postcodeController: _postcodeController,
-                                      placeholderText: appLanguage.get(
-                                        'postcode',
-                                      ),
-                                      onAddressSelected: (
-                                        latitude,
-                                        longitude,
-                                        address,
-                                      ) {
+                                      placeholderText: appLanguage.get('postcode'),
+                                      onAddressSelected: (latitude, longitude, address) {
                                         setState(() {
                                           _selectedAddress = address;
                                           _latitude = latitude;
@@ -1192,9 +1084,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                     if (_selectedAddress != null) ...[
                                       SizedBox(height: 16),
                                       _buildSelectedAddressCard(
-                                        title: appLanguage.get(
-                                          'selected_working_area',
-                                        ),
+                                        title: appLanguage.get('selected_working_area'),
                                         address: _selectedAddress!,
                                       ),
                                     ],
@@ -1204,15 +1094,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                               SizedBox(height: 40),
                               Container(
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      primaryBlue,
-                                      accentBlue,
-                                      secondaryBlue,
-                                    ],
-                                  ),
+                                  color: primaryBlue,
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
@@ -1262,22 +1144,19 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     );
   }
 
-  Widget _buildGradientFormField({
+  Widget _buildFormField({
     required TextEditingController controller,
     required String placeholder,
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
     String? Function(String?)? validator,
-    Function(String)? onChanged, required bool readOnly,
+    Function(String)? onChanged,
+    required bool readOnly,
   }) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [whiteColor, lightBlue.withOpacity(0.5)],
-        ),
+        color: whiteColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: primaryBlue.withOpacity(0.2)),
         boxShadow: [
@@ -1299,6 +1178,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
           ),
           keyboardType: keyboardType,
           maxLines: maxLines,
+          readOnly: readOnly,
           style: TextStyle(
             color: primaryBlue,
             fontSize: 16,
@@ -1316,7 +1196,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     );
   }
 
-  Widget _buildGradientSection({
+  Widget _buildSection({
     required String title,
     required IconData icon,
     required Widget child,
@@ -1324,15 +1204,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            lightBlue.withOpacity(0.3),
-            whiteColor,
-            lightBlue.withOpacity(0.1),
-          ],
-        ),
+        color: whiteColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: primaryBlue.withOpacity(0.2)),
         boxShadow: [
@@ -1351,7 +1223,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
               Container(
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [primaryBlue, accentBlue]),
+                  color: primaryBlue,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: whiteColor, size: 20),
@@ -1374,7 +1246,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     );
   }
 
-  Widget _buildGradientToggleRow({
+  Widget _buildToggleRow({
     required String text,
     required bool value,
     required IconData icon,
@@ -1383,14 +1255,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            value ? primaryBlue.withOpacity(0.1) : lightBlue.withOpacity(0.3),
-            whiteColor,
-          ],
-        ),
+        color: whiteColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: value ? primaryBlue.withOpacity(0.5) : primaryBlue.withOpacity(0.2),
@@ -1408,9 +1273,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
           Container(
             padding: EdgeInsets.all(6),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: value ? [primaryBlue, accentBlue] : [Colors.grey.shade400, Colors.grey.shade500],
-              ),
+              color: value ? primaryBlue : Colors.grey.shade400,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: whiteColor, size: 16),
@@ -1456,11 +1319,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [whiteColor, primaryBlue.withOpacity(0.05)],
-        ),
+        color: lightBlue,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: primaryBlue.withOpacity(0.3)),
         boxShadow: [
@@ -1491,7 +1350,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
           SizedBox(height: 8),
           Text(
             address,
-            style: TextStyle(color: secondaryBlue, fontSize: 14, height: 1.4),
+            style: TextStyle(color: primaryBlue, fontSize: 14, height: 1.4),
           ),
         ],
       ),

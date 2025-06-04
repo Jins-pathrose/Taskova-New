@@ -88,7 +88,7 @@ class _CommunityPageState extends State<CommunityPage> with TickerProviderStateM
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.20.29:8001/api/driver-community/messages/'),
+        Uri.parse('https://taskova.co.uk/api/driver-community/messages/'),
         headers: {'Authorization': 'Bearer $accessToken'},
       );
       if (response.statusCode == 200) {
@@ -162,9 +162,9 @@ class _CommunityPageState extends State<CommunityPage> with TickerProviderStateM
     }
 
     try {
-      final wsUrl = 'ws://192.168.20.29:8001/ws/community/driver/?token=$accessToken';
+      final wsUrl = 'wss://taskova.co.uk:8091/ws/community/driver/?token=$accessToken';
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-
+ 
       setState(() {
         _isConnected = true;
       });
@@ -190,6 +190,8 @@ class _CommunityPageState extends State<CommunityPage> with TickerProviderStateM
           }
         },
         onError: (error) {
+          print(error);
+          print('8888888888888888888888888888888888888888888888888888888888888888888888888888888880');
           setState(() {
             _isConnected = false;
             _messages.add({
@@ -201,6 +203,7 @@ class _CommunityPageState extends State<CommunityPage> with TickerProviderStateM
           });
           _animationController.reverse();
         },
+        
         onDone: () {
           setState(() {
             _isConnected = false;

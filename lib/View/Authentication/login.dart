@@ -213,7 +213,7 @@ class _LoginPageState extends State<LoginPage> {
 
       try {
         final response = await http.post(
-          Uri.parse(ApiConfig.loginUrl),
+          Uri.parse('https://taskova.co.uk/api/login/'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'email': _emailController.text,
