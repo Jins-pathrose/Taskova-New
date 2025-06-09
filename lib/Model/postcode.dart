@@ -183,7 +183,7 @@ class _PostcodeSearchWidgetState extends State<PostcodeSearchWidget> {
         );
       }
     } catch (e) {
-      _showErrorDialog('Error searching postcode: $e');
+      // _showErrorDialog('Error searching postcode: $e');
     } finally {
       setState(() {
         _isSearching = false;

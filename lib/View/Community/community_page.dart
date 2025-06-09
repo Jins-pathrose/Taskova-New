@@ -162,7 +162,7 @@ class _CommunityPageState extends State<CommunityPage> with TickerProviderStateM
     }
 
     try {
-      final wsUrl = 'wss://taskova.co.uk:8091/ws/community/driver/?token=$accessToken';
+      final wsUrl = 'ws://taskova.co.uk:8001/ws/community/driver/?token=$accessToken';
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
  
       setState(() {

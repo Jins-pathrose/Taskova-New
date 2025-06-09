@@ -119,7 +119,60 @@ class _ProfilePageState extends State<ProfilePage> {
       });
     }
   }
-
+void _showLanguageSelectionDialog() {
+  showCupertinoDialog(
+    context: context,
+    builder: (context) => CupertinoTheme(
+      data: CupertinoThemeData(brightness: Brightness.light),
+      child: CupertinoAlertDialog(
+        title: Text(
+          appLanguage.get('language'),
+          style: TextStyle(color: primaryBlue),
+        ),
+        content: Container(
+          height: 200,
+          child: CupertinoPicker(
+            itemExtent: 40,
+            onSelectedItemChanged: (int index) {
+              final selectedLanguage = appLanguage.supportedLanguages[index];
+              appLanguage.changeLanguage(selectedLanguage['code']!);
+            },
+            children: appLanguage.supportedLanguages.map((lang) {
+              return Center(
+                child: Text(
+                  lang['nativeName']!,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: CupertinoColors.black,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: Text(
+              appLanguage.get('cancel'),
+              style: TextStyle(color: primaryBlue),
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+          CupertinoDialogAction(
+            child: Text(
+              appLanguage.get('confirm'),
+              style: TextStyle(color: primaryBlue),
+            ),
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {}); // Refresh UI to reflect language change
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+}
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) {
       print('Validation failed'); // Debug print
@@ -605,7 +658,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     ),
                                     SizedBox(width: 6),
                                     Text(
-                                      '${appLanguage.get('active')} • ${appLanguage.get('verified')}',
+                                      appLanguage.get('active'),
                                       style: TextStyle(
                                         color: CupertinoColors.systemGreen,
                                         fontSize: 12,
@@ -869,8 +922,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         _buildModernSettingsItem(
                           icon: CupertinoIcons.briefcase,
-                          title: appLanguage.get('Applied Jobs'),
-                          subtitle: 'View jobs you’ve applied for.',
+                          title: appLanguage.get('applied_jobs'),
+                          subtitle: appLanguage.get('View_jobs_you’ve_applied_for'),
                           iconColor: const Color.fromARGB(255, 15, 159, 242),
                           isFirst: true,
                           onTap: () {
@@ -879,17 +932,17 @@ class _ProfilePageState extends State<ProfilePage> {
                         ),
                         _buildModernSettingsItem(
                           icon: CupertinoIcons.person,
-                          title: appLanguage.get('Support & Help'),
-                          subtitle: 'Access help resources or contact support.',
+                          title: appLanguage.get('support_help'),
+                          subtitle: appLanguage.get('Access_help_resources_or_contact_support'),
                           iconColor: const Color.fromARGB(255, 103, 215, 154),
                           isFirst: true,
                           onTap: () {},
                         ),
                         _buildModernSettingsItem(
                           icon: CupertinoIcons.shield_fill,
-                          title: appLanguage.get('Privacy Settings'),
+                          title: appLanguage.get('Privacy_Settings'),
                           subtitle:
-                              'Adjust privacy options, such as location sharing or data usage',
+                              appLanguage.get('Adjust_privacy_options,_such_as_location_sharing_or_data_usage'),
                           iconColor: const Color.fromARGB(255, 230, 91, 45),
                           isFirst: true,
                           onTap: () {},
@@ -897,7 +950,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         _buildModernSettingsItem(
                           icon: CupertinoIcons.lock_fill,
                           title: appLanguage.get('change_password'),
-                          subtitle: 'Update your account password',
+                          subtitle: appLanguage.get('Update_your_account_password'),
                           iconColor: CupertinoColors.systemBlue,
                           onTap: () {
                             //  Navigator.push(context, MaterialPageRoute(builder: (context)=>ForgotPasswordScreen()));
@@ -906,14 +959,16 @@ class _ProfilePageState extends State<ProfilePage> {
                         _buildModernSettingsItem(
                           icon: CupertinoIcons.globe,
                           title: appLanguage.get('language'),
-                          subtitle: 'Choose your preferred language',
+                          subtitle: appLanguage.get('Choose_your_preferred_language'),
                           iconColor: CupertinoColors.systemPurple,
-                          onTap: () {},
+                          onTap: () {
+                            _showLanguageSelectionDialog();
+                          },
                         ),
                         _buildModernSettingsItem(
                           icon: CupertinoIcons.square_arrow_right,
                           title: appLanguage.get('logout'),
-                          subtitle: 'Sign out of your account',
+                          subtitle: appLanguage.get('Sign_out_of_your_account'),
                           iconColor: CupertinoColors.destructiveRed,
                           isDestructive: true,
                           isLast: true,
