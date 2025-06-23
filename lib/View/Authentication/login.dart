@@ -78,12 +78,14 @@ class _LoginPageState extends State<LoginPage> {
     String refreshToken,
     String email,
     String name,
+    String driverid,
   ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('access_token', accessToken);
     await prefs.setString('refresh_token', refreshToken);
     await prefs.setString('user_email', email);
     await prefs.setString('user_name', name);
+    await prefs.setString('driver_id', driverid);
   }
 
   void _showErrorDialog(String message) {
@@ -167,8 +169,9 @@ class _LoginPageState extends State<LoginPage> {
         String refreshToken = data['tokens']['refresh'] ?? "";
         String name = data['name'] ?? "";
         String email = account.email;
+        String driverid = data['id'] ?? "";
 
-        await saveTokens(accessToken, refreshToken, email, name);
+        await saveTokens(accessToken, refreshToken, email, name, driverid);
         final profileResponse = await http.get(
           Uri.parse(ApiConfig.profileStatusUrl),
           headers: {
@@ -201,8 +204,12 @@ class _LoginPageState extends State<LoginPage> {
         _showErrorDialog(data['error'] ?? 'Google login failed');
       }
     } catch (e) {
-      _showErrorDialog('Something went wrong during Google Sign-In');
-    } finally {
+  print("Login Error: $e"); // Add this line
+  print('00000000000000000000000000000000000000000000000000000000000000');
+  _showErrorDialog(
+    "Connection error. Please check your internet connection.",
+  );
+} finally {
       setState(() => _isGoogleLoading = false); // Stop loading
     }
   }
@@ -213,7 +220,7 @@ class _LoginPageState extends State<LoginPage> {
 
       try {
         final response = await http.post(
-          Uri.parse('https://taskova.co.uk/api/login/'),
+          Uri.parse('http://192.168.20.29:8001/api/login/'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'email': _emailController.text,
@@ -227,16 +234,18 @@ class _LoginPageState extends State<LoginPage> {
           String accessToken = responseData['access'] ?? "";
           String refreshToken = responseData['refresh'] ?? "";
           String name = responseData['name'] ?? "";
+String driverid = (responseData['id'] ?? "").toString();
 
           await saveTokens(
             accessToken,
             refreshToken,
             _emailController.text,
             name,
+            driverid
           );
 
           final profileResponse = await http.get(
-            Uri.parse(ApiConfig.profileStatusUrl),
+            Uri.parse('http://192.168.20.29:8001/api/profile-status/'),
             headers: {
               'Authorization': 'Bearer $accessToken',
               'Content-Type': 'application/json',
@@ -286,10 +295,10 @@ class _LoginPageState extends State<LoginPage> {
           _showErrorDialog(errorMessage);
         }
       } catch (e) {
-        _showErrorDialog(
-          "Connection error. Please check your internet connection.",
-        );
-      } finally {
+  _showErrorDialog(
+    "Connection error. Please check your internet connection.",
+  );
+}finally {
         setState(() => _isLoading = false);
       }
     }

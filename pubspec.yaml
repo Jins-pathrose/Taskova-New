@@ -57,6 +57,8 @@ dependencies:
   intl: ^0.20.2
   flutter_local_notifications: ^19.2.1
   permission_handler: ^12.0.0+1
+  flutter_image_compress: ^2.4.0
+  animated_text_kit: ^4.2.3
 
 dev_dependencies:
   flutter_test:
@@ -97,6 +99,13 @@ flutter:
     - assets/google-logo.png
     - assets/taskova-logo.png
     - assets/white-logo.png
+    - assets/Animation - 1745386664133 (1).json
+    - assets/Animation - 1749794777425.json
+    - assets/Animation - 1749795066227.json
+    - assets/undraw_delivery-truck_mjui.png
+    - assets/undraw_take-out-boxes_n094.png
+    - assets/ChatGPT_Image_Jun_13__2025__03_17_21_PM-removebg-preview.png
+    - assets/undraw_package-arrived_twqd.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

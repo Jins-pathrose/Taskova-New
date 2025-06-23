@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskova_new/Model/api_config.dart';
 import 'package:taskova_new/View/Homepage/detailspage.dart';
 import 'package:taskova_new/View/Homepage/homepage.dart';
-
+import 'package:taskova_new/View/Language/language_provider.dart';
 
 class AppliedJobsPage extends StatefulWidget {
   const AppliedJobsPage({Key? key}) : super(key: key);
@@ -21,10 +23,13 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
   String? _errorMessage;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  late AppLanguage appLanguage;
 
   @override
   void initState() {
     super.initState();
+        appLanguage = Provider.of<AppLanguage>(context, listen: false);
+
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -72,7 +77,8 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> jobRequests = jsonDecode(response.body);
+        final Map<String, dynamic> decoded = jsonDecode(response.body);
+        final List<dynamic> jobRequests = decoded['data'];
         final List<Map<String, dynamic>> enrichedJobRequests = [];
 
         // Fetch job details for each request
@@ -105,21 +111,20 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
               });
             } else {
               print('Failed to fetch job details for job ID ${request['job']}: ${jobResponse.statusCode}');
-              // Optionally add a placeholder job to show the request even if job details fail
-              // enrichedJobRequests.add({
-              //   'request': request,
-              //   'job': JobPost(
-              //     id: request['job'],
-              //     title: 'Job Details Unavailable',
-              //     businessName: 'Unknown',
-              //     complimentaryBenefits: [],
-              //     createdAt: '',
-              //     businessId: 0,
-              //     businessLatitude: 0.0,
-              //     businessLongitude: 0.0,
-              //     jobDate: request['created_at']?.substring(0, 10) ?? 'TBD',
-              //   ),
-              // });
+              enrichedJobRequests.add({
+                'request': request,
+                'job': JobPost(
+                  id: request['job'],
+                  title: 'Job Details Unavailable',
+                  businessName: 'Unknown',
+                  complimentaryBenefits: [],
+                  createdAt: '',
+                  businessId: 0,
+                  businessLatitude: 0.0,
+                  businessLongitude: 0.0,
+                  jobDate: request['created_at']?.substring(0, 10) ?? 'TBD',
+                ),
+              });
             }
           } catch (e) {
             print('Error fetching job details for job ID ${request['job']}: $e');
@@ -220,8 +225,8 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
   Widget _buildSliverNavigationBar(CupertinoThemeData theme) {
     return CupertinoSliverNavigationBar(
       largeTitle: Text(
-        'Applied Jobs',
-        style: theme.textTheme.navLargeTitleTextStyle.copyWith(
+        appLanguage.get('Applied_Jobs'),
+        style: GoogleFonts.poppins(
           fontSize: 24,
           fontWeight: FontWeight.bold,
         ),
@@ -379,7 +384,7 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
           ),
           const SizedBox(height: 12),
           Text(
-            'No Applied Jobs',
+           appLanguage.get ('no_applied_Jobs'),
             style: theme.textTheme.textStyle.copyWith(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -387,7 +392,7 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
           ),
           const SizedBox(height: 6),
           Text(
-            'You haven’t applied for any jobs yet. Browse available jobs to get started!',
+            '''You haven't applied for any jobs yet. Browse available jobs to get started!''',
             style: theme.textTheme.textStyle.copyWith(
               color: CupertinoColors.systemGrey,
               fontSize: 14,
@@ -408,6 +413,11 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
           final index = entry.key;
           final jobRequest = entry.value['request'];
           final JobPost job = entry.value['job'];
+          
+          // Determine status text and color based on the status field
+          final status = jobRequest['status'] ?? 'pending';
+          final (statusText, statusColor) = _getStatusInfo(status);
+
           return TweenAnimationBuilder<double>(
             duration: Duration(milliseconds: 300 + (index * 100)),
             tween: Tween(begin: 0.0, end: 1.0),
@@ -472,26 +482,16 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: jobRequest['is_accepted']
-                                        ? CupertinoColors.systemGreen
-                                            .withOpacity(0.1)
-                                        : CupertinoColors.systemYellow
-                                            .withOpacity(0.1),
+                                    color: statusColor.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
-                                      color: jobRequest['is_accepted']
-                                          ? CupertinoColors.systemGreen
-                                          : CupertinoColors.systemYellow,
+                                      color: statusColor,
                                     ),
                                   ),
                                   child: Text(
-                                    jobRequest['is_accepted']
-                                        ? 'Accepted'
-                                        : 'Pending',
+                                    statusText,
                                     style: theme.textTheme.textStyle.copyWith(
-                                      color: jobRequest['is_accepted']
-                                          ? CupertinoColors.systemGreen
-                                          : CupertinoColors.systemYellow,
+                                      color: statusColor,
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -550,6 +550,23 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
         }).toList(),
       ),
     );
+  }
+
+  (String, Color) _getStatusInfo(String status) {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+        return ('Accepted', CupertinoColors.systemGreen);
+      case 'pending':
+        return ('Pending', CupertinoColors.systemYellow);
+      case 'applied':
+        return ('Applied', CupertinoColors.systemBlue);
+      case 'cancelled_by_driver':
+        return ('Cancelled', CupertinoColors.systemOrange);
+      case 'cancelled_by_shopkeeper':
+        return ('Cancelled', CupertinoColors.systemRed);
+      default:
+        return (status, CupertinoColors.systemGrey);
+    }
   }
 
   Widget _buildBusinessImage(JobPost job, {double size = 70}) {

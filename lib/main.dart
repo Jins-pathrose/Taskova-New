@@ -101,6 +101,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskova_new/Controller/Theme/theme.dart';
 import 'package:taskova_new/Model/Notifications/notification_helper.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
+import 'package:taskova_new/View/Language/language_selection.dart';
 import 'package:taskova_new/View/splashscreen.dart';
 
 void main() async {

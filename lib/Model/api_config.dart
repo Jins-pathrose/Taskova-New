@@ -53,7 +53,21 @@ class ApiConfig {
   static String get notificaionUrl {
     return '$baseUrl/api/notifications/';
   }
+  static String get ratingUrl {
+    return '$baseUrl/api/ratings/';
+  }
   static String get getImageUrl {
     return baseUrl;
   }
+  static String cancelJobByDriverUrl(String jobRequestId) {
+  return '$baseUrl/api/job-request/$jobRequestId/cancel-by-driver/';
+}
+  static String jobApplicationUrl(String driverId) {
+  return '$baseUrl/api/job-application/driver/$driverId/requests/';
+}
+  static String updateRequestStatusUrl(String requestId) {
+  return '$baseUrl/api/job-application/request/$requestId/update-status/';
+}
+
+
 }

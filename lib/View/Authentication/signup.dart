@@ -235,7 +235,7 @@ class _RegistrationState extends State<Registration> {
                           key: const ValueKey('registration_email_field'),
                           controller: _emailController,
                           focusNode: _emailFocusNode,
-                          placeholder: _appLanguage.get('Email address'),
+                          placeholder: _appLanguage.get('Email_address'),
                           icon: CupertinoIcons.mail,
                           keyboardType: TextInputType.emailAddress,
                           validator: _validateEmail,
@@ -246,7 +246,7 @@ class _RegistrationState extends State<Registration> {
                           key: const ValueKey('registration_password_field'),
                           controller: _passwordController,
                           focusNode: _passwordFocusNode,
-                          placeholder: _appLanguage.get('Create password'),
+                          placeholder: _appLanguage.get('Create_password'),
                           icon: CupertinoIcons.lock,
                           obscureText: _obscurePassword,
                           showVisibilityToggle: true,
@@ -356,7 +356,7 @@ class _TitleSection extends StatelessWidget {
     return Column(
       children: [
         Text(
-          appLanguage.get('Join Taskova'),
+          appLanguage.get('Join_Taskova'),
           textAlign: TextAlign.center,
           style: GoogleFonts.poppins(
             fontSize: 24,

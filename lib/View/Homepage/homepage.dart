@@ -4,9 +4,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:taskova_new/Controller/Jobstatus/jobstatus.dart';
 import 'package:taskova_new/Model/api_config.dart';
 import 'package:taskova_new/View/Homepage/detailspage.dart';
+import 'package:taskova_new/View/Language/language_provider.dart';
 
 // Extension for safely accessing map values
 extension SafeAccess on Map<String, dynamic> {
@@ -99,7 +102,8 @@ class JobPost {
       complimentaryBenefits: json['complimentary_benefits'] ?? [],
       createdAt: json['created_at'] ?? '',
       businessId: businessDetail?['id'] ?? 0,
-      businessName: businessDetail?['name'] ?? 'Unknown Business', // Updated source
+      businessName:
+          businessDetail?['name'] ?? 'Unknown Business', // Updated source
       businessImage: businessDetail?['image'] ?? '',
       businessLatitude: _parseDouble(businessDetail?['latitude']) ?? 0.0,
       businessLongitude: _parseDouble(businessDetail?['longitude']) ?? 0.0,
@@ -133,10 +137,10 @@ double? _parseDouble(dynamic value) {
 }
 
 double calculateDistanceInMiles(
-    double lat1,
-    double lon1,
-    double lat2,
-    double lon2,
+  double lat1,
+  double lon1,
+  double lat2,
+  double lon2,
 ) {
   const earthRadiusKm = 6371;
   const kmToMiles = 0.621371;
@@ -189,11 +193,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   String? _userName;
   double _radiusFilter = 30.0; // Default to 30 miles
   bool _showRadiusFilter = false; // Add this line
-
+  late AppLanguage appLanguage;
 
   @override
   void initState() {
     super.initState();
+    appLanguage = Provider.of<AppLanguage>(context, listen: false);
+
     WidgetsBinding.instance.addObserver(this);
     _searchFocusNode.unfocus();
     _loadData();
@@ -233,8 +239,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _jobPosts = [];
       _filteredJobPosts = [];
       _searchQuery = '';
-          _radiusFilter = 30.0; // Add this line
-    _showRadiusFilter = false; // Add this line
+      _radiusFilter = 30.0; // Add this line
+      _showRadiusFilter = false; // Add this line
 
       _searchController.clear();
       _driverProfile = null;
@@ -242,62 +248,70 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     await _loadData();
   }
 
- Future<void> _fetchDriverProfile() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final accessToken = prefs.getString('access_token');
-    final userName = prefs.getString('user_name')?.trim() ?? 'Driver'; // Fallback from SharedPreferences
-    print('Retrieved user_name from SharedPreferences: "$userName"'); // Debug
+  Future<void> _fetchDriverProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('access_token');
+      final userName =
+          prefs.getString('user_name')?.trim() ??
+          'Driver'; // Fallback from SharedPreferences
+      print('Retrieved user_name from SharedPreferences: "$userName"'); // Debug
 
-    setState(() {
-      _userName = userName; // Set initial username
+      setState(() {
+        _userName = userName; // Set initial username
+        if (accessToken == null || accessToken.isEmpty) {
+          _errorMessage = 'No access token found. Please log in.';
+          _isLoading = false;
+        }
+      });
+
       if (accessToken == null || accessToken.isEmpty) {
-        _errorMessage = 'No access token found. Please log in.';
-        _isLoading = false;
+        return;
       }
-    });
 
-    if (accessToken == null || accessToken.isEmpty) {
-      return;
-    }
+      final response = await http.get(
+        Uri.parse(ApiConfig.driverProfileUrl),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
 
-    final response = await http.get(
-      Uri.parse(ApiConfig.driverProfileUrl),
-      headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final jsonResponse = json.decode(response.body);
-      print('Driver profile API response: $jsonResponse'); // Debug API response
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        print(
+          'Driver profile API response: $jsonResponse',
+        ); // Debug API response
+        setState(() {
+          _driverProfile = DriverProfile.fromJson(jsonResponse);
+          // Use 'name' field from API, fallback to SharedPreferences value
+          final apiUserName = jsonResponse['name']?.toString().trim();
+          _userName =
+              (apiUserName != null && apiUserName.isNotEmpty)
+                  ? apiUserName
+                  : _userName;
+          print('Updated user_name: "$_userName"'); // Debug final username
+        });
+      } else if (response.statusCode == 401) {
+        setState(() {
+          _errorMessage = 'Authentication failed. Please log in again.';
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage =
+              'Failed to load driver profile: ${response.statusCode}';
+          _driverProfile = DriverProfile.defaultProfile();
+        });
+      }
+    } catch (e) {
       setState(() {
-        _driverProfile = DriverProfile.fromJson(jsonResponse);
-        // Use 'name' field from API, fallback to SharedPreferences value
-        final apiUserName = jsonResponse['name']?.toString().trim();
-        _userName = (apiUserName != null && apiUserName.isNotEmpty) ? apiUserName : _userName;
-        print('Updated user_name: "$_userName"'); // Debug final username
-      });
-    } else if (response.statusCode == 401) {
-      setState(() {
-        _errorMessage = 'Authentication failed. Please log in again.';
-        _isLoading = false;
-      });
-    } else {
-      setState(() {
-        _errorMessage = 'Failed to load driver profile: ${response.statusCode}';
+        _errorMessage = 'Error fetching driver profile: $e';
         _driverProfile = DriverProfile.defaultProfile();
       });
+      print('Error in _fetchDriverProfile: $e'); // Debug error
     }
-  } catch (e) {
-    setState(() {
-      _errorMessage = 'Error fetching driver profile: $e';
-      _driverProfile = DriverProfile.defaultProfile();
-    });
-    print('Error in _fetchDriverProfile: $e'); // Debug error
   }
-}
 
   Future<void> _fetchJobPosts() async {
     try {
@@ -361,50 +375,82 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       });
     }
   }
-void _applyRadiusFilter() {
-  setState(() {
-    if (_radiusFilter == 30.0) {
-      // Show all jobs if set to max (30 miles)
-      _filteredJobPosts = _jobPosts.where((job) {
-        final matchesSearch = _searchQuery.isEmpty ||
-            job.businessName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            job.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            (job.address?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-            (job.description?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
-        return matchesSearch;
-      }).toList();
-    } else {
-      // Filter by distance and search
-      _filteredJobPosts = _jobPosts.where((job) {
-        final withinRadius = job.distanceMiles != null && job.distanceMiles! <= _radiusFilter;
-        final matchesSearch = _searchQuery.isEmpty ||
-            job.businessName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            job.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            (job.address?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-            (job.description?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
-        return withinRadius && matchesSearch;
-      }).toList();
-    }
-  });
-}
-void _toggleRadiusFilter() {
-  setState(() {
-    _showRadiusFilter = !_showRadiusFilter;
-  });
-}
+
+  void _applyRadiusFilter() {
+    setState(() {
+      if (_radiusFilter == 30.0) {
+        // Show all jobs if set to max (30 miles)
+        _filteredJobPosts =
+            _jobPosts.where((job) {
+              final matchesSearch =
+                  _searchQuery.isEmpty ||
+                  job.businessName.toLowerCase().contains(
+                    _searchQuery.toLowerCase(),
+                  ) ||
+                  job.title.toLowerCase().contains(
+                    _searchQuery.toLowerCase(),
+                  ) ||
+                  (job.address?.toLowerCase().contains(
+                        _searchQuery.toLowerCase(),
+                      ) ??
+                      false) ||
+                  (job.description?.toLowerCase().contains(
+                        _searchQuery.toLowerCase(),
+                      ) ??
+                      false);
+              return matchesSearch;
+            }).toList();
+      } else {
+        // Filter by distance and search
+        _filteredJobPosts =
+            _jobPosts.where((job) {
+              final withinRadius =
+                  job.distanceMiles != null &&
+                  job.distanceMiles! <= _radiusFilter;
+              final matchesSearch =
+                  _searchQuery.isEmpty ||
+                  job.businessName.toLowerCase().contains(
+                    _searchQuery.toLowerCase(),
+                  ) ||
+                  job.title.toLowerCase().contains(
+                    _searchQuery.toLowerCase(),
+                  ) ||
+                  (job.address?.toLowerCase().contains(
+                        _searchQuery.toLowerCase(),
+                      ) ??
+                      false) ||
+                  (job.description?.toLowerCase().contains(
+                        _searchQuery.toLowerCase(),
+                      ) ??
+                      false);
+              return withinRadius && matchesSearch;
+            }).toList();
+      }
+    });
+  }
+
+  void _toggleRadiusFilter() {
+    setState(() {
+      _showRadiusFilter = !_showRadiusFilter;
+    });
+  }
+
   void _filterJobPosts(String query) {
     setState(() {
       _searchQuery = query;
-       _applyRadiusFilter();
+      _applyRadiusFilter();
       if (query.isEmpty) {
         _filteredJobPosts = _jobPosts;
       } else {
         final queryLower = query.toLowerCase();
-        _filteredJobPosts = _jobPosts.where((job) {
-          return job.businessName.toLowerCase().contains(queryLower) ||
-              job.title.toLowerCase().contains(queryLower) || (job.address?.toLowerCase().contains(queryLower) ?? false) ||
-              (job.description?.toLowerCase().contains(queryLower) ?? false);
-        }).toList();
+        _filteredJobPosts =
+            _jobPosts.where((job) {
+              return job.businessName.toLowerCase().contains(queryLower) ||
+                  job.title.toLowerCase().contains(queryLower) ||
+                  (job.address?.toLowerCase().contains(queryLower) ?? false) ||
+                  (job.description?.toLowerCase().contains(queryLower) ??
+                      false);
+            }).toList();
       }
     });
   }
@@ -415,8 +461,7 @@ void _toggleRadiusFilter() {
       if (!imageUrl.startsWith('http')) {
         imageUrl = '${ApiConfig.getImageUrl}$imageUrl';
         print(imageUrl);
-      }else{
-      }
+      } else {}
 
       return ClipRRect(
         borderRadius: BorderRadius.circular(11.5),
@@ -462,14 +507,14 @@ void _toggleRadiusFilter() {
     return CupertinoPageScaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       navigationBar: CupertinoNavigationBar(
-        middle: const Text(
-          'Nearby Jobs',
+        middle:  Text(
+         appLanguage.get ('Nearby_Jobs'),
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
         ),
         backgroundColor: theme.barBackgroundColor,
         border: null,
       ),
-      
+
       child: SafeArea(
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(
@@ -489,87 +534,89 @@ void _toggleRadiusFilter() {
       ),
     );
   }
-Widget _buildRadiusFilter(CupertinoThemeData theme) {
-  return Container(
-    margin: const EdgeInsets.only(top: 12),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: CupertinoColors.systemGrey6,
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Radius Filter',
-              style: theme.textTheme.textStyle.copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-            Text(
-              '${_radiusFilter.round()} ${_radiusFilter == 30 ? '+ miles' : 'miles'}',
-              style: theme.textTheme.textStyle.copyWith(
-                color: CupertinoColors.systemBlue,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        CupertinoSlider(
-          value: _radiusFilter,
-          min: 1.0,
-          max: 30.0,
-          divisions: 29,
-          activeColor: CupertinoColors.systemBlue,
-          onChanged: (value) {
-            setState(() {
-              _radiusFilter = value;
-            });
-            _applyRadiusFilter();
-          },
-        ),
-      ],
-    ),
-  );
-}
-Widget _buildHeaderSection(CupertinoThemeData theme) {
-  return SliverToBoxAdapter(
-    child: Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+
+  Widget _buildRadiusFilter(CupertinoThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.barBackgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: CupertinoColors.systemGrey6,
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_userName != null)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+               appLanguage.get('Radius_Filter') ,
+                style: theme.textTheme.textStyle.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              Text(
+                '${_radiusFilter.round()} ${_radiusFilter == 30 ? '+ miles' : 'miles'}',
+                style: theme.textTheme.textStyle.copyWith(
+                  color: CupertinoColors.systemBlue,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          CupertinoSlider(
+            value: _radiusFilter,
+            min: 1.0,
+            max: 30.0,
+            divisions: 29,
+            activeColor: CupertinoColors.systemBlue,
+            onChanged: (value) {
+              setState(() {
+                _radiusFilter = value;
+              });
+              _applyRadiusFilter();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderSection(CupertinoThemeData theme) {
+    return SliverToBoxAdapter(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.barBackgroundColor,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: CupertinoColors.systemGrey.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_userName != null)
+              Text(
+               '${appLanguage.get('Hi,')} $_userName',
+                style: GoogleFonts.oswald(
+                  textStyle: theme.textTheme.navTitleTextStyle.copyWith(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            if (_userName != null) const SizedBox(height: 8),
             Text(
-  'Hi, $_userName',
-  style: GoogleFonts.oswald(
-    textStyle: theme.textTheme.navTitleTextStyle.copyWith(
-      fontSize: 24,
-      fontWeight: FontWeight.bold,
-    ),
-  ),
-),
-          if (_userName != null) const SizedBox(height: 8),
-          Text(
-            'Discover Opportunities',
+             appLanguage.get('Discover_Opportunities') ,
               style: theme.textTheme.navTitleTextStyle.copyWith(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -577,7 +624,7 @@ Widget _buildHeaderSection(CupertinoThemeData theme) {
             ),
             const SizedBox(height: 6),
             Text(
-              'Find jobs near you',
+              appLanguage.get('Find_jobs_near_you') ,
               style: theme.textTheme.textStyle.copyWith(
                 color: CupertinoColors.secondaryLabel,
                 fontSize: 14,
@@ -585,7 +632,7 @@ Widget _buildHeaderSection(CupertinoThemeData theme) {
             ),
             const SizedBox(height: 12),
             _buildSearchBar(theme),
-if (_showRadiusFilter) _buildRadiusFilter(theme),
+            if (_showRadiusFilter) _buildRadiusFilter(theme),
             if (!_isLoading && _errorMessage == null) ...[
               const SizedBox(height: 12),
               Row(
@@ -593,7 +640,7 @@ if (_showRadiusFilter) _buildRadiusFilter(theme),
                 children: [
                   _buildStatItem(
                     icon: CupertinoIcons.briefcase,
-                    label: 'Jobs',
+                    label: appLanguage.get('Jobs') ,
                     value: '${_filteredJobPosts.length}',
                     theme: theme,
                   ),
@@ -604,7 +651,7 @@ if (_showRadiusFilter) _buildRadiusFilter(theme),
                   ),
                   _buildStatItem(
                     icon: CupertinoIcons.location_circle,
-                    label: 'Nearby',
+                    label: appLanguage.get('Nearby') ,
                     value:
                         '${_filteredJobPosts.where((job) => job.distanceMiles != null && job.distanceMiles! < 5).length}',
                     theme: theme,
@@ -619,80 +666,83 @@ if (_showRadiusFilter) _buildRadiusFilter(theme),
   }
 
   Widget _buildSearchBar(CupertinoThemeData theme) {
-  return Container(
-    decoration: BoxDecoration(
-      color: CupertinoColors.systemGrey6,
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: CupertinoTextField(
-            controller: _searchController,
-            focusNode: _searchFocusNode,
-            autofocus: false,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            placeholder: 'Search jobs, companies...',
-            placeholderStyle: theme.textTheme.textStyle.copyWith(
-              color: CupertinoColors.placeholderText,
-              fontSize: 14,
+    return Container(
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemGrey6,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: CupertinoTextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              autofocus: false,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              placeholder: appLanguage.get('Search_jobs,_companies...') ,
+              placeholderStyle: theme.textTheme.textStyle.copyWith(
+                color: CupertinoColors.placeholderText,
+                fontSize: 14,
+              ),
+              style: theme.textTheme.textStyle.copyWith(fontSize: 14),
+              decoration: const BoxDecoration(),
+              prefix: const Padding(
+                padding: EdgeInsets.only(left: 6),
+                child: Icon(
+                  CupertinoIcons.search,
+                  color: CupertinoColors.systemBlue,
+                  size: 18,
+                ),
+              ),
+              suffix:
+                  _searchQuery.isNotEmpty
+                      ? Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: GestureDetector(
+                          onTap: () {
+                            _searchController.clear();
+                            _filterJobPosts('');
+                            _searchFocusNode.unfocus();
+                          },
+                          child: const Icon(
+                            CupertinoIcons.clear_circled,
+                            color: CupertinoColors.systemGrey,
+                            size: 18,
+                          ),
+                        ),
+                      )
+                      : null,
+              onChanged: _filterJobPosts,
             ),
-            style: theme.textTheme.textStyle.copyWith(fontSize: 14),
-            decoration: const BoxDecoration(),
-            prefix: const Padding(
-              padding: EdgeInsets.only(left: 6),
+          ),
+          // Filter Icon Button
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            minSize: 0,
+            onPressed: _toggleRadiusFilter,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color:
+                    _showRadiusFilter
+                        ? CupertinoColors.systemBlue.withOpacity(0.1)
+                        : CupertinoColors.transparent,
+                borderRadius: BorderRadius.circular(6),
+              ),
               child: Icon(
-                CupertinoIcons.search,
-                color: CupertinoColors.systemBlue,
+                CupertinoIcons.slider_horizontal_3,
+                color:
+                    _showRadiusFilter
+                        ? CupertinoColors.systemBlue
+                        : CupertinoColors.systemGrey,
                 size: 18,
               ),
             ),
-            suffix: _searchQuery.isNotEmpty
-                ? Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: GestureDetector(
-                      onTap: () {
-                        _searchController.clear();
-                        _filterJobPosts('');
-                        _searchFocusNode.unfocus();
-                      },
-                      child: const Icon(
-                        CupertinoIcons.clear_circled,
-                        color: CupertinoColors.systemGrey,
-                        size: 18,
-                      ),
-                    ),
-                  )
-                : null,
-            onChanged: _filterJobPosts,
           ),
-        ),
-        // Filter Icon Button
-        CupertinoButton(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          minSize: 0,
-          onPressed: _toggleRadiusFilter,
-          child: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: _showRadiusFilter 
-                  ? CupertinoColors.systemBlue.withOpacity(0.1)
-                  : CupertinoColors.transparent,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Icon(
-              CupertinoIcons.slider_horizontal_3,
-              color: _showRadiusFilter 
-                  ? CupertinoColors.systemBlue 
-                  : CupertinoColors.systemGrey,
-              size: 18,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget _buildContentSection(CupertinoThemeData theme) {
     if (_isLoading) return _buildLoadingState(theme);
@@ -839,7 +889,7 @@ if (_showRadiusFilter) _buildRadiusFilter(theme),
             ),
             const SizedBox(height: 12),
             Text(
-              'No Jobs Found for "$_searchQuery"',
+              '${appLanguage.get('No_Jobs_Found_for')} "$_searchQuery"',
               style: theme.textTheme.textStyle.copyWith(
                 color: CupertinoColors.systemGrey,
                 fontSize: 14,
@@ -849,7 +899,7 @@ if (_showRadiusFilter) _buildRadiusFilter(theme),
             ),
             const SizedBox(height: 6),
             Text(
-              'Try a different search term.',
+              appLanguage.get('Try_a_different_search_term.'),
               style: theme.textTheme.textStyle.copyWith(
                 color: CupertinoColors.secondaryLabel,
                 fontSize: 12,
@@ -865,7 +915,9 @@ if (_showRadiusFilter) _buildRadiusFilter(theme),
                 _filterJobPosts('');
                 _searchFocusNode.unfocus();
               },
-              child: const Text('Clear Search', style: TextStyle(fontSize: 14)),
+              child:  Text(
+               appLanguage.get('Clear_Search') , 
+                style: TextStyle(fontSize: 14)),
             ),
           ],
         ),
@@ -901,91 +953,95 @@ if (_showRadiusFilter) _buildRadiusFilter(theme),
     );
   }
 
- Widget _buildJobCard(
-  BuildContext context,
-  JobPost job,
-  int index,
-  CupertinoThemeData theme,
-) {
-  final isUrgent = job.distanceMiles != null && job.distanceMiles! < 2;
-  final isHighPay = (job.hourlyRate ?? 0) > 20 || (job.perDeliveryRate ?? 0) > 8;
+  Widget _buildJobCard(
+    BuildContext context,
+    JobPost job,
+    int index,
+    CupertinoThemeData theme,
+  ) {
+    final isUrgent = job.distanceMiles != null && job.distanceMiles! < 2;
+    final isHighPay =
+        (job.hourlyRate ?? 0) > 20 || (job.perDeliveryRate ?? 0) > 8;
 
-  return TweenAnimationBuilder<double>(
-    duration: Duration(milliseconds: 300 + (index * 100)),
-    tween: Tween(begin: 0.0, end: 1.0),
-    builder: (context, value, child) {
-      return Opacity(
-        opacity: value,
-        child: Transform.translate(
-          offset: Offset(0, 20 * (1 - value)),
-          child: child,
-        ),
-      );
-    },
-    child: Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      child: CupertinoButton(
-        padding: EdgeInsets.zero,
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          Navigator.push(
-            context,
-            CupertinoPageRoute(
-              builder: (context) => JobDetailPage(jobPost: job),
-            ),
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.barBackgroundColor,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: CupertinoColors.systemGrey.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 300 + (index * 100)),
+      tween: Tween(begin: 0.0, end: 1.0),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: child,
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                children: [
-                  Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: CupertinoColors.separator,
-                        width: 0.5,
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        child: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: () {
+            HapticFeedback.lightImpact();
+           Navigator.push(
+  context,
+  CupertinoPageRoute(
+    builder: (context) => ChangeNotifierProvider(
+      create: (_) => JobStatusProvider(),
+      child: JobDetailPage(jobPost: job),
+    ),
+  ),
+);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.barBackgroundColor,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: CupertinoColors.systemGrey.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Stack(
+                  children: [
+                    Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: CupertinoColors.separator,
+                          width: 0.5,
+                        ),
                       ),
+                      child: _buildBusinessImage(job),
                     ),
-                    child: _buildBusinessImage(job),
-                  ),
-                  if (isUrgent)
-                    Positioned(
-                      top: -2,
-                      right: -2,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: CupertinoColors.systemRed,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: theme.barBackgroundColor,
-                            width: 2,
+                    if (isUrgent)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: CupertinoColors.systemRed,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: theme.barBackgroundColor,
+                              width: 2,
+                            ),
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.flame,
+                            color: CupertinoColors.white,
+                            size: 10,
                           ),
                         ),
-                        child: const Icon(
-                          CupertinoIcons.flame,
-                          color: CupertinoColors.white,
-                          size: 10,
-                        ),
                       ),
-                    ),
                   ],
                 ),
                 const SizedBox(width: 12),
@@ -1013,11 +1069,13 @@ if (_showRadiusFilter) _buildRadiusFilter(theme),
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: CupertinoColors.systemGreen.withOpacity(0.1),
+                                color: CupertinoColors.systemGreen.withOpacity(
+                                  0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: Text(
-                                'HIGH PAY',
+                                appLanguage.get('HIGH_PAY'),
                                 style: theme.textTheme.textStyle.copyWith(
                                   color: CupertinoColors.systemGreen,
                                   fontSize: 9,

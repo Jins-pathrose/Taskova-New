@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
@@ -120,58 +121,266 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 void _showLanguageSelectionDialog() {
-  showCupertinoDialog(
+  String selectedLanguage = appLanguage.currentLanguage ?? 'en';
+  
+  showCupertinoModalPopup(
     context: context,
-    builder: (context) => CupertinoTheme(
-      data: CupertinoThemeData(brightness: Brightness.light),
-      child: CupertinoAlertDialog(
-        title: Text(
-          appLanguage.get('language'),
-          style: TextStyle(color: primaryBlue),
-        ),
-        content: Container(
-          height: 200,
-          child: CupertinoPicker(
-            itemExtent: 40,
-            onSelectedItemChanged: (int index) {
-              final selectedLanguage = appLanguage.supportedLanguages[index];
-              appLanguage.changeLanguage(selectedLanguage['code']!);
-            },
-            children: appLanguage.supportedLanguages.map((lang) {
-              return Center(
-                child: Text(
-                  lang['nativeName']!,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: CupertinoColors.black,
+    barrierDismissible: true,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setModalState) => Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      margin: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemBackground,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: CupertinoTheme(
+        data: CupertinoThemeData(brightness: Brightness.light),
+        child: Column(
+          children: [
+            // Header Section
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    primaryBlue,
+                    primaryBlue.withOpacity(0.8),
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      CupertinoIcons.globe,
+                      color: CupertinoColors.white,
+                      size: 24,
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      appLanguage.get('language'),
+                      style: TextStyle(
+                        color: CupertinoColors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    onPressed: () => Navigator.pop(context),
+                    child: Icon(
+                      CupertinoIcons.xmark_circle_fill,
+                      color: CupertinoColors.white.withOpacity(0.8),
+                      size: 28,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Language Selection List
+            Expanded(
+              child: CupertinoScrollbar(
+                child: ListView.separated(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  itemCount: appLanguage.supportedLanguages.length,
+                  separatorBuilder: (context, index) => Container(
+                    margin: EdgeInsets.symmetric(horizontal: 20),
+                    height: 0.5,
+                    color: CupertinoColors.separator,
+                  ),
+                  itemBuilder: (context, index) {
+                    final lang = appLanguage.supportedLanguages[index];
+                    final isSelected = selectedLanguage == lang['code'];
+                    
+                    return CupertinoButton(
+                      onPressed: () {
+                        setModalState(() {
+                          selectedLanguage = lang['code']!;
+                        });
+                      },
+                      padding: EdgeInsets.zero,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: isSelected 
+                              ? primaryBlue.withOpacity(0.05)
+                              : CupertinoColors.systemBackground,
+                          border: isSelected 
+                              ? Border(
+                                  left: BorderSide(
+                                    color: primaryBlue,
+                                    width: 4,
+                                  ),
+                                )
+                              : null,
+                        ),
+                        child: Row(
+                          children: [
+                            // Flag Container
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: isSelected 
+                                    ? primaryBlue.withOpacity(0.1)
+                                    : CupertinoColors.systemGrey6,
+                                borderRadius: BorderRadius.circular(25),
+                                border: isSelected 
+                                    ? Border.all(
+                                        color: primaryBlue.withOpacity(0.3),
+                                        width: 2,
+                                      )
+                                    : null,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _getLanguageFlag(lang['code']!),
+                                  style: TextStyle(fontSize: 24),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            
+                            // Language Info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    lang['nativeName']!,
+                                    style: TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: isSelected 
+                                          ? FontWeight.w600 
+                                          : FontWeight.w500,
+                                      color: isSelected 
+                                          ? primaryBlue 
+                                          : CupertinoColors.label,
+                                    ),
+                                  ),
+                                  SizedBox(height: 3),
+                                  Text(
+                                    lang['name']!,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: CupertinoColors.secondaryLabel,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            // Selection Indicator
+                            if (isSelected)
+                              Container(
+                                padding: EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: primaryBlue,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Icon(
+                                  CupertinoIcons.check_mark,
+                                  color: CupertinoColors.white,
+                                  size: 16,
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: EdgeInsets.all(6),
+                                child: Icon(
+                                  CupertinoIcons.chevron_right,
+                                  color: CupertinoColors.tertiaryLabel,
+                                  size: 16,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            
+            // Action Buttons
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemGrey6,
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: CupertinoButton(
+                  onPressed: () {
+                    appLanguage.changeLanguage(selectedLanguage);
+                    Navigator.pop(context);
+                    setState(() {});
+                  },
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  color: primaryBlue,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Text(
+                    appLanguage.get('confirm'),
+                    style: GoogleFonts.poppins(
+                      color: CupertinoColors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                    ),
                   ),
                 ),
-              );
-            }).toList(),
-          ),
+              ),
+            ),
+          ],
         ),
-        actions: [
-          CupertinoDialogAction(
-            child: Text(
-              appLanguage.get('cancel'),
-              style: TextStyle(color: primaryBlue),
-            ),
-            onPressed: () => Navigator.pop(context),
-          ),
-          CupertinoDialogAction(
-            child: Text(
-              appLanguage.get('confirm'),
-              style: TextStyle(color: primaryBlue),
-            ),
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {}); // Refresh UI to reflect language change
-            },
-          ),
-        ],
       ),
     ),
-  );
+  ),);
+}
+
+// Helper method to get language flags
+String _getLanguageFlag(String code) {
+  switch (code) {
+    case 'en':
+      return '🇺🇸';
+    case 'hi':
+      return '🇮🇳';
+    case 'pl':
+      return '🇵🇱';
+    case 'bn':
+      return '🇧🇩';
+    case 'ro':
+      return '🇷🇴';
+    case 'de':
+      return '🇩🇪';
+    default:
+      return '🌐';
+  }
 }
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) {

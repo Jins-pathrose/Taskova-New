@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:taskova_new/Model/api_config.dart';
 import 'package:taskova_new/View/Authentication/login.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
-
+import 'package:taskova_new/Controller/Theme/theme.dart';
 
 class OtpVerification extends StatefulWidget {
   final String email;
@@ -39,14 +39,9 @@ class _OtpVerificationState extends State<OtpVerification> with SingleTickerProv
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  // Define the blue and white theme colors (same as registration page)
-  final Color primaryBlue = const Color(0xFF2D6CDF);
-  final Color lightBlue = const Color(0xFF5B9DF5);
-  final Color accentBlue = const Color(0xFF1A4AAF);
-  final Color backgroundWhite = const Color(0xFFF9FBFF);
-  final Color cardWhite = Colors.white;
-  final Color textDarkBlue = const Color(0xFF0A2463);
-  final Color textLightGrey = const Color(0xFF8D9AB3);
+  final Color primaryBlue = Colors.blue;
+  final Color darkmode = const Color(0xFF2F197D);
+  final Color lightBlue = const Color(0xFF8A84FF);
 
   @override
   void initState() {
@@ -54,7 +49,6 @@ class _OtpVerificationState extends State<OtpVerification> with SingleTickerProv
     _startResendTimer();
     appLanguage = Provider.of<AppLanguage>(context, listen: false);
     
-    // Initialize animations
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -189,415 +183,423 @@ class _OtpVerificationState extends State<OtpVerification> with SingleTickerProv
   }
 
   void _showErrorDialog(String message) {
-  showCupertinoDialog(
-    context: context,
-    builder: (context) => CupertinoTheme(
-      data: const CupertinoThemeData(
-        brightness: Brightness.light, // Ensures white background
-      ),
-      child: CupertinoAlertDialog(
-        title: Text(
-          'Incorrect OTP',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            color: Colors.black, // Changed to black for contrast on white
-          ),
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoTheme(
+        data: const CupertinoThemeData(
+          brightness: Brightness.light,
         ),
-        content: Text(
-          message,
-          style: GoogleFonts.poppins(
-            color: textDarkBlue,
-          ),
-        ),
-        actions: [
-          CupertinoDialogAction(
-            child: Text(
-              'OK',
-              style: GoogleFonts.poppins(
-                color: primaryBlue,
-                fontWeight: FontWeight.w600,
-              ),
+        child: CupertinoAlertDialog(
+          title: Text(
+            'Incorrect OTP',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              color: CupertinoColors.black,
             ),
-            onPressed: () => Navigator.pop(context),
           ),
-        ],
-      ),
-    ),
-  );
-}
-
-
- void _showSuccessDialog(String message) {
-  showCupertinoDialog(
-    context: context,
-    builder: (context) => CupertinoTheme(
-      data: const CupertinoThemeData(
-        brightness: Brightness.light, // Forces white background
-      ),
-      child: CupertinoAlertDialog(
-        title: Text(
-          'Success',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            color: textDarkBlue,
-          ),
-        ),
-        content: Text(
-          message,
-          style: GoogleFonts.poppins(
-            color: textDarkBlue,
-          ),
-        ),
-        actions: [
-          CupertinoDialogAction(
-            child: Text(
-              'OK',
-              style: GoogleFonts.poppins(
-                color: primaryBlue,
-                fontWeight: FontWeight.w600,
-              ),
+          content: Text(
+            message,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: CupertinoColors.black,
             ),
-            onPressed: () => Navigator.pop(context),
           ),
-        ],
-      ),
-    ),
-  );
-}
-
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      backgroundColor: backgroundWhite,
-      navigationBar: CupertinoNavigationBar(
-        backgroundColor: cardWhite,
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.blue.shade50,
-            width: 0.5,
-          ),
-        ),
-        middle: Text(
-          appLanguage.get('verification_code'),
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            color: textDarkBlue,
-          ),
-        ),
-        previousPageTitle: appLanguage.get('Back'),
-      ),
-      child: SafeArea(
-        // Use a SingleChildScrollView to handle keyboard overflow
-        child: GestureDetector(
-          onTap: () {
-            // Dismiss keyboard when tapping outside
-            FocusScope.of(context).unfocus();
-          },
-          child: SingleChildScrollView(
-            // Add physics for better scrolling behavior
-            physics: const AlwaysScrollableScrollPhysics(),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height - 
-                          MediaQuery.of(context).padding.top -
-                          44.0, // Standard Cupertino navigation bar height
-              ),
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 40),
-                        
-                        // Verification icon with gradient
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                primaryBlue,
-                                lightBlue,
-                              ],
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: primaryBlue.withOpacity(0.3),
-                                blurRadius: 15,
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Icon(
-                              CupertinoIcons.mail,
-                              size: 40,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 36),
-
-                        // Title
-                        Text(
-                          appLanguage.get('verification_code'),
-                          style: GoogleFonts.poppins(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: textDarkBlue,
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Email display
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: RichText(
-                            textAlign: TextAlign.center,
-                            text: TextSpan(
-                              style: GoogleFonts.poppins(
-                                color: textLightGrey,
-                                fontSize: 15,
-                              ),
-                              children: [
-                                TextSpan(text: appLanguage.get('otp_snackbar')),
-                                TextSpan(
-                                  text: " ${widget.email}",
-                                  style: GoogleFonts.poppins(
-                                    fontWeight: FontWeight.w600,
-                                    color: textDarkBlue,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 40),
-
-                        // OTP input fields
-                        Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 10),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: List.generate(
-                              6,
-                              (index) => _buildOtpDigitField(index),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 24),
-
-                        // Error message
-                        if (_errorMessage.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.red.shade200,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  CupertinoIcons.exclamationmark_circle,
-                                  color: Colors.red,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    _errorMessage,
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.red.shade700,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                        // Success message
-                        if (_successMessage.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.green.shade200,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  CupertinoIcons.checkmark_alt_circle,
-                                  color: Colors.green.shade600,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    _successMessage,
-                                    style: GoogleFonts.poppins(
-                                      color: Colors.green.shade700,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        
-                        const SizedBox(height: 40),
-
-                        // Verify button
-                        Container(
-                          width: double.infinity,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            gradient: LinearGradient(
-                              colors: [
-                                primaryBlue,
-                                lightBlue,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: primaryBlue.withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: CupertinoButton(
-                            padding: EdgeInsets.zero,
-                            borderRadius: BorderRadius.circular(16),
-                            onPressed: _isLoading ? null : _verifyOtp,
-                            child: _isLoading
-                              ? const CupertinoActivityIndicator(color: Colors.white)
-                              : Text(
-                                  appLanguage.get('verfy_code').toUpperCase(),
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 1.0,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 30),
-
-                        // Resend code section
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.blue.shade100,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                appLanguage.get('didnt_receive_code'),
-                                style: GoogleFonts.poppins(
-                                  color: textDarkBlue,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              _showResendButton
-                                  ? CupertinoButton(
-                                      padding: EdgeInsets.zero,
-                                      child: _isResending
-                                          ? CupertinoActivityIndicator(color: primaryBlue)
-                                          : Text(
-                                              appLanguage.get('resend_code'),
-                                              style: GoogleFonts.poppins(
-                                                color: primaryBlue,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                      onPressed: _isResending ? null : _resendOtp,
-                                    )
-                                  : Text(
-                                      "${appLanguage.get('Resend in')} $_resendCountdown s",
-                                      style: GoogleFonts.poppins(
-                                        color: primaryBlue,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 30),
-                      ],
-                    ),
-                  ),
+          actions: [
+            CupertinoDialogAction(
+              child: Text(
+                'OK',
+                style: GoogleFonts.poppins(
+                  color: primaryBlue,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
+              onPressed: () => Navigator.pop(context),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildOtpDigitField(int index) {
+  void _showSuccessDialog(String message) {
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoTheme(
+        data: const CupertinoThemeData(
+          brightness: Brightness.light,
+        ),
+        child: CupertinoAlertDialog(
+          title: Text(
+            'Success',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              color: CupertinoColors.black,
+            ),
+          ),
+          content: Text(
+            message,
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: CupertinoColors.black,
+            ),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: Text(
+                'OK',
+                style: GoogleFonts.poppins(
+                  color: primaryBlue,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        final backgroundDecoration = themeProvider.isDarkMode
+            ? BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    darkmode,
+                    const Color.fromARGB(255, 43, 33, 99),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              )
+            : BoxDecoration(color: Colors.white);
+
+        return CupertinoPageScaffold(
+          backgroundColor: Colors.transparent,
+          child: Stack(
+            children: [
+              Container(
+                height: MediaQuery.of(context).size.height,
+                decoration: backgroundDecoration,
+              ),
+              SafeArea(
+                child: GestureDetector(
+                  onTap: () {
+                    FocusScope.of(context).unfocus();
+                  },
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: MediaQuery.of(context).size.height -
+                            MediaQuery.of(context).padding.top -
+                            MediaQuery.of(context).padding.bottom,
+                      ),
+                      child: IntrinsicHeight(
+                        child: FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: SlideTransition(
+                            position: _slideAnimation,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              child: Column(
+                                // mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: GestureDetector(
+                                      onTap: () => Navigator.pop(context),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: themeProvider.isDarkMode
+                                              ? CupertinoColors.darkBackgroundGray
+                                              : CupertinoColors.white,
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: themeProvider.isDarkMode
+                                                ? CupertinoColors.systemGrey4
+                                                : CupertinoColors.systemGrey5,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          CupertinoIcons.back,
+                                          color: themeProvider.isDarkMode
+                                              ? CupertinoColors.white
+                                              : CupertinoColors.black,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 40),
+                                  Text(
+                                    appLanguage.get('verification_code'),
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 25,
+                                      fontWeight: FontWeight.w600,
+                                      color: themeProvider.isDarkMode
+                                          ? CupertinoColors.white
+                                          : CupertinoColors.black,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  RichText(
+                                    textAlign: TextAlign.center,
+                                    text: TextSpan(
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 14,
+                                        color: themeProvider.isDarkMode
+                                            ? CupertinoColors.systemGrey2
+                                            : CupertinoColors.systemGrey,
+                                      ),
+                                      children: [
+                                        TextSpan(text: appLanguage.get('otp_snackbar')),
+                                        TextSpan(
+                                          text: " ${widget.email}",
+                                          style: GoogleFonts.poppins(
+                                            fontWeight: FontWeight.w600,
+                                            color: themeProvider.isDarkMode
+                                                ? CupertinoColors.white
+                                                : CupertinoColors.black,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 48),
+                                  Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 10),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                      children: List.generate(
+                                        6,
+                                        (index) => _buildOtpDigitField(index, themeProvider),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  if (_errorMessage.isNotEmpty)
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: themeProvider.isDarkMode
+                                            ? Colors.red.shade900
+                                            : Colors.red.shade50,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: themeProvider.isDarkMode
+                                              ? Colors.red.shade700
+                                              : Colors.red.shade200,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(
+                                            CupertinoIcons.exclamationmark_circle,
+                                            color: Colors.red,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              _errorMessage,
+                                              style: GoogleFonts.poppins(
+                                                color: themeProvider.isDarkMode
+                                                    ? Colors.white
+                                                    : Colors.red.shade700,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  if (_successMessage.isNotEmpty)
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: themeProvider.isDarkMode
+                                            ? Colors.green.shade900
+                                            : Colors.green.shade50,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: themeProvider.isDarkMode
+                                              ? Colors.green.shade700
+                                              : Colors.green.shade200,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            CupertinoIcons.checkmark_alt_circle,
+                                            color: themeProvider.isDarkMode
+                                                ? Colors.green.shade400
+                                                : Colors.green.shade600,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              _successMessage,
+                                              style: GoogleFonts.poppins(
+                                                color: themeProvider.isDarkMode
+                                                    ? Colors.white
+                                                    : Colors.green.shade700,
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  const SizedBox(height: 40),
+                                  Container(
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [primaryBlue, lightBlue],
+                                        begin: Alignment.centerLeft,
+                                        end: Alignment.centerRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: primaryBlue.withOpacity(0.2),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: CupertinoButton(
+                                      padding: EdgeInsets.zero,
+                                      borderRadius: BorderRadius.circular(12),
+                                      onPressed: _isLoading ? null : _verifyOtp,
+                                      child: _isLoading
+                                          ? const CupertinoActivityIndicator(color: CupertinoColors.white)
+                                          : Text(
+                                              appLanguage.get('verfy_code'),
+                                              style: GoogleFonts.poppins(
+                                                color: CupertinoColors.white,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 30),
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: themeProvider.isDarkMode
+                                          ? CupertinoColors.darkBackgroundGray
+                                          : Colors.blue.shade50,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: themeProvider.isDarkMode
+                                            ? CupertinoColors.systemGrey4
+                                            : Colors.blue.shade100,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          appLanguage.get('didnt_receive_code'),
+                                          style: GoogleFonts.poppins(
+                                            color: themeProvider.isDarkMode
+                                                ? CupertinoColors.white
+                                                : CupertinoColors.black,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _showResendButton
+                                            ? CupertinoButton(
+                                                padding: EdgeInsets.zero,
+                                                child: _isResending
+                                                    ? CupertinoActivityIndicator(color: primaryBlue)
+                                                    : Text(
+                                                        appLanguage.get('resend_code'),
+                                                        style: GoogleFonts.poppins(
+                                                          color: primaryBlue,
+                                                          fontWeight: FontWeight.w600,
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                                onPressed: _isResending ? null : _resendOtp,
+                                              )
+                                            : Text(
+                                                "${appLanguage.get('Resend in')} $_resendCountdown s",
+                                                style: GoogleFonts.poppins(
+                                                  color: primaryBlue,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 30),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildOtpDigitField(int index, ThemeProvider themeProvider) {
     return SizedBox(
-      width: 45,
-      height: 55,
+      width: 48,
+      height: 56,
       child: CupertinoTextField(
         controller: _otpControllers[index],
         focusNode: _focusNodes[index],
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
         maxLength: 1,
-        style: TextStyle(
-          fontSize: 22,
+        style: GoogleFonts.poppins(
+          fontSize: 20,
           fontWeight: FontWeight.bold,
-          color: textDarkBlue,
+          color: themeProvider.isDarkMode
+              ? CupertinoColors.white
+              : CupertinoColors.black,
         ),
         decoration: BoxDecoration(
-          color: cardWhite,
+          color: themeProvider.isDarkMode
+              ? CupertinoColors.darkBackgroundGray
+              : CupertinoColors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: Colors.blue.shade100,
-            width: 1.5,
+            color: themeProvider.isDarkMode
+                ? CupertinoColors.systemGrey4
+                : CupertinoColors.systemGrey5,
+            width: 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.blue.shade100.withOpacity(0.1),
-              blurRadius: 4,
+              color: CupertinoColors.systemGrey.withOpacity(0.1),
+              blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],

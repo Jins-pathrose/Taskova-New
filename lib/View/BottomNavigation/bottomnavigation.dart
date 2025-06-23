@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:taskova_new/Model/Notifications/notification_service.dart';
+import 'package:taskova_new/View/BusinessReq/businessreq.dart';
 import 'package:taskova_new/View/Community/community_page.dart';
 import 'package:taskova_new/View/Homepage/homepage.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
@@ -25,10 +26,12 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
     GlobalKey<NavigatorState>(), // For HomePage
     GlobalKey<NavigatorState>(), // For CommunityPage
     GlobalKey<NavigatorState>(), // For ProfilePage
+    GlobalKey<NavigatorState>(), // For BusinessReq
   ];
 
   final List<Widget> _pages = [
     const HomePage(),
+     JobRequestsPage(),
     const CommunityPage(),
     const ProfilePage(),
   ];
@@ -92,20 +95,28 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
               icon: Icon(_currentIndex == 0
                   ? CupertinoIcons.house_fill
                   : CupertinoIcons.house),
-              label: appLanguage.get('Home') ?? 'Home',
+              label: appLanguage.get('home')
             ),
             BottomNavigationBarItem(
               icon: Icon(_currentIndex == 1
-                  ? CupertinoIcons.person_2_fill
-                  : CupertinoIcons.person_2),
-              label: appLanguage.get('Community') ?? 'Community',
+                  ? CupertinoIcons.tray_arrow_down_fill
+                  : CupertinoIcons.tray_arrow_down),
+              label: appLanguage.get('Job Request')
             ),
             BottomNavigationBarItem(
               icon: Icon(_currentIndex == 2
+                  ? CupertinoIcons.person_2_fill
+                  : CupertinoIcons.person_2),
+              label: appLanguage.get('community')
+            ),
+            
+            BottomNavigationBarItem(
+              icon: Icon(_currentIndex == 3
                   ? CupertinoIcons.person_fill
                   : CupertinoIcons.person),
-              label: appLanguage.get('Profile') ?? 'Profile',
+              label: appLanguage.get('profile')
             ),
+            
           ],
         ),
         tabBuilder: (context, index) {
