@@ -52,26 +52,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
   String? _selectedDrivingDuration;
   bool _isCustomExperienceSelected = false;
   // Experience types options based on Django model
-  final List<Map<String, String>> _experienceTypeOptions = [
-    {
-      'value': 'food_delivery',
-      'label': 'Food delivery (Uber Eats, Just Eat, etc.)',
-    },
-    {
-      'value': 'parcel_delivery',
-      'label': 'Parcel or courier delivery (Amazon, Evri, etc.)',
-    },
-    {'value': 'freelance', 'label': 'Freelance/delivery for local shops'},
-    {
-      'value': 'friends_family',
-      'label': 'I help friends and family with deliveries',
-    },
-    {
-      'value': 'no_experience',
-      'label': 'No experience yet — but ready to roll!',
-    },
-    {'value': 'custom', 'label': 'Other (specify)'},
-  ];
+  late List<Map<String, String>> _experienceTypeOptions;
 
   // Driving duration options based on Django model
   final List<Map<String, String>> _drivingDurationOptions = [
@@ -87,45 +68,72 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
   final Color whiteColor = Colors.white; // Pure white
   final Color accentBlue = Color(0xFF42A5F5); // Lighter blue for accents
 
-  @override
-  void initState() {
-    super.initState();
-    appLanguage = Provider.of<AppLanguage>(context, listen: false);
-    _loadSavedUserData();
+ @override
+void initState() {
+  super.initState();
+  appLanguage = Provider.of<AppLanguage>(context, listen: false);
+
+  _experienceTypeOptions = [
+    {
+      'value': 'food_delivery',
+      'label': appLanguage.get('Food_delivery_(Uber_Eats,_Just_Eat,_etc.)'),
+    },
+    {
+      'value': 'parcel_delivery',
+      'label': appLanguage.get('Parcel_or_courier_delivery_(Amazon,_Evri,_etc.)'),
+    },
+    {
+      'value': 'freelance',
+      'label': appLanguage.get('Freelance/delivery_for_local_shops'),
+    },
+    {
+      'value': 'friends_family',
+      'label': appLanguage.get('I_help_friends_and_family_with_deliveries'),
+    },
+    {
+      'value': 'no_experience',
+      'label': appLanguage.get('No_experience_yet—but_ready_to_roll!'),
+    },
+    {
+      'value': 'custom',
+      'label': appLanguage.get('Other_(specify)'),
+    },
+  ];
+
+  _loadSavedUserData();
+}
+
+Future<bool> _onWillPop() async {
+  if (_formSubmittedSuccessfully) return true;
+
+  final shouldExit = await showCupertinoDialog<bool>(
+    context: context,
+    builder: (context) => CupertinoAlertDialog(
+      title: Text(appLanguage.get('Exit_Profile_Registration?')),
+      content: Text(
+        appLanguage.get('Are_you_sure_you_want_to_exit?_Your_progress_will_be_lost.'),
+      ),
+      actions: [
+        CupertinoDialogAction(
+          isDestructiveAction: true,
+          child: Text(appLanguage.get('Exit')),
+          onPressed: () => Navigator.of(context).pop(true),
+        ),
+        CupertinoDialogAction(
+          child: Text(appLanguage.get('Cancel')),
+          onPressed: () => Navigator.of(context).pop(false),
+        ),
+      ],
+    ),
+  );
+
+  if (shouldExit ?? false) {
+    await _clearAccessToken();
+    SystemNavigator.pop();
+    return true;
   }
-
-  Future<bool> _onWillPop() async {
-    if (_formSubmittedSuccessfully) return true;
-
-    final shouldExit = await showCupertinoDialog<bool>(
-      context: context,
-      builder:
-          (context) => CupertinoAlertDialog(
-            title: Text(appLanguage.get('Exit_Profile_Registration?')),
-            content: Text(
-              'Are you sure you want to exit? Your progress will be lost.',
-            ),
-            actions: [
-              CupertinoDialogAction(
-                child: Text(appLanguage.get('cancel')),
-                onPressed: () => Navigator.of(context).pop(false),
-              ),
-              CupertinoDialogAction(
-                child: Text(appLanguage.get('exit')),
-                isDestructiveAction: true,
-                onPressed: () => Navigator.of(context).pop(true),
-              ),
-            ],
-          ),
-    );
-
-    if (shouldExit ?? false) {
-      await _clearAccessToken();
-      SystemNavigator.pop();
-      return true;
-    }
-    return false;
-  }
+  return false;
+}
 
   Future<void> _loadSavedUserData() async {
     final prefs = await SharedPreferences.getInstance();
@@ -1129,7 +1137,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                           builder:
                                               (context) => CupertinoActionSheet(
                                                 title: Text(
-                                                  'Driving Experience',
+                                                  appLanguage.get('Driving_Experience'),
                                                   style: TextStyle(
                                                     color: Color(0xFF2D3748),
                                                     fontWeight: FontWeight.w600,
@@ -1164,7 +1172,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                                 cancelButton:
                                                     CupertinoActionSheetAction(
                                                       child: Text(
-                                                        'Cancel',
+                                                        appLanguage.get('cancel'),
                                                         style: TextStyle(
                                                           color:
                                                               CupertinoColors
@@ -1211,7 +1219,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                             Expanded(
                                               child: Text(
                                                 _selectedDrivingDuration == null
-                                                    ? 'Select driving duration'
+                                                    ? appLanguage.get('Select_driving_duration')
                                                     : _drivingDurationOptions
                                                         .firstWhere(
                                                           (option) =>
@@ -1262,7 +1270,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                         ),
                                         SizedBox(width: 10),
                                         Text(
-                                          'Background & Eligibility',
+                                          appLanguage.get('Background&Eligibility'),
                                           style: TextStyle(
                                             color: Color(0xFF2D3748),
                                             fontSize: 16,
@@ -1275,7 +1283,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
 
                                     // Toggle Questions
                                     _buildModernToggle(
-                                      title: 'British Citizenship',
+                                      title: appLanguage.get('British_Citizenship'),
                                       question: appLanguage.get(
                                         'are_u_british',
                                       ),
@@ -1289,9 +1297,9 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                     SizedBox(height: 12),
 
                                     _buildModernToggle(
-                                      title: 'Criminal History',
+                                      title: appLanguage.get('Criminal_History'),
                                       question:
-                                          'Have you ever been convicted of a criminal offence?',
+                                          appLanguage.get('Have_you_ever_been_convicted_of_a_criminal_offence?'),
                                       value: _hasCriminalHistory,
                                       onChanged: (value) {
                                         setState(() {
@@ -1302,9 +1310,9 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                     SizedBox(height: 12),
 
                                     _buildModernToggle(
-                                      title: 'Accessibility Needs',
+                                      title: appLanguage.get('Accessibility_Needs'),
                                       question:
-                                          'Do you have a disability or accessibility need?',
+                                          appLanguage.get('Do_you_have_a_disability_or_accessibility_need?'),
                                       value: _hasDisability,
                                       onChanged: (value) {
                                         setState(() {
@@ -1353,7 +1361,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                                 ),
                                                 SizedBox(width: 8),
                                                 Text(
-                                                  'Disability Certificate',
+                                                  'Disability_Certificate',
                                                   style: TextStyle(
                                                     color: Color(0xFF2D3748),
                                                     fontWeight: FontWeight.w600,
@@ -1364,7 +1372,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                             ),
                                             SizedBox(height: 8),
                                             Text(
-                                              'Please upload your disability certificate',
+                                              appLanguage.get('Please_upload_your_disability_certificate'),
                                               style: TextStyle(
                                                 color: Color(0xFF718096),
                                                 fontSize: 13,
@@ -1479,7 +1487,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                                         ),
                                                         SizedBox(width: 8),
                                                         Text(
-                                                          'Upload Certificate',
+                                                          appLanguage.get('Upload_Certificate'),
                                                           style: TextStyle(
                                                             color: Colors.white,
                                                             fontSize: 14,
@@ -1539,7 +1547,7 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
                                       ),
                                       SizedBox(width: 8),
                                       Text(
-                                        'Complete Profile',
+                                        appLanguage.get('Complete_Profile'),
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 14,

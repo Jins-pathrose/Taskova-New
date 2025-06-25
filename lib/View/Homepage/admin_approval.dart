@@ -1,12 +1,24 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
+import 'package:provider/provider.dart';
 import 'package:taskova_new/View/BottomNavigation/bottomnavigation.dart';
-import 'package:taskova_new/View/Homepage/homepage.dart';
+import 'package:taskova_new/View/Language/language_provider.dart';
 
-class DocumentVerificationPendingScreen extends StatelessWidget {
+class DocumentVerificationPendingScreen extends StatefulWidget {
   const DocumentVerificationPendingScreen({Key? key}) : super(key: key);
 
+  @override
+  State<DocumentVerificationPendingScreen> createState() => _DocumentVerificationPendingScreenState();
+}
+
+class _DocumentVerificationPendingScreenState extends State<DocumentVerificationPendingScreen> {
+  late AppLanguage appLanguage;
+
+  void initState() {
+    super.initState();
+    appLanguage = Provider.of<AppLanguage>(context, listen: false);
+  }
   @override
   Widget build(BuildContext context) {
     return CupertinoPageScaffold(
@@ -22,7 +34,7 @@ class DocumentVerificationPendingScreen extends StatelessWidget {
                   // App Logo
                   Center(
                     child: Text(
-                      "TASKOVA",
+                      appLanguage.get('app_name'),
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
@@ -55,7 +67,7 @@ class DocumentVerificationPendingScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         Text(
-                          "Your Document Verification is in Progress",
+                          appLanguage.get("Your_Document_Verification_is_in_Progress"),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 20,
@@ -86,7 +98,7 @@ class DocumentVerificationPendingScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    "Pending",
+                                    appLanguage.get("Pending"),
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
@@ -100,7 +112,7 @@ class DocumentVerificationPendingScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 24),
                         Text(
-                          "Our team is reviewing your submitted documents. We'll notify you once the verification is complete.",
+                          appLanguage.get("Our_team_is_reviewing_your_submitted_documents._We'll_notify_you_once_the_verification_is_complete."),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 16,
@@ -143,7 +155,7 @@ class DocumentVerificationPendingScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            "Go to Homepage",
+                            appLanguage.get("Go_to_Homepage"),
                             style: TextStyle(
                               color: const Color(0xFF1A535C),
                               fontSize: 16,
@@ -192,7 +204,7 @@ class DocumentVerificationPendingScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Please wait ",
+                               appLanguage.get ("Please_wait"),
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: CupertinoColors.white.withOpacity(0.8),
@@ -212,7 +224,7 @@ class DocumentVerificationPendingScreen extends StatelessWidget {
                           color: CupertinoColors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(30),
                           child: Text(
-                            "Contact Support",
+                            appLanguage.get("Contact_Support"),
                             style: TextStyle(
                               color: CupertinoColors.white,
                               fontWeight: FontWeight.w600,

@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Colors;
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
@@ -10,6 +11,7 @@ import 'dart:io';
 import 'package:taskova_new/Model/api_config.dart';
 import 'package:taskova_new/Model/image_compresser.dart';
 import 'package:taskova_new/View/Homepage/admin_approval.dart';
+import 'package:taskova_new/View/Language/language_provider.dart';
 import 'package:taskova_new/View/Staticpages/britishpassport.dart';
 import 'package:taskova_new/View/Staticpages/driver_licence.dart';
 import 'package:taskova_new/View/Staticpages/dvls.dart';
@@ -74,10 +76,12 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
   final Color _textPrimary = const Color(0xFF000000);
   final Color _textSecondary = const Color(0xFF666666);
   final Color _borderColor = const Color(0xFFE0E0E0);
+  late AppLanguage appLanguage;
 
   @override
   void initState() {
     super.initState();
+    appLanguage = Provider.of<AppLanguage>(context, listen: false);
     _fetchCitizenshipStatus();
   }
 
@@ -145,7 +149,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
     showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
-        title: const Text('Error'),
+        title: const Text('Oops!'),
         content: Padding(
           padding: const EdgeInsets.only(top: 8.0),
           child: Text(message, style: TextStyle(color: _textPrimary)),
@@ -164,14 +168,16 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
     showCupertinoDialog(
       context: context,
       builder: (context) => CupertinoAlertDialog(
-        title: const Text('Success'),
+        title:  Text(appLanguage.get('success')),
         content: Padding(
           padding: const EdgeInsets.only(top: 8.0),
           child: Text(message, style: TextStyle(color: _textPrimary)),
         ),
         actions: [
           CupertinoDialogAction(
-            child: Text('Continue', style: TextStyle(color: _primaryColor)),
+            child: Text(
+              appLanguage.get('continue'),
+             style: TextStyle(color: _primaryColor)),
             onPressed: () {
               Navigator.pop(context);
               Navigator.pushReplacement(
@@ -203,7 +209,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
           final compressedFile = await ImageCompressor.compressImage(
             tempFile,
             '${documentType}_${DateTime.now().millisecondsSinceEpoch}',
-            targetSizeKB: 20,
+            targetSizeKB: 50,
           );
           
           if (compressedFile != null && await compressedFile.exists()) {
@@ -352,31 +358,31 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
     setState(() => _isLoading = true);
     try {
       if (_idImage == null) {
-        throw Exception('Please upload your Proof of Identity');
+        throw Exception(appLanguage.get('Please_upload_your_Proof_of_Identity'));
       }
       if (_isBritishCitizen == null) {
-        throw Exception('Citizenship status not loaded. Please try again.');
+        throw Exception(appLanguage.get('Citizenship_status_not_loaded._Please_try_again.'));
       }
       if (_isBritishCitizen!) {
         if (_passportFront == null || _passportBack == null) {
-          throw Exception('Please upload both sides of your British Passport');
+          throw Exception(appLanguage.get('Please_upload_both_sides_of_your_British_Passport'));
         }
       } else {
         if (_rightToWorkImage == null) {
-          throw Exception('Please upload your Right to Work document');
+          throw Exception(appLanguage.get('Please_upload_your_Right_to_Work_document'));
         }
       }
       if (_addressProofImage == null) {
-        throw Exception('Please upload your Address Proof');
+        throw Exception(appLanguage.get('Please_upload_your_Address_Proof'));
       }
       if (_vehicleInsuranceImage == null) {
-        throw Exception('Please upload your Vehicle Insurance');
+        throw Exception(appLanguage.get('Please_upload_your_Vehicle_Insurance'));
       }
       if (_drivingLicenseFront == null || _drivingLicenseBack == null) {
-        throw Exception('Please upload both sides of your Driving License');
+        throw Exception(appLanguage.get('Please_upload_both_sides_of_your_Driving_License'));
       }
       if (_dvlsImage == null) {
-        throw Exception('Please upload your DVLA Electronic Counterpart');
+        throw Exception(appLanguage.get('Please_upload_your_DVLA_Electronic_Counterpart'));
       }
 
       List<Future<bool>> uploads = [
@@ -426,7 +432,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
         throw Exception('Some documents failed to upload. Please check the errors and try again.');
       }
 
-      _showSuccessDialog('All documents submitted successfully!');
+      _showSuccessDialog(appLanguage.get('All_documents_submitted_successfully!'));
     } catch (e) {
       _showErrorDialog(e.toString());
     } finally {
@@ -471,7 +477,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Document Verification',
+                      appLanguage.get('Document_Verification'),
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w600,
@@ -480,7 +486,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Complete your application by uploading all required documents',
+                      appLanguage.get('Complete_your_application_by_uploading_all_required_documents'),
                       style: TextStyle(
                         fontSize: 15,
                         color: _textSecondary,
@@ -522,7 +528,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Application Progress',
+                appLanguage.get('Application_Progress'),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
@@ -539,7 +545,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '$completedDocs/$totalDocs Complete',
+                  '$completedDocs/$totalDocs ${appLanguage.get('Complete')}',
                   style: const TextStyle(
                     color: CupertinoColors.white,
                     fontSize: 13,
@@ -570,9 +576,8 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
           const SizedBox(height: 12),
           Text(
             progress == 1.0
-                ? 'All documents uploaded! Ready to submit.'
-                : 'Upload ${totalDocs - completedDocs} more documents to complete your application.',
-            style: TextStyle(
+                ? appLanguage.get('All_documents_uploaded!_Ready_to_submit.')
+: '${appLanguage.get('Upload')} ${totalDocs - completedDocs} ${appLanguage.get('more_documents_to_complete_your_application')}',            style: TextStyle(
               fontSize: 14,
               color: progress == 1.0 ? _successColor : _textSecondary,
               fontWeight: progress == 1.0 ? FontWeight.w500 : FontWeight.normal,
@@ -695,7 +700,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                'Complete',
+                                appLanguage.get('Complete'),
                                 style: TextStyle(
                                   color: _successColor,
                                   fontSize: 12,
@@ -714,7 +719,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                'Required',
+                                appLanguage.get('Required'),
                                 style: TextStyle(
                                   color: _warningColor,
                                   fontSize: 12,
@@ -729,7 +734,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                         padding: EdgeInsets.zero,
                         minSize: 0,
                         child: Text(
-                          "Learn more about this document",
+                          appLanguage.get("Learn_more_about_this_document"),
                           style: TextStyle(
                             color: _primaryColor,
                             fontSize: 14,
@@ -748,7 +753,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
             Row(
               children: [
                 _buildImageUpload(
-                  label: isSingleImage ? 'Document' : 'Front Side',
+                  label: isSingleImage ? appLanguage.get('Document') : appLanguage.get('Front_Side'),
                   file: image,
                   onPressed: () async {
                     final file = await _pickImage(documentType);
@@ -761,7 +766,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                 if (!isSingleImage) ...[
                   const SizedBox(width: 12),
                   _buildImageUpload(
-                    label: 'Back Side',
+                    label: appLanguage.get('Back_Side'),
                     file: backImage,
                     onPressed: () async {
                       final file = await _pickImage('${documentType}_back');
@@ -777,7 +782,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
             // Details Section
             const SizedBox(height: 20),
             Text(
-              'Additional Details (Optional)',
+              appLanguage.get('Additional_Details_(Optional)'),
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
@@ -787,7 +792,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
             const SizedBox(height: 8),
             CupertinoTextField(
               controller: detailsController,
-              placeholder: 'Add any relevant details about this document...',
+              placeholder: appLanguage.get('Add_any_relevant_details_about_this_document...'),
               maxLines: 2,
               style: TextStyle(color: _textPrimary, fontSize: 15),
               placeholderStyle: TextStyle(color: _textSecondary),
@@ -804,34 +809,48 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
     );
   }
 
-  void _navigateToDocumentInfo(String title) {
-    Widget page;
-    switch (title) {
+  void _navigateToDocumentInfo(String docTitle) {
+    Widget targetPage;
+    switch (docTitle) {
       case 'Proof of Identity':
-        page = const IdentityVerificationScreen();
+      case 'Proof_of_Identity':
+      case var _ when docTitle == appLanguage.get('Proof_of_Identity'):
+        targetPage = const IdentityVerificationScreen();
         break;
       case 'British Passport':
-        page = const BritishPassport();
+      case 'British_Passport':
+       case var _ when docTitle == appLanguage.get('British_Passport'):
+        targetPage = const BritishPassport();
         break;
       case 'Right to Work in UK':
-        page = const RightToWork();
+      case 'Right_to_Work_in_UK':
+      case var _ when docTitle == appLanguage.get('Right_to_Work_in_UK'):
+        targetPage = const RightToWork();
         break;
       case 'Proof of Address':
-        page = const ProofOfAddress();
+      case 'Proof_of_Address':
+      case var _ when docTitle == appLanguage.get('Proof_of_Address'):
+        targetPage = const ProofOfAddress();
         break;
       case 'Vehicle Insurance':
-        page = const VehicleInsurance();
+      case 'Vehicle_Insurance':
+      case var _ when docTitle == appLanguage.get('Vehicle_Insurance'):
+        targetPage = const VehicleInsurance();
         break;
       case 'Driving License':
-        page = const DriverLicence();
+      case 'Driving_License':
+      case var _ when docTitle == appLanguage.get('Driving_License'):
+        targetPage = const DriverLicence();
         break;
       case 'DVLA Electronic Counterpart':
-        page = const DvlsDocument();
+      case 'DVLA_Electronic_Counterpart':
+      case var _ when docTitle == appLanguage.get('DVLA_Electronic_Counterpart'):
+        targetPage = const DvlsDocument();
         break;
       default:
         return;
     }
-    Navigator.push(context, CupertinoPageRoute(builder: (context) => page));
+    Navigator.push(context, CupertinoPageRoute(builder: (context) => targetPage));
   }
 
   Widget _buildImageUpload({
@@ -902,7 +921,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Tap to upload',
+                        appLanguage.get('Tap_to_upload'),
                         style: TextStyle(color: _textSecondary, fontSize: 12),
                       ),
                     ],
@@ -932,7 +951,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Final Step',
+            appLanguage.get('Final_Step'),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -942,8 +961,8 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
           const SizedBox(height: 8),
           Text(
             allComplete
-                ? 'All documents are ready. Submit your application for review.'
-                : 'Please complete all document uploads before submitting.',
+                ? appLanguage.get('All_documents_are_ready._Submit_your_application_for_review.')
+                : appLanguage.get('Please_complete_all_document_uploads_before_submitting.'),
             style: TextStyle(fontSize: 15, color: _textSecondary),
           ),
           const SizedBox(height: 20),
@@ -966,7 +985,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          'Submitting...',
+                          appLanguage.get('Submitting...'),
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
@@ -976,7 +995,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                       ],
                     )
                     : Text(
-                      'Submit Application',
+                      appLanguage.get('Submit_Application'),
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w600,
@@ -1002,7 +1021,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
           bottom: BorderSide(color: _borderColor.withOpacity(0.3), width: 0.5),
         ),
         middle: Text(
-          'Document Upload',
+          appLanguage.get('Document_Upload'),
           style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w600),
         ),
         leading: CupertinoButton(
@@ -1025,7 +1044,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          'Loading your profile...',
+                          appLanguage.get('Loading_your_profile...'),
                           style: TextStyle(fontSize: 16, color: _textSecondary),
                         ),
                       ],
@@ -1041,11 +1060,11 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                         _buildProgressSection(),
                         const SizedBox(height: 32),
                         _buildSectionHeader(
-                          'Identity Verification',
-                          'Required documents to verify your identity',
+                          appLanguage.get('Identity_Verification'),
+                          appLanguage.get('Required_documents_to_verify_your_identity'),
                         ),
                         _buildDocumentCard(
-                          title: 'Proof of Identity',
+                          title: appLanguage.get('Proof_of_Identity'),
                           icon: CupertinoIcons.person_badge_plus,
                           image: _idImage,
                           onImageUploaded: (file) => setState(() => _idImage = file),
@@ -1054,14 +1073,14 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                             detailsController: _identityDetailsController,
                           ),
                           _buildSectionHeader(
-                            'Citizenship & Work Authorization',
+                            appLanguage.get('Citizenship_&_Work_Authorization'),
                             _isBritishCitizen == true
-                                ? 'British passport required for citizens'
-                                : 'Right to work documentation required',
+                                ? appLanguage.get('British_passport_required_for_citizens')
+                                : appLanguage.get('Right_to_work_documentation_required'),
                           ),
                           if (_isBritishCitizen == true)
                             _buildDocumentCard(
-                              title: 'British Passport',
+                              title: appLanguage.get('British_Passport'),
                               icon: CupertinoIcons.doc_text,
                               image: _passportFront,
                               backImage: _passportBack,
@@ -1076,7 +1095,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                             )
                           else
                             _buildDocumentCard(
-                              title: 'Right to Work in UK',
+                              title: appLanguage.get('Right_to_Work_in_UK'),
                               icon: CupertinoIcons.globe,
                               image: _rightToWorkImage,
                               onImageUploaded:
@@ -1086,11 +1105,11 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                               detailsController: _rightToWorkDetailsController,
                             ),
                           _buildSectionHeader(
-                            'Address Verification',
-                            'Proof of your current residential address',
+                            appLanguage.get('Address_Verification'),
+                            appLanguage.get('Proof_of_your_current_residential_address'),
                           ),
                           _buildDocumentCard(
-                            title: 'Proof of Address',
+                            title: appLanguage.get('Proof_of_Address'),
                             icon: CupertinoIcons.location_solid,
                             image: _addressProofImage,
                             onImageUploaded:
@@ -1100,11 +1119,11 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                             detailsController: _addressDetailsController,
                           ),
                           _buildSectionHeader(
-                            'Driving Documentation',
-                            'Required documents for vehicle operation',
+                            appLanguage.get('Driving_Documentation'),
+                            appLanguage.get('Required_documents_for_vehicle_operation'),
                           ),
                           _buildDocumentCard(
-                            title: 'Vehicle Insurance',
+                            title: appLanguage.get('Vehicle_Insurance'),
                             icon: CupertinoIcons.car_detailed,
                             image: _vehicleInsuranceImage,
                             onImageUploaded:
@@ -1114,7 +1133,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                             detailsController: _insuranceDetailsController,
                           ),
                           _buildDocumentCard(
-                            title: 'Driving License',
+                            title: appLanguage.get('Driving_License'),
                             icon: CupertinoIcons.creditcard,
                             image: _drivingLicenseFront,
                             backImage: _drivingLicenseBack,
@@ -1128,7 +1147,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
                             detailsController: _licenseDetailsController,
                           ),
                           _buildDocumentCard(
-                            title: 'DVLA Electronic Counterpart',
+                            title: appLanguage.get('DVLA_Electronic_Counterpart'),
                             icon: CupertinoIcons.doc_checkmark,
                             image: _dvlsImage,
                             onImageUploaded:

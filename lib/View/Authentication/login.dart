@@ -35,6 +35,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _isGoogleLoading = false;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  bool _isAppleLoading = false;
 
   // Define blue theme colors
   final Color primaryBlue = Colors.blue;
@@ -303,7 +304,21 @@ String driverid = (responseData['id'] ?? "").toString();
       }
     }
   }
-
+Future<void> _handleAppleLogin(
+    BuildContext context,
+    Function(bool) setLoadingState,
+  ) async {
+    setLoadingState(true); // Start Apple loading
+    final appleAuthService = AppleAuthService();
+    await appleAuthService.signInWithApple(
+      context: context,
+      showSuccessDialog:
+          (String message, BuildContext ctx) => _showSuccessDialog(message),
+      showErrorDialog:
+          (String message, BuildContext ctx) => _showErrorDialog(message),
+      setLoadingState: setLoadingState,
+    );
+  }
   @override
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
@@ -693,10 +708,18 @@ String driverid = (responseData['id'] ?? "").toString();
                           children: [
                             // Apple
                             GestureDetector(
-                              onTap:
-                                  _isLoading
-                                      ? null
-                                      : () => handleAppleSignIn(context),
+                              onTap: _isAppleLoading || _isGoogleLoading
+      ? null
+      : () async {
+          try {
+            await _handleAppleLogin(context, (bool loading) {
+              setState(() => _isAppleLoading = loading);
+            });
+          } catch (e) {
+            _showErrorDialog('Apple Sign-In failed: $e');
+            setState(() => _isAppleLoading = false);
+          }
+        },
                               child: Container(
                                 width: 36,
                                 height: 36,

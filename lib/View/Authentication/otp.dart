@@ -191,7 +191,7 @@ class _OtpVerificationState extends State<OtpVerification> with SingleTickerProv
         ),
         child: CupertinoAlertDialog(
           title: Text(
-            'Incorrect OTP',
+            appLanguage.get('Incorrect_OTP'),
             style: GoogleFonts.poppins(
               fontWeight: FontWeight.w600,
               color: CupertinoColors.black,
@@ -540,7 +540,7 @@ class _OtpVerificationState extends State<OtpVerification> with SingleTickerProv
                                                 onPressed: _isResending ? null : _resendOtp,
                                               )
                                             : Text(
-                                                "${appLanguage.get('Resend in')} $_resendCountdown s",
+                                                "${appLanguage.get('Resend_in')} $_resendCountdown s",
                                                 style: GoogleFonts.poppins(
                                                   color: primaryBlue,
                                                   fontWeight: FontWeight.w600,

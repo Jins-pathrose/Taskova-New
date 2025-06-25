@@ -415,7 +415,7 @@
 // }
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show Colors, Icons;
+import 'package:flutter/material.dart' show Colors, Icons, MaterialPageRoute;
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -500,10 +500,13 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
 
         if (response.statusCode == 200) {
           _showSuccessDialog(appLanguage.get('password_reset_done'));
-          Navigator.of(context).pushAndRemoveUntil(
-            CupertinoPageRoute(builder: (context) => LoginPage()),
-            (route) => false,
-          );
+          Navigator.of(context, rootNavigator: true)
+                            .pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (context) => const LoginPage(),
+                          ),
+                          (Route<dynamic> route) => false,
+                        );
         } else {
           final errorResponse = jsonDecode(response.body);
           String errorMessage = appLanguage.get('password_reset_fail');

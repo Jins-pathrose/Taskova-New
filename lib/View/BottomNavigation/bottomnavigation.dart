@@ -101,7 +101,7 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
               icon: Icon(_currentIndex == 1
                   ? CupertinoIcons.tray_arrow_down_fill
                   : CupertinoIcons.tray_arrow_down),
-              label: appLanguage.get('Job Request')
+              label: appLanguage.get('Job_Request')
             ),
             BottomNavigationBarItem(
               icon: Icon(_currentIndex == 2

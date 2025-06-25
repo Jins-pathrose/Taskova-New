@@ -1162,7 +1162,7 @@ String _getLanguageFlag(String code) {
                           subtitle: appLanguage.get('Update_your_account_password'),
                           iconColor: CupertinoColors.systemBlue,
                           onTap: () {
-                            //  Navigator.push(context, MaterialPageRoute(builder: (context)=>ForgotPasswordScreen()));
+                             Navigator.push(context, MaterialPageRoute(builder: (context)=>ForgotPasswordScreen()));
                           },
                         ),
                         _buildModernSettingsItem(

@@ -1,37 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
+import 'package:provider/provider.dart';
 import 'package:taskova_new/Model/Onboarding/onboarding.dart';
 import 'package:taskova_new/View/Authentication/login.dart';
+import 'package:taskova_new/View/Language/language_provider.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
-
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  final PageController _pageController = PageController();
+  late PageController _pageController;
   int currentIndex = 0;
+  late List<OnboardingModel> pages;
 
-  final List<OnboardingModel> pages = [
-    OnboardingModel(
-      image: 'assets/undraw_delivery-truck_mjui.png',
-      title: 'Quick Sign Up, Start Earning',
-      description: 'Register in minutes and start accepting delivery jobs right away.',
-    ),
-    OnboardingModel(
-      image: 'assets/undraw_take-out-boxes_n094.png',
-      title: 'Smart Location Matching',
-      description: 'Get delivery tasks based on your current location — no need to travel far.',
-    ),
-    OnboardingModel(
-      image: 'assets/undraw_package-arrived_twqd.png',
-      title: 'Join a Trusted Network',
-      description: 'Be part of a growing community of verified and reliable delivery partners',
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  void _initializePages(BuildContext context) {
+    final appLanguage = Provider.of<AppLanguage>(context, listen: false);
+    pages = [
+      OnboardingModel(
+        image: 'assets/undraw_delivery-truck_mjui.png',
+        title: appLanguage.get('quick_sign_up_start_earning'),
+        description: appLanguage.get('register_in_minutes_and_start_accepting_delivery_jobs_right_away'),
+      ),
+      OnboardingModel(
+        image: 'assets/undraw_take-out-boxes_n094.png',
+        title: appLanguage.get('smart_location_matching'),
+        description: appLanguage.get('get_delivery_tasks_based_on_your_current_location_no_need_to_travel_far'),
+      ),
+      OnboardingModel(
+        image: 'assets/undraw_package-arrived_twqd.png',
+        title: appLanguage.get('join_a_trusted_network'),
+        description: appLanguage.get('be_part_of_a_growing_community_of_verified_and_reliable_delivery_partners'),
+      ),
+    ];
+  }
 
   void _goToNextPage() {
     if (currentIndex < pages.length - 1) {
@@ -49,45 +60,43 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _finishOnboarding() {
-    // Navigate to home/login page
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => const LoginPage(),
-      ), // Replace with your actual home page
+      ),
     );
   }
 
   Widget _buildPage(OnboardingModel model) {
-  return Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-      Image.asset(model.image, height: 300),
-      const SizedBox(height: 30),
-      Text(
-        model.title,
-        style: GoogleFonts.oswald(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: Colors.black,
-        ),
-      ),
-      const SizedBox(height: 15),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 30),
-        child: Text(
-          model.description,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(
-            fontSize: 16,
-            color: const Color.fromARGB(255, 102, 101, 101),
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Image.asset(model.image, height: 300),
+        const SizedBox(height: 30),
+        Text(
+          model.title,
+          style: GoogleFonts.oswald(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
           ),
         ),
-      ),
-    ],
-  );
-}
-
+        const SizedBox(height: 15),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 30),
+          child: Text(
+            model.description,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              color: const Color.fromARGB(255, 102, 101, 101),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildDots() {
     return Row(
@@ -109,6 +118,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Initialize pages with current language
+    _initializePages(context);
+    
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -131,25 +143,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 children: [
                   TextButton(
                     onPressed: _skipOnboarding,
-                    child:  Text("Skip", style: GoogleFonts.outfit(fontSize: 16)),
+                    child: Text(
+                      Provider.of<AppLanguage>(context).get('skip'),
+                      style: GoogleFonts.outfit(fontSize: 16),
+                    ),
                   ),
                   ElevatedButton(
                     onPressed: _goToNextPage,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue, // Button background color
-                      foregroundColor: Colors.white, // Text (and icon) color
+                      backgroundColor: Colors.blue,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 25,
                         vertical: 12,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          30,
-                        ), // Rounded corners
+                        borderRadius: BorderRadius.circular(30),
                       ),
                     ),
                     child: Text(
-                      currentIndex == pages.length - 1 ? "Get Started" : "Next",
+                      currentIndex == pages.length - 1
+                          ? Provider.of<AppLanguage>(context).get('get_started')
+                          : Provider.of<AppLanguage>(context).get('next'),
                       style: GoogleFonts.outfit(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

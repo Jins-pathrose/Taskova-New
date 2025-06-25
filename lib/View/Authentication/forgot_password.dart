@@ -43,7 +43,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         );
         
         if (response.statusCode == 200) {
-          _showSuccessDialog(appLanguage.get('OTP sent to your email'));
+          _showSuccessDialog(appLanguage.get('OTP_sent_to_your_email'));
           Navigator.push(
             context, 
             CupertinoPageRoute(
@@ -73,7 +73,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         child: CupertinoAlertDialog(
           title: Text(
-            'Error',
+            'Oops!',
             style: GoogleFonts.poppins(
               color: CupertinoColors.destructiveRed,
               fontWeight: FontWeight.w600,
@@ -86,7 +86,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           actions: [
             CupertinoDialogAction(
               child: Text(
-                'OK',
+                appLanguage.get('ok'),
                 style: GoogleFonts.poppins(
                   color: primaryBlue,
                   fontWeight: FontWeight.w600,
@@ -109,7 +109,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         child: CupertinoAlertDialog(
           title: Text(
-            'Success',
+            appLanguage.get('success'),
             style: GoogleFonts.poppins(
               color: CupertinoColors.systemGreen,
               fontWeight: FontWeight.w600,
@@ -122,7 +122,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           actions: [
             CupertinoDialogAction(
               child: Text(
-                'OK',
+                appLanguage.get('ok'),
                 style: GoogleFonts.poppins(
                   color: primaryBlue,
                   fontWeight: FontWeight.w600,
@@ -218,7 +218,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             const SizedBox(height: 100),
                             // Main Heading
                             Text(
-                              appLanguage.get('Forgot Password?'),
+                              appLanguage.get('forgot_password'),
                               textAlign: TextAlign.center,
                               style: GoogleFonts.poppins(
                                 fontSize: 25,
@@ -231,7 +231,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             const SizedBox(height: 8),
                             // Subtitle
                             Text(
-                              appLanguage.get('Don\'t worry! It occurs. Please enter the email address linked with your account.'),
+                              appLanguage.get('''Don't worry! It occurs. Please enter the email address linked with your account.'''),
                               textAlign: TextAlign.center,
                               style: GoogleFonts.poppins(
                                 fontSize: 14,
@@ -277,7 +277,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                     child: CupertinoTextFormFieldRow(
                                       controller: _emailController,
                                       keyboardType: TextInputType.emailAddress,
-                                      placeholder: appLanguage.get('Enter your email'),
+                                      placeholder: appLanguage.get( 'please_enter_email'),
                                       placeholderStyle: GoogleFonts.poppins(
                                         color: themeProvider.isDarkMode
                                             ? CupertinoColors.systemGrey2
@@ -297,10 +297,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                       decoration: const BoxDecoration(),
                                       validator: (value) {
                                         if (value == null || value.isEmpty) {
-                                          return appLanguage.get('Please enter your email');
+                                          return appLanguage.get('please_enter_email');
                                         }
                                         if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                                          return appLanguage.get('Please enter a valid email');
+                                          return appLanguage.get('please_enter_valid_email');
                                         }
                                         return null;
                                       },
@@ -337,7 +337,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                         color: CupertinoColors.white,
                                       )
                                     : Text(
-                                        appLanguage.get('Send Code'),
+                                        appLanguage.get('Send_Code'),
                                         style: GoogleFonts.poppins(
                                           color: CupertinoColors.white,
                                           fontWeight: FontWeight.w600,
@@ -352,7 +352,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
-                                  appLanguage.get('Remember Password?'),
+                                  appLanguage.get('Remember_Password?'),
                                   style: GoogleFonts.poppins(
                                     fontSize: 10,
                                     color: themeProvider.isDarkMode
