@@ -1,7 +1,12 @@
 
+import 'dart:convert';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskova_new/Model/Notifications/notification_service.dart';
 import 'package:taskova_new/View/BusinessReq/businessreq.dart';
 import 'package:taskova_new/View/Community/community_page.dart';
@@ -20,6 +25,8 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
   final NotificationService _notificationService = NotificationService();
   int _currentIndex = 0;
   late AppLanguage appLanguage;
+  String? _fcmToken;
+  String _fcmStatus = '🔄 Sending FCM token...';
 
   // Navigator keys for each tab to manage their navigation stacks
   final List<GlobalKey<NavigatorState>> _navigatorKeys = [
@@ -42,6 +49,7 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
     appLanguage = Provider.of<AppLanguage>(context, listen: false);
     WidgetsBinding.instance.addObserver(this);
     _notificationService.startNotificationService();
+    _initFCM();
   }
 
   @override
@@ -77,6 +85,87 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
     });
   }
 }
+
+Future<void> _initFCM() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('access_token');
+      final baseUrl = dotenv.env['BASE_URL'];
+
+      if (accessToken == null) {
+        debugPrint('❌ Access token not found');
+        setState(() {
+          _fcmStatus = '❌ Access token missing';
+        });
+        return;
+      }
+
+      if (baseUrl == null) {
+        debugPrint('❌ BASE_URL missing in .env');
+        setState(() {
+          _fcmStatus = '❌ BASE_URL missing';
+        });
+        return;
+      }
+
+      final token = await FirebaseMessaging.instance.getToken();
+      debugPrint('📲 FCM Token: $token');
+
+      if (token != null) {
+        setState(() {
+          _fcmToken = token;
+        });
+        await _sendFcmTokenToBackend(token, accessToken, baseUrl);
+      } else {
+        debugPrint('❌ FCM token is null');
+        setState(() {
+          _fcmStatus = '❌ Failed to get FCM token';
+        });
+      }
+    } catch (e) {
+      debugPrint('🔥 Error initializing FCM: $e');
+      setState(() {
+        _fcmStatus = '🔥 Error: $e';
+      });
+    }
+  }
+
+  Future<void> _sendFcmTokenToBackend(
+    String token,
+    String accessToken,
+    String baseUrl,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/save-fcm-token/'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode({'fcm_token': token}),
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ FCM token sent to backend.');
+        setState(() {
+          _fcmStatus = '✅ Token updated successfully.';
+        });
+      } else {
+        debugPrint(
+          '❌ Failed to send FCM token. Status: ${response.statusCode}',
+        );
+        debugPrint('📦 Response: ${response.body}');
+        setState(() {
+          _fcmStatus = '❌ Failed to update token (${response.statusCode})';
+        });
+      }
+    } catch (e) {
+      debugPrint('🚫 Error sending token to backend: $e');
+      setState(() {
+        _fcmStatus = '🚫 Network error: $e';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,4 +219,5 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
       ),
     );
   }
+
 }

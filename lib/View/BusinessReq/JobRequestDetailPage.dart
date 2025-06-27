@@ -190,199 +190,220 @@ void _handleAccept() {
     );
   }
 
-  Widget _buildActionButtons() {
-    if (_currentStatus == 'accepted') {
-      return Row(
-        children: [
-          // Chat button
-          Expanded(
-            child: Container(
-              height: 50,
-              child: CupertinoButton(
-                padding: EdgeInsets.zero,
-                color: CupertinoColors.systemBlue,
-                borderRadius: BorderRadius.circular(12),
-                onPressed: _handleChat,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      CupertinoIcons.chat_bubble,
-                      color: CupertinoColors.white,
-                      size: 18,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Chat',
-                      style: TextStyle(
-                        color: CupertinoColors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+ Widget _buildActionButtons() {
+  if (_currentStatus == 'timeout') {
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemGrey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: CupertinoColors.systemGrey,
+          width: 1,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          'This job request has timed out',
+          style: TextStyle(
+            color: CupertinoColors.systemGrey,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
           ),
-          SizedBox(width: 12),
-          // Accepted status indicator
-          Expanded(
-            flex: 2,
-            child: Container(
-              height: 50,
-              decoration: BoxDecoration(
-                color: CupertinoColors.systemGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: CupertinoColors.systemGreen,
-                  width: 1,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  'You accepted this job',
-                  style: TextStyle(
-                    color: CupertinoColors.systemGreen,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  } else if (_currentStatus == 'accepted') {
+    return Row(
+      children: [
+        // Chat button
+        Expanded(
+          child: Container(
+            height: 50,
+            child: CupertinoButton(
+              padding: EdgeInsets.zero,
+              color: CupertinoColors.systemBlue,
+              borderRadius: BorderRadius.circular(12),
+              onPressed: _handleChat,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    CupertinoIcons.chat_bubble,
+                    color: CupertinoColors.white,
+                    size: 18,
                   ),
-                ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Chat',
+                    style: TextStyle(
+                      color: CupertinoColors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
-        ],
-      );
-    } else if (_currentStatus == 'rejected') {
-      return Container(
-        height: 50,
-        decoration: BoxDecoration(
-          color: CupertinoColors.systemRed.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: CupertinoColors.systemRed,
-            width: 1,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            'Job request rejected',
-            style: TextStyle(
-              color: CupertinoColors.systemRed,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
             ),
           ),
         ),
-      );
-    } else {
-      // Pending status - show all buttons
-      return Row(
-        children: [
-          // Reject button
-          Expanded(
-            child: Container(
-              height: 50,
-              child: CupertinoButton(
-                padding: EdgeInsets.zero,
-                color: CupertinoColors.systemRed,
-                borderRadius: BorderRadius.circular(12),
-                onPressed: isProcessing ? null : _handleReject,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      CupertinoIcons.xmark_circle,
-                      color: CupertinoColors.white,
-                      size: 18,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Reject',
-                      style: TextStyle(
-                        color: CupertinoColors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
-          // Chat button
-          Expanded(
-            child: Container(
-              height: 50,
-              child: CupertinoButton(
-                padding: EdgeInsets.zero,
-                color: CupertinoColors.systemBlue,
-                borderRadius: BorderRadius.circular(12),
-                onPressed: isProcessing ? null : _handleChat,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      CupertinoIcons.chat_bubble,
-                      color: CupertinoColors.white,
-                      size: 18,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Chat',
-                      style: TextStyle(
-                        color: CupertinoColors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: 12),
-          // Accept button
-          Expanded(
-            child: Container(
-              height: 50,
-              child: CupertinoButton(
-                padding: EdgeInsets.zero,
+        SizedBox(width: 12),
+        // Accepted status indicator
+        Expanded(
+          flex: 2,
+          child: Container(
+            height: 50,
+            decoration: BoxDecoration(
+              color: CupertinoColors.systemGreen.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
                 color: CupertinoColors.systemGreen,
-                borderRadius: BorderRadius.circular(12),
-                onPressed: isProcessing ? null : _handleAccept,
-                child: isProcessing
-                    ? CupertinoActivityIndicator(
-                        color: CupertinoColors.white,
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            CupertinoIcons.checkmark_circle,
-                            color: CupertinoColors.white,
-                            size: 18,
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Accept',
-                            style: TextStyle(
-                              color: CupertinoColors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
+                width: 1,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                'You accepted this job',
+                style: TextStyle(
+                  color: CupertinoColors.systemGreen,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
-        ],
-      );
-    }
+        ),
+      ],
+    );
+  } else if (_currentStatus == 'rejected') {
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(
+        color: CupertinoColors.systemRed.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: CupertinoColors.systemRed,
+          width: 1,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          'Job request rejected',
+          style: TextStyle(
+            color: CupertinoColors.systemRed,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  } else {
+    // Pending status - show all buttons
+    return Row(
+      children: [
+        // Reject button
+        Expanded(
+          child: Container(
+            height: 50,
+            child: CupertinoButton(
+              padding: EdgeInsets.zero,
+              color: CupertinoColors.systemRed,
+              borderRadius: BorderRadius.circular(12),
+              onPressed: isProcessing ? null : _handleReject,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    CupertinoIcons.xmark_circle,
+                    color: CupertinoColors.white,
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Reject',
+                    style: TextStyle(
+                      color: CupertinoColors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 12),
+        // Chat button
+        Expanded(
+          child: Container(
+            height: 50,
+            child: CupertinoButton(
+              padding: EdgeInsets.zero,
+              color: CupertinoColors.systemBlue,
+              borderRadius: BorderRadius.circular(12),
+              onPressed: isProcessing ? null : _handleChat,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    CupertinoIcons.chat_bubble,
+                    color: CupertinoColors.white,
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Chat',
+                    style: TextStyle(
+                      color: CupertinoColors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 12),
+        // Accept button
+        Expanded(
+          child: Container(
+            height: 50,
+            child: CupertinoButton(
+              padding: EdgeInsets.zero,
+              color: CupertinoColors.systemGreen,
+              borderRadius: BorderRadius.circular(12),
+              onPressed: isProcessing ? null : _handleAccept,
+              child: isProcessing
+                  ? CupertinoActivityIndicator(
+                      color: CupertinoColors.white,
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          CupertinoIcons.checkmark_circle,
+                          color: CupertinoColors.white,
+                          size: 18,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Accept',
+                          style: TextStyle(
+                            color: CupertinoColors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
-
+}
   @override
   Widget build(BuildContext context) {
     final job = widget.data['job'];

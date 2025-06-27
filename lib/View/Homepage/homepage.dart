@@ -64,6 +64,7 @@ class JobPost {
   double? distanceMiles;
   final String? jobDate;
   final String? address; // Added address property
+  final String? subscriptionPlanName; 
 
   JobPost({
     required this.id,
@@ -83,6 +84,7 @@ class JobPost {
     this.distanceMiles,
     this.jobDate,
     this.address, // Include address in constructor
+    this.subscriptionPlanName,
   });
 
   Business get business =>
@@ -108,6 +110,8 @@ class JobPost {
       businessLatitude: _parseDouble(businessDetail?['latitude']) ?? 0.0,
       businessLongitude: _parseDouble(businessDetail?['longitude']) ?? 0.0,
       address: businessDetail?['address'], // Added address
+      subscriptionPlanName: json['subscription_plan_name'], // Add this line
+
     );
   }
 
@@ -338,19 +342,27 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         final posts = jsonResponse.map((job) => JobPost.fromJson(job)).toList();
 
         if (_driverProfile != null) {
-          for (var post in posts) {
-            post.calculateDistanceFrom(
-              _driverProfile!.latitude,
-              _driverProfile!.longitude,
-            );
-          }
-          posts.sort((a, b) {
-            if (a.distanceMiles == null && b.distanceMiles == null) return 0;
-            if (a.distanceMiles == null) return 1;
-            if (b.distanceMiles == null) return -1;
-            return a.distanceMiles!.compareTo(b.distanceMiles!);
-          });
-        }
+  for (var post in posts) {
+    post.calculateDistanceFrom(
+      _driverProfile!.latitude,
+      _driverProfile!.longitude,
+    );
+  }
+  posts.sort((a, b) {
+    // Premium jobs first
+    final aIsPremium = a.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
+    final bIsPremium = b.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
+    
+    if (aIsPremium && !bIsPremium) return -1;
+    if (!aIsPremium && bIsPremium) return 1;
+    
+    // Then sort by distance
+    if (a.distanceMiles == null && b.distanceMiles == null) return 0;
+    if (a.distanceMiles == null) return 1;
+    if (b.distanceMiles == null) return -1;
+    return a.distanceMiles!.compareTo(b.distanceMiles!);
+  });
+}
 
         setState(() {
           _jobPosts = posts;
@@ -962,6 +974,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final isUrgent = job.distanceMiles != null && job.distanceMiles! < 2;
     final isHighPay =
         (job.hourlyRate ?? 0) > 20 || (job.perDeliveryRate ?? 0) > 8;
+    final isPremium = job.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
+
 
     return TweenAnimationBuilder<double>(
       duration: Duration(milliseconds: 300 + (index * 100)),
@@ -1021,32 +1035,53 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       ),
                       child: _buildBusinessImage(job),
                     ),
-                    if (isUrgent)
-                      Positioned(
-                        top: -2,
-                        right: -2,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: CupertinoColors.systemRed,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: theme.barBackgroundColor,
-                              width: 2,
-                            ),
-                          ),
-                          child: const Icon(
-                            CupertinoIcons.flame,
-                            color: CupertinoColors.white,
-                            size: 10,
+                  if (isPremium) // Replace isUrgent check with this
+                    Positioned(
+                      top: -2,
+                      right: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.systemYellow,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: theme.barBackgroundColor,
+                            width: 2,
                           ),
                         ),
+                        child: const Icon(
+                          CupertinoIcons.star_fill,
+                          color: CupertinoColors.black,
+                          size: 10,
+                        ),
                       ),
-                  ],
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
+                    ),
+                  if (!isPremium && isUrgent) // Keep urgent indicator as secondary
+                    Positioned(
+                      top: -2,
+                      right: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.systemRed,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: theme.barBackgroundColor,
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(
+                          CupertinoIcons.flame,
+                          color: CupertinoColors.white,
+                          size: 10,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
@@ -1158,12 +1193,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     size: 14,
                   ),
                 ),
-              ],
+              ]
             ),
           ),
-        ),
-      ),
-    );
+        ),)
+      );
   }
 
   Widget _buildInfoChip({
