@@ -318,129 +318,115 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _fetchJobPosts() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final accessToken = prefs.getString('access_token');
-      if (accessToken == null || accessToken.isEmpty) {
-        setState(() {
-          _errorMessage = 'No access token found. Please log in.';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final response = await http.get(
-        Uri.parse(ApiConfig.jobListUrl),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body) as List<dynamic>;
-        final posts = jsonResponse.map((job) => JobPost.fromJson(job)).toList();
-
-        if (_driverProfile != null) {
-  for (var post in posts) {
-    post.calculateDistanceFrom(
-      _driverProfile!.latitude,
-      _driverProfile!.longitude,
-    );
-  }
-  posts.sort((a, b) {
-    // Premium jobs first
-    final aIsPremium = a.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
-    final bIsPremium = b.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
-    
-    if (aIsPremium && !bIsPremium) return -1;
-    if (!aIsPremium && bIsPremium) return 1;
-    
-    // Then sort by distance
-    if (a.distanceMiles == null && b.distanceMiles == null) return 0;
-    if (a.distanceMiles == null) return 1;
-    if (b.distanceMiles == null) return -1;
-    return a.distanceMiles!.compareTo(b.distanceMiles!);
-  });
-}
-
-        setState(() {
-          _jobPosts = posts;
-          _filteredJobPosts = posts;
-          _isLoading = false;
-        });
-      } else if (response.statusCode == 401) {
-        setState(() {
-          _errorMessage = 'Authentication failed. Please log in again.';
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = 'Failed to load job posts: ${response.statusCode}';
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('access_token');
+    if (accessToken == null || accessToken.isEmpty) {
       setState(() {
-        _errorMessage = 'Error: $e';
+        _errorMessage = 'No access token found. Please log in.';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final response = await http.get(
+      Uri.parse(ApiConfig.jobListUrl),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body) as List<dynamic>;
+      List<JobPost> posts = jsonResponse.map((job) => JobPost.fromJson(job)).toList();
+
+      if (_driverProfile != null) {
+        // Calculate distances for all jobs
+        for (var post in posts) {
+          post.calculateDistanceFrom(
+            _driverProfile!.latitude,
+            _driverProfile!.longitude,
+          );
+        }
+
+        // Filter jobs based on subscription plan distance requirements
+        posts = posts.where((job) {
+          final isPremium = job.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
+          if (isPremium) {
+            return job.distanceMiles != null && job.distanceMiles! <= 30;
+          } else {
+            return job.distanceMiles != null && job.distanceMiles! <= 5;
+          }
+        }).toList();
+
+        // Sort jobs - premium first, then by distance
+        posts.sort((a, b) {
+          // Premium jobs first
+          final aIsPremium = a.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
+          final bIsPremium = b.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
+          
+          if (aIsPremium && !bIsPremium) return -1;
+          if (!aIsPremium && bIsPremium) return 1;
+          
+          // Then sort by distance
+          if (a.distanceMiles == null && b.distanceMiles == null) return 0;
+          if (a.distanceMiles == null) return 1;
+          if (b.distanceMiles == null) return -1;
+          return a.distanceMiles!.compareTo(b.distanceMiles!);
+        });
+      }
+
+      setState(() {
+        _jobPosts = posts;
+        _filteredJobPosts = posts;
+        _isLoading = false;
+      });
+    } else if (response.statusCode == 401) {
+      setState(() {
+        _errorMessage = 'Authentication failed. Please log in again.';
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _errorMessage = 'Failed to load job posts: ${response.statusCode}';
         _isLoading = false;
       });
     }
-  }
-
-  void _applyRadiusFilter() {
+  } catch (e) {
     setState(() {
-      if (_radiusFilter == 30.0) {
-        // Show all jobs if set to max (30 miles)
-        _filteredJobPosts =
-            _jobPosts.where((job) {
-              final matchesSearch =
-                  _searchQuery.isEmpty ||
-                  job.businessName.toLowerCase().contains(
-                    _searchQuery.toLowerCase(),
-                  ) ||
-                  job.title.toLowerCase().contains(
-                    _searchQuery.toLowerCase(),
-                  ) ||
-                  (job.address?.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      ) ??
-                      false) ||
-                  (job.description?.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      ) ??
-                      false);
-              return matchesSearch;
-            }).toList();
-      } else {
-        // Filter by distance and search
-        _filteredJobPosts =
-            _jobPosts.where((job) {
-              final withinRadius =
-                  job.distanceMiles != null &&
-                  job.distanceMiles! <= _radiusFilter;
-              final matchesSearch =
-                  _searchQuery.isEmpty ||
-                  job.businessName.toLowerCase().contains(
-                    _searchQuery.toLowerCase(),
-                  ) ||
-                  job.title.toLowerCase().contains(
-                    _searchQuery.toLowerCase(),
-                  ) ||
-                  (job.address?.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      ) ??
-                      false) ||
-                  (job.description?.toLowerCase().contains(
-                        _searchQuery.toLowerCase(),
-                      ) ??
-                      false);
-              return withinRadius && matchesSearch;
-            }).toList();
-      }
+      _errorMessage = 'Error: $e';
+      _isLoading = false;
     });
   }
+}
 
+  void _applyRadiusFilter() {
+  setState(() {
+    _filteredJobPosts = _jobPosts.where((job) {
+      // Check subscription plan and distance requirements
+      final isPremium = job.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
+      final isBasic = !isPremium; // Assuming if not premium then it's basic
+      
+      // Apply distance limits based on plan
+      if (isPremium && (job.distanceMiles == null || job.distanceMiles! > 30)) {
+        return false;
+      }
+      if (isBasic && (job.distanceMiles == null || job.distanceMiles! > 5)) {
+        return false;
+      }
+
+      // Apply search filter
+      final matchesSearch = _searchQuery.isEmpty ||
+          job.businessName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          job.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          (job.address?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
+          (job.description?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+      
+      return matchesSearch;
+    }).toList();
+  });
+}
   void _toggleRadiusFilter() {
     setState(() {
       _showRadiusFilter = !_showRadiusFilter;
