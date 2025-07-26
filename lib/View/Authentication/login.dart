@@ -205,8 +205,7 @@ class _LoginPageState extends State<LoginPage> {
         _showErrorDialog(data['error'] ?? 'Google login failed');
       }
     } catch (e) {
-  print("Login Error: $e"); // Add this line
-  print('00000000000000000000000000000000000000000000000000000000000000');
+
   _showErrorDialog(
     "Connection error. Please check your internet connection.",
   );
@@ -221,7 +220,7 @@ class _LoginPageState extends State<LoginPage> {
 
       try {
         final response = await http.post(
-          Uri.parse('http://192.168.20.29:8001/api/login/'),
+          Uri.parse(ApiConfig.loginUrl),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'email': _emailController.text,
@@ -236,7 +235,8 @@ class _LoginPageState extends State<LoginPage> {
           String refreshToken = responseData['refresh'] ?? "";
           String name = responseData['name'] ?? "";
 String driverid = (responseData['id'] ?? "").toString();
-
+print(responseData);
+print('3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333');
           await saveTokens(
             accessToken,
             refreshToken,
@@ -246,7 +246,7 @@ String driverid = (responseData['id'] ?? "").toString();
           );
 
           final profileResponse = await http.get(
-            Uri.parse('http://192.168.20.29:8001/api/profile-status/'),
+            Uri.parse(ApiConfig.profileStatusUrl),
             headers: {
               'Authorization': 'Bearer $accessToken',
               'Content-Type': 'application/json',

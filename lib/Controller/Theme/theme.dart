@@ -9,27 +9,37 @@ class ThemeProvider extends ChangeNotifier {
 
   ThemeProvider() {
     _initializeSystemTheme();
+    // Add listener for system theme changes
+    WidgetsBinding.instance.platformDispatcher.onPlatformBrightnessChanged = () {
+      if (_followSystemTheme) {
+        _updateThemeFromSystem();
+      }
+    };
   }
 
   void _initializeSystemTheme() {
-    final brightness = WidgetsBinding.instance.window.platformBrightness;
-    _isDarkMode = brightness == Brightness.dark;
-    notifyListeners();
+    _updateThemeFromSystem();
   }
 
-  void updateSystemTheme(bool isDark) {
-    if (_followSystemTheme && _isDarkMode != isDark) {
-      _isDarkMode = isDark;
+  void _updateThemeFromSystem() {
+    final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    final newDarkMode = brightness == Brightness.dark;
+    if (_isDarkMode != newDarkMode) {
+      _isDarkMode = newDarkMode;
       notifyListeners();
     }
   }
 
   void setFollowSystemTheme(bool follow) {
     _followSystemTheme = follow;
+    if (follow) {
+      _updateThemeFromSystem();
+    }
     notifyListeners();
   }
 
   void setDarkMode(bool isDark) {
+    _followSystemTheme = false;
     _isDarkMode = isDark;
     notifyListeners();
   }

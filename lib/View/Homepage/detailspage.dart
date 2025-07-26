@@ -37,6 +37,9 @@ class _JobDetailPageState extends State<JobDetailPage>
   late Animation<Offset> _slideAnimation;
   final TextEditingController _reviewController = TextEditingController();
   double _rating = 0.0;
+  bool _showOtpFab = false;
+  String _otp = '';
+  final TextEditingController _otpController = TextEditingController();
 
   bool _hasSubmittedReview = false; // New flag to track review submission
   final ScrollController _scrollController = ScrollController();
@@ -64,6 +67,7 @@ class _JobDetailPageState extends State<JobDetailPage>
     _animationController.forward();
     _checkIfAlreadyApplied();
     _checkIfReviewExists(); // Add this to check for existing review
+    _showOtpFab = _status == 'accepted';
   }
 
   @override
@@ -71,58 +75,142 @@ class _JobDetailPageState extends State<JobDetailPage>
     _animationController.dispose();
     _reviewController.dispose();
     _scrollController.dispose();
+    _otpController.dispose();
+
     super.dispose();
   }
 
   Future<void> _checkIfAlreadyApplied() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final accessToken = prefs.getString('access_token');
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('access_token');
 
-      final response = await http.get(
-        Uri.parse(ApiConfig.jobRequestUrl),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
+    final response = await http.get(
+      Uri.parse(ApiConfig.jobRequestUrl),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> decoded = jsonDecode(response.body);
+      final List<dynamic> jobRequests = decoded['data'];
+      final appliedJob = jobRequests.firstWhere(
+        (request) => request['job'] == widget.jobPost.id,
+        orElse: () => null,
       );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> decoded = jsonDecode(response.body);
-        final List<dynamic> jobRequests = decoded['data'];
-        final appliedJob = jobRequests.firstWhere(
-          (request) => request['job'] == widget.jobPost.id,
-          orElse: () => null,
-        );
+      if (appliedJob != null) {
+        setState(() {
+          _jobRequestId = appliedJob['id'].toString();
+          _status = appliedJob['status'] ?? 'pending';
+          _hasApplied = true;
+          _chatRoomId = appliedJob['chat_room_id']?.toString();
+          _driverId = appliedJob['driver_id']?.toString();
+          _showOtpFab = _status == 'accepted'; // Add this line
+          print('Status: $_status, Show OTP FAB: $_showOtpFab');
+        });
 
-        if (appliedJob != null) {
-          setState(() {
-            _jobRequestId = appliedJob['id'].toString();
-            _status =
-                appliedJob['status'] ?? 'pending'; // Use actual status from API
-            _hasApplied = true;
-          });
-          await _checkIfJobIsAccepted();
-        } else {
-          setState(() {
-            _hasApplied = false;
-            _status = 'pending'; // Reset status if no application found
-          });
+        if (_chatRoomId == null) {
+          await _fetchChatRoomId();
         }
       } else {
         setState(() {
           _hasApplied = false;
           _status = 'pending';
+          _showOtpFab = false; // Add this line
         });
       }
-    } catch (e) {
-      print('Error checking applied jobs: $e');
-      setState(() {
-        _hasApplied = false;
-        _status = 'pending';
-      });
     }
+  } catch (e) {
+    print('Error checking applied jobs: $e');
+    setState(() {
+      _hasApplied = false;
+      _status = 'pending';
+      _showOtpFab = false; // Add this line
+    });
   }
+}
+
+  void _showOtpDialog() {
+    showCupertinoModalPopup(
+      context: context,
+      builder:
+          (context) => CupertinoAlertDialog(
+            title: Text('Submit OTP'),
+            content: Column(
+              children: [
+                SizedBox(height: 16),
+                Text('Enter the 6-digit OTP provided by the business:'),
+                SizedBox(height: 16),
+                CupertinoTextField(
+                  controller: _otpController,
+                  placeholder: 'Enter OTP',
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: CupertinoColors.systemGrey6,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              CupertinoDialogAction(
+                child: Text('Cancel'),
+                onPressed: () => Navigator.pop(context),
+              ),
+              CupertinoDialogAction(
+                child: Text('Submit'),
+                onPressed: () { _submitOtp();
+                Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+    );
+  }
+
+  Future<void> _submitOtp() async {
+  if (_otpController.text.length != 6) {
+    _showErrorMessage(context, 'Please enter a valid 6-digit OTP');
+    return;
+  }
+
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('access_token');
+
+    final response = await http.post(
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/job-requests/$_jobRequestId/verify-otp/',
+      ),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'otp': _otpController.text}),
+    );
+
+    if (response.statusCode == 200) {
+      // Clear the OTP field
+      _otpController.clear();
+      
+      // Dismiss the dialog first
+      Navigator.of(context).pop();
+      
+      // Then show the success message
+      _showSuccessMessage(context, 'OTP verified successfully!');
+    } else {
+      final error = jsonDecode(response.body);
+      _showErrorMessage(context, error['detail'] ?? 'Invalid OTP');
+    }
+  } catch (e) {
+    _showErrorMessage(context, 'Error verifying OTP: $e');
+  }
+}
 
   Future<void> _checkIfReviewExists() async {
     try {
@@ -141,45 +229,46 @@ class _JobDetailPageState extends State<JobDetailPage>
   }
 
   Future<void> _checkIfJobIsAccepted() async {
-    if (_jobRequestId == null) return;
+  if (_jobRequestId == null) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+  setState(() {
+    _isLoading = true;
+  });
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final accessToken = prefs.getString('access_token');
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('access_token');
 
-      final response = await http.get(
-        Uri.parse('${ApiConfig.jobRequestsAcceptedUrl}$_jobRequestId'),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-      );
+    final response = await http.get(
+      Uri.parse('${ApiConfig.jobRequestsAcceptedUrl}$_jobRequestId'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      },
+    );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (mounted) {
-          setState(() {
-            _status = data['status'] ?? 'pending'; // Store the status
-            _chatRoomId = data['chat_room_id']?.toString();
-            _driverId = data['driver_id']?.toString();
-          });
-        }
-      }
-    } catch (e) {
-      print('Error checking job status: $e');
-    } finally {
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _status = data['status'] ?? 'pending';
+          _chatRoomId = data['chat_room_id']?.toString();
+          _driverId = data['driver_id']?.toString();
+          _showOtpFab = _status == 'accepted'; // Add this line
+          print('Status updated: $_status, Show OTP FAB: $_showOtpFab');
         });
       }
     }
+  } catch (e) {
+    print('Error checking job status: $e');
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
-
+}
   Future<void> _submitReview() async {
     try {
       // Retrieve access token
@@ -269,22 +358,86 @@ class _JobDetailPageState extends State<JobDetailPage>
 
   @override
   Widget build(BuildContext context) {
+      print('Building with status: $_status, showOtpFab: $_showOtpFab'); // Debug print
+
     return CupertinoPageScaffold(
       backgroundColor: CupertinoColors.systemGrey6,
-      child: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          _buildSliverNavigationBar(),
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                _buildBusinessImage(),
-                _buildJobHeader(),
-                _buildJobContent(),
-                SizedBox(height: 100),
-              ],
-            ),
+      child: Stack(
+        children: [
+          CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              _buildSliverNavigationBar(),
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    _buildBusinessImage(),
+                    _buildJobHeader(),
+                    _buildJobContent(),
+                    SizedBox(height: 100),
+                  ],
+                ),
+              ),
+            ],
           ),
+         if (_showOtpFab)
+  Positioned(
+    bottom: 30,
+    right: 20,
+    child: Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(35),
+        gradient: LinearGradient(
+          colors: [
+            CupertinoColors.activeBlue,
+            CupertinoColors.activeBlue.withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.activeBlue.withOpacity(0.4),
+            blurRadius: 15,
+            offset: Offset(0, 8),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: CupertinoColors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: CupertinoButton(
+        padding: EdgeInsets.all(18),
+        borderRadius: BorderRadius.circular(35),
+        color: Colors.transparent,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              CupertinoIcons.shield_lefthalf_fill,
+              size: 24,
+              color: Colors.white,
+            ),
+            SizedBox(width: 8),
+            Text(
+              'OTP',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+        onPressed: _showOtpDialog,
+      ),
+    ),
+  ),
         ],
       ),
     );
@@ -596,7 +749,7 @@ class _JobDetailPageState extends State<JobDetailPage>
             _buildReviewSection(),
           ],
           SizedBox(height: 16),
-          _buildBottomActions(), 
+          _buildBottomActions(),
         ],
       ),
     );
@@ -975,8 +1128,8 @@ class _JobDetailPageState extends State<JobDetailPage>
                 alignment: Alignment.centerRight,
                 child: CupertinoButton(
                   onPressed:
-                      _rating > 0 
-                      // && _reviewController.text.isNotEmpty
+                      _rating > 0
+                          // && _reviewController.text.isNotEmpty
                           ? _submitReview
                           : null,
                   color: CupertinoColors.activeBlue,
@@ -1003,160 +1156,154 @@ class _JobDetailPageState extends State<JobDetailPage>
       decoration: BoxDecoration(
         color: CupertinoColors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: CupertinoColors.systemGrey5),
-        boxShadow: [
-          BoxShadow(
-            color: CupertinoColors.systemGrey.withOpacity(0.3),
-            blurRadius: 10,
-            offset: Offset(0, -3),
-          ),
-        ],
       ),
       child: SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (_status == 'accepted' && _chatRoomId != null) ...[
-              // Chat button for accepted jobs
-              SizedBox(
-                width: double.infinity,
-                child: CupertinoButton.filled(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      CupertinoPageRoute(
-                        builder:
-                            (context) => ChatPage(
-                              driverId: _driverId!,
-                              chatRoomId: _chatRoomId!,
-                              businessName: widget.jobPost.businessName,
-                            ),
-                      ),
-                    );
-                  },
-                  child: Text(
-                    '${appLanguage.get('Chat_with')} ${widget.jobPost.businessName}',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 12),
-            ],
-            SizedBox(
-              width: double.infinity,
-              child:
-                  _isLoading
-                      ? Center(
-                        child: CupertinoActivityIndicator(
-                          color: CupertinoColors.activeBlue,
-                        ),
-                      )
-                      : _status == 'cancelled_by_shopkeeper'
-                      ? Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: CupertinoColors.systemRed.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          appLanguage.get('Cancelled_by_Shopkeeper'),
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w800,
-                            color: CupertinoColors.systemRed,
-                            fontSize: 16,
-                          ),
-                        ),
-                      )
-                      : _status == 'cancelled_by_driver'
-                      ? Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: CupertinoColors.systemOrange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          appLanguage.get('Job_cancelled_by_you'),
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w800,
-                            color: CupertinoColors.systemOrange,
-                            fontSize: 16,
-                          ),
-                        ),
-                      )
-                      : _jobRequestId !=
-                          null // Only show status-based buttons if we have a job request ID
-                      ? _status == 'applied' || _status == 'pending'
-                          ? CupertinoButton(
-                            onPressed: () {},
-                            padding: EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 16,
-                            ),
-                            color: const Color.fromARGB(255, 25, 237, 28),
-                            child: Text(
-                              appLanguage.get('Applied'),
-                              style: GoogleFonts.inter(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: CupertinoColors.white,
-                              ),
-                            ),
-                          )
-                          : _status == 'accepted'
-                          ? CupertinoButton(
-                            onPressed: () {
-                              showCupertinoModalPopup(
-                                context: context,
-                                builder:
-                                    (context) => CupertinoCancelJobPage(
-                                      jobPost: widget.jobPost.id,
-                                      jobRequestId: _jobRequestId!,
-                                      onJobCancelled: (String reason) {
-                                        _cancelJob(reason);
-                                      },
-                                    ),
-                              );
-                            },
+            if (_isLoading) Center(child: CupertinoActivityIndicator()),
 
-                            padding: EdgeInsets.symmetric(
-                              vertical: 12,
-                              horizontal: 16,
-                            ),
-                            color: CupertinoColors.systemRed,
-                            child: Text(
-                              appLanguage.get('cancel_Job'),
-                              style: GoogleFonts.inter(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: CupertinoColors.white,
-                              ),
-                            ),
-                          )
-                          : SizedBox.shrink()
-                      : CupertinoButton(
-                        // Show apply button if no job request exists
-                        onPressed: () => _handleJobApplication(context),
-                        padding: EdgeInsets.symmetric(
-                          vertical: 12,
-                          horizontal: 16,
-                        ),
-                        color: CupertinoColors.activeBlue,
-                        child: Text(
-                          appLanguage.get('Apply_for_this_Job'),
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: CupertinoColors.white,
-                          ),
-                        ),
-                      ),
-            ),
+            if (!_isLoading) ...[
+              // CASE 1: Job is cancelled (by either party)
+              if (_status == 'cancelled_by_driver' ||
+                  _status == 'cancelled_by_shopkeeper')
+                _buildStatusChip(
+                  _status == 'cancelled_by_driver'
+                      ? 'Job cancelled by you'
+                      : 'Cancelled by Shopkeeper',
+                  _status == 'cancelled_by_driver'
+                      ? CupertinoColors.systemOrange
+                      : CupertinoColors.systemRed,
+                ),
+
+              // CASE 2: Job is applied (not cancelled) - show both chat and cancel
+              if (_hasApplied &&
+                  _status != 'cancelled_by_driver' &&
+                  _status != 'cancelled_by_shopkeeper') ...[
+                if (_chatRoomId != null) _buildChatButton(),
+                SizedBox(height: 12),
+                _buildCancelButton(),
+              ],
+
+              // CASE 3: Not applied yet - show apply button
+              if (!_hasApplied &&
+                  _status != 'cancelled_by_driver' &&
+                  _status != 'cancelled_by_shopkeeper')
+                _buildApplyButton(),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+
+  // Cancel button with confirmation dialog
+  Widget _buildCancelButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: CupertinoButton(
+        onPressed: () {
+          showCupertinoModalPopup(
+            context: context,
+            builder:
+                (context) => CupertinoCancelJobPage(
+                  jobPost: widget.jobPost.id,
+                  jobRequestId: _jobRequestId!,
+                  onJobCancelled: (String reason) {
+                    _cancelJob(reason);
+                  },
+                ),
+          );
+        },
+        color: CupertinoColors.systemRed,
+        child: Text(
+          'Cancel Job',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: CupertinoColors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Status chip for cancellation messages
+  Widget _buildStatusChip(String text, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: GoogleFonts.inter(
+          fontWeight: FontWeight.w800,
+          color: color,
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+
+  // Applied button (disabled state)
+  Widget _buildAppliedButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: CupertinoButton(
+        onPressed: () {},
+        color: Colors.green,
+        child: Text(
+          appLanguage.get('Applied'),
+          style: GoogleFonts.inter(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: CupertinoColors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Apply button (active state)
+  Widget _buildApplyButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: CupertinoButton.filled(
+        onPressed: () => _handleJobApplication(context),
+        child: Text(
+          'Apply for this Job',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  // Chat button for accepted jobs
+  Widget _buildChatButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: CupertinoButton.filled(
+        onPressed: () {
+          Navigator.push(
+            context,
+            CupertinoPageRoute(
+              builder:
+                  (context) => ChatPage(
+                    driverId: _driverId!,
+                    chatRoomId: _chatRoomId!,
+                    businessName: widget.jobPost.businessName,
+                  ),
+            ),
+          );
+        },
+        child: Text(
+          'Chat with ${widget.jobPost.businessName}',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -1180,7 +1327,8 @@ class _JobDetailPageState extends State<JobDetailPage>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  appLanguage.get('You_are_about_to_apply_for_this_job_at') + ' ${widget.jobPost.businessName}.',
+                  appLanguage.get('You_are_about_to_apply_for_this_job_at') +
+                      ' ${widget.jobPost.businessName}.',
                   style: TextStyle(
                     fontSize: 16,
                     color: CupertinoColors.systemGrey,
@@ -1205,7 +1353,9 @@ class _JobDetailPageState extends State<JobDetailPage>
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          appLanguage.get('The_business_will_be_notified_of_your_application.'),
+                          appLanguage.get(
+                            'The_business_will_be_notified_of_your_application.',
+                          ),
                           style: TextStyle(
                             color: CupertinoColors.systemBlue,
                             fontSize: 14,
@@ -1249,22 +1399,21 @@ class _JobDetailPageState extends State<JobDetailPage>
     );
   }
 
-  void _showSuccessMessage(BuildContext context, String message) {
-    showCupertinoDialog(
-      context: context,
-      builder:
-          (context) => CupertinoAlertDialog(
-            title: Text(appLanguage.get('Success')),
-            content: Text(message),
-            actions: [
-              CupertinoDialogAction(
-                child: Text(appLanguage.get('OK')),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-    );
-  }
+ void _showSuccessMessage(BuildContext context, String message) {
+  showCupertinoDialog(
+    context: context,
+    builder: (context) => CupertinoAlertDialog(
+      title: Text(appLanguage.get('Success')),
+      content: Text(message),
+      actions: [
+        CupertinoDialogAction(
+          child: Text(appLanguage.get('OK')),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+    ),
+  );
+}
 
   void _showErrorMessage(BuildContext context, String message) {
     showCupertinoDialog(
@@ -1320,7 +1469,6 @@ class _JobDetailPageState extends State<JobDetailPage>
 
       final prefs = await SharedPreferences.getInstance();
       final accessToken = prefs.getString('access_token');
-
       final profileResponse = await http.get(
         Uri.parse(ApiConfig.profileStatusUrl),
         headers: {
@@ -1355,14 +1503,8 @@ class _JobDetailPageState extends State<JobDetailPage>
       } else {
         throw Exception('Failed to check profile status');
       }
-
-      // Prepare request body
-      final requestBody = {
-        'job': widget.jobPost.id,
-        'status': 'applied', // Explicitly set status
-      };
-
-      print('Submitting application with body: $requestBody'); // Debug log
+      // Submit application
+      final requestBody = {'job': widget.jobPost.id, 'status': 'applied'};
 
       final response = await http.post(
         Uri.parse(ApiConfig.jobRequestUrl),
@@ -1373,37 +1515,37 @@ class _JobDetailPageState extends State<JobDetailPage>
         body: jsonEncode(requestBody),
       );
 
-      print('Response status: ${response.statusCode}'); // Debug log
-      print('Response body: ${response.body}'); // Debug log
-
-      if (loadingContext != null && Navigator.canPop(loadingContext!)) {
-        Navigator.pop(loadingContext!);
-      }
-
       if (response.statusCode == 201) {
         final responseData = jsonDecode(response.body);
-        setState(() {
-          _jobRequestId = responseData['id']?.toString();
-          _status = responseData['status'] ?? 'applied';
-          _hasApplied = true;
-        });
+
+        // Update state with the new application
+        if (mounted) {
+          setState(() {
+            _jobRequestId = responseData['id']?.toString();
+            _status = 'applied'; // Set status directly to applied
+            _hasApplied = true;
+            // Set chat room ID and driver ID from response if available
+            _chatRoomId = responseData['chat_room_id']?.toString();
+            _driverId = responseData['driver_id']?.toString();
+                  _showOtpFab = _status == 'accepted'; // Add this line
+
+          });
+        }
+
+        // If chat room ID wasn't in initial response, try to fetch it
+        if (_chatRoomId == null) {
+          await _fetchChatRoomId();
+        }
+
+        if (loadingContext != null && Navigator.canPop(loadingContext!)) {
+          Navigator.pop(loadingContext!);
+        }
+
         _showApplicationSuccessMessage(context);
       } else {
-        // Try to parse error message
-        String errorMessage = 'Failed to submit application. Please try again.';
-        try {
-          final errorData = jsonDecode(response.body);
-          errorMessage =
-              errorData['detail'] ??
-              errorData['message'] ??
-              errorData.toString();
-        } catch (e) {
-          print('Error parsing error response: $e');
-        }
-        _showErrorMessage(context, errorMessage);
+        throw Exception('Failed to submit application');
       }
     } catch (e) {
-      print('Application error: $e');
       if (loadingContext != null && Navigator.canPop(loadingContext!)) {
         Navigator.pop(loadingContext!);
       }
@@ -1414,11 +1556,47 @@ class _JobDetailPageState extends State<JobDetailPage>
     }
   }
 
+  Future<void> _fetchChatRoomId() async {
+    if (_jobRequestId == null) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('access_token');
+
+      final response = await http.get(
+        Uri.parse('${ApiConfig.jobRequestsListUrl}${widget.jobPost.id}'),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final jobRequest = data['data'].firstWhere(
+          (req) => req['id'].toString() == _jobRequestId,
+          orElse: () => null,
+        );
+
+        if (jobRequest != null && mounted) {
+          setState(() {
+            _chatRoomId = jobRequest['chat_room_id']?.toString();
+            _driverId = jobRequest['driver_id']?.toString();
+          });
+        }
+      }
+    } catch (e) {
+      print('Error fetching chat room ID: $e');
+    }
+  }
+
   void _showApplicationSuccessMessage(BuildContext context) {
     showCupertinoModalPopup(
       context: context,
-      builder:
-          (context) => Container(
+      builder: (context) {
+        return WillPopScope(
+          onWillPop: () async => false, // Prevent back button dismissal
+          child: Container(
             padding: EdgeInsets.all(24),
             margin: EdgeInsets.symmetric(horizontal: 20, vertical: 100),
             decoration: BoxDecoration(
@@ -1462,7 +1640,10 @@ class _JobDetailPageState extends State<JobDetailPage>
                 ),
                 SizedBox(height: 12),
                 Text(
-                  appLanguage.get('Your_application_for') + ' ${widget.jobPost.title} ' + appLanguage.get('has_been_sent_to') + ' ${widget.jobPost.businessName}.',
+                  appLanguage.get('Your_application_for') +
+                      ' ${widget.jobPost.title} ' +
+                      appLanguage.get('has_been_sent_to') +
+                      ' ${widget.jobPost.businessName}.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.blue.shade800,
@@ -1494,6 +1675,8 @@ class _JobDetailPageState extends State<JobDetailPage>
               ],
             ),
           ),
+        );
+      },
     );
   }
 
@@ -1505,11 +1688,7 @@ class _JobDetailPageState extends State<JobDetailPage>
     try {
       final prefs = await SharedPreferences.getInstance();
       final accessToken = prefs.getString('access_token');
-      print(widget.jobPost.id);
-      print('_jobRequestId: $_jobRequestId');
-      print(
-        '***************************************************************************************************',
-      );
+
       final response = await http.post(
         Uri.parse(ApiConfig.cancelJobByDriverUrl(_jobRequestId!)),
 

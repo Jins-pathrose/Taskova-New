@@ -457,20 +457,21 @@ void _handleAccept() {
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
-                              child: Image.network(
-                                "http://192.168.20.29:8001${requester['image']}",
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: CupertinoColors.systemGrey5,
-                                    child: Icon(
-                                      CupertinoIcons.person_alt_circle,
-                                      size: 40,
-                                      color: CupertinoColors.systemGrey,
-                                    ),
-                                  );
-                                },
-                              ),
+                             child: Image.network(
+  "${ApiConfig.getImageUrl}${requester['image']}",
+  fit: BoxFit.cover,
+  errorBuilder: (context, error, stackTrace) {
+    return Container(
+      color: CupertinoColors.systemGrey5,
+      child: Icon(
+        CupertinoIcons.person_alt_circle,
+        size: 40,
+        color: CupertinoColors.systemGrey,
+      ),
+    );
+  },
+),
+
                             ),
                           ),
                           SizedBox(height: 12),

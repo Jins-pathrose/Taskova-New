@@ -31,14 +31,14 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
   // Navigator keys for each tab to manage their navigation stacks
   final List<GlobalKey<NavigatorState>> _navigatorKeys = [
     GlobalKey<NavigatorState>(), // For HomePage
-    GlobalKey<NavigatorState>(), // For CommunityPage
+    // GlobalKey<NavigatorState>(), // For CommunityPage
     GlobalKey<NavigatorState>(), // For ProfilePage
     GlobalKey<NavigatorState>(), // For BusinessReq
   ];
 
   final List<Widget> _pages = [
     const HomePage(),
-     JobRequestsPage(),
+    //  JobRequestsPage(),
     const CommunityPage(),
     const ProfilePage(),
   ];
@@ -186,21 +186,21 @@ Future<void> _initFCM() async {
                   : CupertinoIcons.house),
               label: appLanguage.get('home')
             ),
+            // BottomNavigationBarItem(
+            //   icon: Icon(_currentIndex == 1
+            //       ? CupertinoIcons.tray_arrow_down_fill
+            //       : CupertinoIcons.tray_arrow_down),
+            //   label: appLanguage.get('Job_Request')
+            // ),
             BottomNavigationBarItem(
               icon: Icon(_currentIndex == 1
-                  ? CupertinoIcons.tray_arrow_down_fill
-                  : CupertinoIcons.tray_arrow_down),
-              label: appLanguage.get('Job_Request')
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(_currentIndex == 2
                   ? CupertinoIcons.person_2_fill
                   : CupertinoIcons.person_2),
               label: appLanguage.get('community')
             ),
             
             BottomNavigationBarItem(
-              icon: Icon(_currentIndex == 3
+              icon: Icon(_currentIndex == 2
                   ? CupertinoIcons.person_fill
                   : CupertinoIcons.person),
               label: appLanguage.get('profile')

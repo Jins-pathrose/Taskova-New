@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskova_new/Controller/Jobstatus/jobstatus.dart';
+import 'package:taskova_new/Controller/Theme/theme.dart';
 import 'package:taskova_new/Model/api_config.dart';
 import 'package:taskova_new/View/Homepage/detailspage.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
@@ -64,7 +66,7 @@ class JobPost {
   double? distanceMiles;
   final String? jobDate;
   final String? address; // Added address property
-  final String? subscriptionPlanName; 
+  final String? subscriptionPlanName;
 
   JobPost({
     required this.id,
@@ -111,7 +113,6 @@ class JobPost {
       businessLongitude: _parseDouble(businessDetail?['longitude']) ?? 0.0,
       address: businessDetail?['address'], // Added address
       subscriptionPlanName: json['subscription_plan_name'], // Add this line
-
     );
   }
 
@@ -198,6 +199,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   double _radiusFilter = 30.0; // Default to 30 miles
   bool _showRadiusFilter = false; // Add this line
   late AppLanguage appLanguage;
+  static const Color _darkmode = Color.fromARGB(255, 46, 15, 149);
+  static const Color _darkGradientEnd = Color.fromARGB(255, 43, 33, 99);
 
   @override
   void initState() {
@@ -318,115 +321,141 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Future<void> _fetchJobPosts() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final accessToken = prefs.getString('access_token');
-    if (accessToken == null || accessToken.isEmpty) {
-      setState(() {
-        _errorMessage = 'No access token found. Please log in.';
-        _isLoading = false;
-      });
-      return;
-    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final accessToken = prefs.getString('access_token');
+      if (accessToken == null || accessToken.isEmpty) {
+        setState(() {
+          _errorMessage = 'No access token found. Please log in.';
+          _isLoading = false;
+        });
+        return;
+      }
 
-    final response = await http.get(
-      Uri.parse(ApiConfig.jobListUrl),
-      headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-      },
-    );
+      final response = await http.get(
+        Uri.parse(ApiConfig.jobListUrl),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final jsonResponse = json.decode(response.body) as List<dynamic>;
-      List<JobPost> posts = jsonResponse.map((job) => JobPost.fromJson(job)).toList();
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body) as List<dynamic>;
+        List<JobPost> posts =
+            jsonResponse.map((job) => JobPost.fromJson(job)).toList();
 
-      if (_driverProfile != null) {
-        // Calculate distances for all jobs
-        for (var post in posts) {
-          post.calculateDistanceFrom(
-            _driverProfile!.latitude,
-            _driverProfile!.longitude,
-          );
+        if (_driverProfile != null) {
+          // Calculate distances for all jobs
+          for (var post in posts) {
+            post.calculateDistanceFrom(
+              _driverProfile!.latitude,
+              _driverProfile!.longitude,
+            );
+          }
+
+          // Filter jobs based on subscription plan distance requirements
+          posts =
+              posts.where((job) {
+                final isPremium =
+                    job.subscriptionPlanName?.toLowerCase().contains(
+                      'premium',
+                    ) ??
+                    false;
+                if (isPremium) {
+                  return job.distanceMiles != null && job.distanceMiles! <= 30;
+                } else {
+                  return job.distanceMiles != null && job.distanceMiles! <= 5;
+                }
+              }).toList();
+
+          // Sort jobs - premium first, then by distance
+          posts.sort((a, b) {
+            // Premium jobs first
+            final aIsPremium =
+                a.subscriptionPlanName?.toLowerCase().contains('premium') ??
+                false;
+            final bIsPremium =
+                b.subscriptionPlanName?.toLowerCase().contains('premium') ??
+                false;
+
+            if (aIsPremium && !bIsPremium) return -1;
+            if (!aIsPremium && bIsPremium) return 1;
+
+            // Then sort by distance
+            if (a.distanceMiles == null && b.distanceMiles == null) return 0;
+            if (a.distanceMiles == null) return 1;
+            if (b.distanceMiles == null) return -1;
+            return a.distanceMiles!.compareTo(b.distanceMiles!);
+          });
         }
 
-        // Filter jobs based on subscription plan distance requirements
-        posts = posts.where((job) {
-          final isPremium = job.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
-          if (isPremium) {
-            return job.distanceMiles != null && job.distanceMiles! <= 30;
-          } else {
-            return job.distanceMiles != null && job.distanceMiles! <= 5;
-          }
-        }).toList();
-
-        // Sort jobs - premium first, then by distance
-        posts.sort((a, b) {
-          // Premium jobs first
-          final aIsPremium = a.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
-          final bIsPremium = b.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
-          
-          if (aIsPremium && !bIsPremium) return -1;
-          if (!aIsPremium && bIsPremium) return 1;
-          
-          // Then sort by distance
-          if (a.distanceMiles == null && b.distanceMiles == null) return 0;
-          if (a.distanceMiles == null) return 1;
-          if (b.distanceMiles == null) return -1;
-          return a.distanceMiles!.compareTo(b.distanceMiles!);
+        setState(() {
+          _jobPosts = posts;
+          _filteredJobPosts = posts;
+          _isLoading = false;
+        });
+      } else if (response.statusCode == 401) {
+        setState(() {
+          _errorMessage = 'Authentication failed. Please log in again.';
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Failed to load job posts: ${response.statusCode}';
+          _isLoading = false;
         });
       }
-
+    } catch (e) {
       setState(() {
-        _jobPosts = posts;
-        _filteredJobPosts = posts;
-        _isLoading = false;
-      });
-    } else if (response.statusCode == 401) {
-      setState(() {
-        _errorMessage = 'Authentication failed. Please log in again.';
-        _isLoading = false;
-      });
-    } else {
-      setState(() {
-        _errorMessage = 'Failed to load job posts: ${response.statusCode}';
+        _errorMessage = 'Error: $e';
         _isLoading = false;
       });
     }
-  } catch (e) {
-    setState(() {
-      _errorMessage = 'Error: $e';
-      _isLoading = false;
-    });
   }
-}
 
   void _applyRadiusFilter() {
-  setState(() {
-    _filteredJobPosts = _jobPosts.where((job) {
-      // Check subscription plan and distance requirements
-      final isPremium = job.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
-      final isBasic = !isPremium; // Assuming if not premium then it's basic
-      
-      // Apply distance limits based on plan
-      if (isPremium && (job.distanceMiles == null || job.distanceMiles! > 30)) {
-        return false;
-      }
-      if (isBasic && (job.distanceMiles == null || job.distanceMiles! > 5)) {
-        return false;
-      }
+    setState(() {
+      _filteredJobPosts =
+          _jobPosts.where((job) {
+            // Check subscription plan and distance requirements
+            final isPremium =
+                job.subscriptionPlanName?.toLowerCase().contains('premium') ??
+                false;
+            final isBasic =
+                !isPremium; // Assuming if not premium then it's basic
 
-      // Apply search filter
-      final matchesSearch = _searchQuery.isEmpty ||
-          job.businessName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          job.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          (job.address?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-          (job.description?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
-      
-      return matchesSearch;
-    }).toList();
-  });
-}
+            // Apply distance limits based on plan
+            if (isPremium &&
+                (job.distanceMiles == null || job.distanceMiles! > 30)) {
+              return false;
+            }
+            if (isBasic &&
+                (job.distanceMiles == null || job.distanceMiles! > 5)) {
+              return false;
+            }
+
+            // Apply search filter
+            final matchesSearch =
+                _searchQuery.isEmpty ||
+                job.businessName.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ) ||
+                job.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                (job.address?.toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    ) ??
+                    false) ||
+                (job.description?.toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    ) ??
+                    false);
+
+            return matchesSearch;
+          }).toList();
+    });
+  }
+
   void _toggleRadiusFilter() {
     setState(() {
       _showRadiusFilter = !_showRadiusFilter;
@@ -499,47 +528,72 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final theme = CupertinoTheme.of(context);
-
-    return CupertinoPageScaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      navigationBar: CupertinoNavigationBar(
-        middle:  Text(
-         appLanguage.get ('Nearby_Jobs'),
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
-        ),
-        backgroundColor: theme.barBackgroundColor,
-        border: null,
-      ),
-
-      child: SafeArea(
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(
-            parent: BouncingScrollPhysics(),
-          ),
-          slivers: [
-            CupertinoSliverRefreshControl(
-              onRefresh: _refreshData,
-              refreshTriggerPullDistance: 100,
-              refreshIndicatorExtent: 60,
+  @override
+Widget build(BuildContext context) {
+  return Consumer<ThemeProvider>(
+    builder: (context, themeProvider, child) {
+      final theme = CupertinoTheme.of(context);
+      
+      return CupertinoPageScaffold(
+        backgroundColor: Colors.transparent,
+        navigationBar: CupertinoNavigationBar(
+          middle: Text(
+            appLanguage.get('Nearby_Jobs'),
+            style: TextStyle(
+              fontWeight: FontWeight.w600, 
+              fontSize: 18,
+              color: themeProvider.isDarkMode 
+                  ? CupertinoColors.white 
+                  : CupertinoColors.black,
             ),
-            _buildHeaderSection(theme),
-            _buildContentSection(theme),
-            const SliverToBoxAdapter(child: SizedBox(height: 20)),
-          ],
+          ),
+          backgroundColor: themeProvider.isDarkMode 
+              ? _darkmode.withOpacity(0.8) 
+              : theme.barBackgroundColor,
+          border: null,
         ),
-      ),
-    );
-  }
+        child: Container(
+          decoration: themeProvider.isDarkMode
+              ? const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_darkmode, _darkGradientEnd],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                )
+              : const BoxDecoration(color: Colors.white),
+          child: SafeArea(
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              slivers: [
+                CupertinoSliverRefreshControl(
+                  onRefresh: _refreshData,
+                  refreshTriggerPullDistance: 100,
+                  refreshIndicatorExtent: 60,
+                ),
+                _buildHeaderSection(theme, themeProvider),
+                _buildContentSection(theme, themeProvider),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
 
-  Widget _buildRadiusFilter(CupertinoThemeData theme) {
+  Widget _buildRadiusFilter(CupertinoThemeData theme, ThemeProvider themeProvider) {
     return Container(
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: CupertinoColors.systemGrey6,
-        borderRadius: BorderRadius.circular(10),
+color: themeProvider.isDarkMode
+          ? CupertinoColors.darkBackgroundGray
+          : CupertinoColors.systemGrey6,
+                  borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -548,7 +602,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-               appLanguage.get('Radius_Filter') ,
+                appLanguage.get('Radius_Filter'),
                 style: theme.textTheme.textStyle.copyWith(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
@@ -583,91 +637,103 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildHeaderSection(CupertinoThemeData theme) {
-    return SliverToBoxAdapter(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: theme.barBackgroundColor,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: CupertinoColors.systemGrey.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_userName != null)
-              Text(
-               '${appLanguage.get('Hi,')} $_userName',
-                style: GoogleFonts.oswald(
-                  textStyle: theme.textTheme.navTitleTextStyle.copyWith(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
+  Widget _buildHeaderSection(CupertinoThemeData theme, ThemeProvider themeProvider) {
+  return SliverToBoxAdapter(
+    child: Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: themeProvider.isDarkMode
+            ? _darkmode.withOpacity(0.7)
+            : theme.barBackgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_userName != null)
+            Text(
+              '${appLanguage.get('Hi,')} $_userName',
+              style: GoogleFonts.oswald(
+                textStyle: theme.textTheme.navTitleTextStyle.copyWith(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: themeProvider.isDarkMode
+                      ? CupertinoColors.white
+                      : CupertinoColors.black,
                 ),
               ),
-            if (_userName != null) const SizedBox(height: 8),
-            Text(
-             appLanguage.get('Discover_Opportunities') ,
-              style: theme.textTheme.navTitleTextStyle.copyWith(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              appLanguage.get('Find_jobs_near_you') ,
-              style: theme.textTheme.textStyle.copyWith(
-                color: CupertinoColors.secondaryLabel,
-                fontSize: 14,
-              ),
+          if (_userName != null) const SizedBox(height: 8),
+          Text(
+            appLanguage.get('Discover_Opportunities'),
+            style: theme.textTheme.navTitleTextStyle.copyWith(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: themeProvider.isDarkMode
+                  ? CupertinoColors.white
+                  : CupertinoColors.black,
             ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            appLanguage.get('Find_jobs_near_you'),
+            style: theme.textTheme.textStyle.copyWith(
+              color: themeProvider.isDarkMode
+                  ? CupertinoColors.systemGrey2
+                  : CupertinoColors.secondaryLabel,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildSearchBar(theme, themeProvider),
+          if (_showRadiusFilter) _buildRadiusFilter(theme, themeProvider),
+          if (!_isLoading && _errorMessage == null) ...[
             const SizedBox(height: 12),
-            _buildSearchBar(theme),
-            if (_showRadiusFilter) _buildRadiusFilter(theme),
-            if (!_isLoading && _errorMessage == null) ...[
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildStatItem(
-                    icon: CupertinoIcons.briefcase,
-                    label: appLanguage.get('Jobs') ,
-                    value: '${_filteredJobPosts.length}',
-                    theme: theme,
-                  ),
-                  Container(
-                    width: 1,
-                    height: 24,
-                    color: CupertinoColors.separator,
-                  ),
-                  _buildStatItem(
-                    icon: CupertinoIcons.location_circle,
-                    label: appLanguage.get('Nearby') ,
-                    value:
-                        '${_filteredJobPosts.where((job) => job.distanceMiles != null && job.distanceMiles! < 5).length}',
-                    theme: theme,
-                  ),
-                ],
-              ),
-            ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStatItem(
+                  icon: CupertinoIcons.briefcase,
+                  label: appLanguage.get('Jobs'),
+                  value: '${_filteredJobPosts.length}',
+                  theme: theme,
+                  themeProvider: themeProvider,
+                ),
+                Container(
+                  width: 1,
+                  height: 24,
+                  color: CupertinoColors.separator,
+                ),
+                _buildStatItem(
+                  icon: CupertinoIcons.location_circle,
+                  label: appLanguage.get('Nearby'),
+                  value: '${_filteredJobPosts.where((job) => job.distanceMiles != null && job.distanceMiles! < 5).length}',
+                  theme: theme,
+                  themeProvider: themeProvider,
+                ),
+              ],
+            ),
           ],
-        ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
-  Widget _buildSearchBar(CupertinoThemeData theme) {
+  Widget _buildSearchBar(CupertinoThemeData theme,ThemeProvider themeProvider) {
     return Container(
       decoration: BoxDecoration(
-        color: CupertinoColors.systemGrey6,
-        borderRadius: BorderRadius.circular(10),
+color: themeProvider.isDarkMode
+          ? CupertinoColors.darkBackgroundGray
+          : CupertinoColors.systemGrey6,        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
@@ -677,7 +743,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               focusNode: _searchFocusNode,
               autofocus: false,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              placeholder: appLanguage.get('Search_jobs,_companies...') ,
+              placeholder: appLanguage.get('Search_jobs,_companies...'),
               placeholderStyle: theme.textTheme.textStyle.copyWith(
                 color: CupertinoColors.placeholderText,
                 fontSize: 14,
@@ -742,82 +808,98 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildContentSection(CupertinoThemeData theme) {
-    if (_isLoading) return _buildLoadingState(theme);
-    if (_errorMessage != null) return _buildErrorState(theme);
-    if (_filteredJobPosts.isEmpty && _searchQuery.isNotEmpty)
-      return _buildNoResultsState(theme);
-    return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) =>
-              _buildJobCard(context, _filteredJobPosts[index], index, theme),
-          childCount: _filteredJobPosts.length,
-        ),
-      ),
-    );
+  Widget _buildContentSection(CupertinoThemeData theme, ThemeProvider themeProvider) {
+  if (_isLoading) return _buildLoadingState(theme, themeProvider);
+  if (_errorMessage != null) return _buildErrorState(theme, );
+  if (_filteredJobPosts.isEmpty && _searchQuery.isNotEmpty) {
+    return _buildNoResultsState(theme, );
   }
-
-  Widget _buildLoadingState(CupertinoThemeData theme) {
-    return SliverList(
+  return SliverPadding(
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    sliver: SliverList(
       delegate: SliverChildBuilderDelegate(
-        (context, index) => Container(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: theme.barBackgroundColor,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: CupertinoColors.systemGrey.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: CupertinoColors.systemGrey5,
-                  borderRadius: BorderRadius.circular(11.5),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      height: 16,
-                      color: CupertinoColors.systemGrey5,
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      width: 100,
-                      height: 12,
-                      color: CupertinoColors.systemGrey5,
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      width: 80,
-                      height: 10,
-                      color: CupertinoColors.systemGrey5,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        (context, index) => _buildJobCard(
+          context, 
+          _filteredJobPosts[index], 
+          index, 
+          theme,
+          themeProvider,
         ),
-        childCount: 3,
+        childCount: _filteredJobPosts.length,
       ),
-    );
-  }
+    ),
+  );
+}
+
+ Widget _buildLoadingState(CupertinoThemeData theme, ThemeProvider themeProvider) {
+  return SliverList(
+    delegate: SliverChildBuilderDelegate(
+      (context, index) => Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: themeProvider.isDarkMode
+              ? _darkmode.withOpacity(0.7)
+              : theme.barBackgroundColor,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: CupertinoColors.systemGrey.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: themeProvider.isDarkMode
+                    ? CupertinoColors.darkBackgroundGray
+                    : CupertinoColors.systemGrey5,
+                borderRadius: BorderRadius.circular(11.5),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: 16,
+                    color: themeProvider.isDarkMode
+                        ? CupertinoColors.darkBackgroundGray
+                        : CupertinoColors.systemGrey5,
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: 100,
+                    height: 12,
+                    color: themeProvider.isDarkMode
+                        ? CupertinoColors.darkBackgroundGray
+                        : CupertinoColors.systemGrey5,
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 80,
+                    height: 10,
+                    color: themeProvider.isDarkMode
+                        ? CupertinoColors.darkBackgroundGray
+                        : CupertinoColors.systemGrey5,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      childCount: 3,
+    ),
+  );
+}
 
   Widget _buildErrorState(CupertinoThemeData theme) {
     return SliverToBoxAdapter(
@@ -913,9 +995,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 _filterJobPosts('');
                 _searchFocusNode.unfocus();
               },
-              child:  Text(
-               appLanguage.get('Clear_Search') , 
-                style: TextStyle(fontSize: 14)),
+              child: Text(
+                appLanguage.get('Clear_Search'),
+                style: TextStyle(fontSize: 14),
+              ),
             ),
           ],
         ),
@@ -928,6 +1011,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     required String label,
     required String value,
     required CupertinoThemeData theme,
+  required ThemeProvider themeProvider,
   }) {
     return Column(
       children: [
@@ -938,13 +1022,18 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           style: theme.textTheme.textStyle.copyWith(
             fontSize: 16,
             fontWeight: FontWeight.bold,
+            color: themeProvider.isDarkMode
+              ? CupertinoColors.white
+              : CupertinoColors.black,
           ),
         ),
         Text(
           label,
           style: theme.textTheme.textStyle.copyWith(
-            color: CupertinoColors.secondaryLabel,
-            fontSize: 10,
+  color: themeProvider.isDarkMode
+              ? CupertinoColors.systemGrey2
+              : CupertinoColors.secondaryLabel,
+                          fontSize: 10,
           ),
         ),
       ],
@@ -952,76 +1041,77 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   Widget _buildJobCard(
-    BuildContext context,
-    JobPost job,
-    int index,
-    CupertinoThemeData theme,
-  ) {
-    final isUrgent = job.distanceMiles != null && job.distanceMiles! < 2;
-    final isHighPay =
-        (job.hourlyRate ?? 0) > 20 || (job.perDeliveryRate ?? 0) > 8;
-    final isPremium = job.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
+  BuildContext context,
+  JobPost job,
+  int index,
+  CupertinoThemeData theme,
+  ThemeProvider themeProvider,
+) {
+  final isUrgent = job.distanceMiles != null && job.distanceMiles! < 2;
+  final isHighPay = (job.hourlyRate ?? 0) > 20 || (job.perDeliveryRate ?? 0) > 8;
+  final isPremium = job.subscriptionPlanName?.toLowerCase().contains('premium') ?? false;
 
-
-    return TweenAnimationBuilder<double>(
-      duration: Duration(milliseconds: 300 + (index * 100)),
-      tween: Tween(begin: 0.0, end: 1.0),
-      builder: (context, value, child) {
-        return Opacity(
-          opacity: value,
-          child: Transform.translate(
-            offset: Offset(0, 20 * (1 - value)),
-            child: child,
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        child: CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () {
-            HapticFeedback.lightImpact();
-           Navigator.push(
-  context,
-  CupertinoPageRoute(
-    builder: (context) => ChangeNotifierProvider(
-      create: (_) => JobStatusProvider(),
-      child: JobDetailPage(jobPost: job),
-    ),
-  ),
-);
-          },
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.barBackgroundColor,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: CupertinoColors.systemGrey.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+  return TweenAnimationBuilder<double>(
+    duration: Duration(milliseconds: 300 + (index * 100)),
+    tween: Tween(begin: 0.0, end: 1.0),
+    builder: (context, value, child) {
+      return Opacity(
+        opacity: value,
+        child: Transform.translate(
+          offset: Offset(0, 20 * (1 - value)),
+          child: child,
+        ),
+      );
+    },
+    child: Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          Navigator.push(
+            context,
+            CupertinoPageRoute(
+              builder: (context) => ChangeNotifierProvider(
+                create: (_) => JobStatusProvider(),
+                child: JobDetailPage(jobPost: job),
+              ),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Stack(
-                  children: [
-                    Container(
-                      width: 70,
-                      height: 70,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: CupertinoColors.separator,
-                          width: 0.5,
-                        ),
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: themeProvider.isDarkMode
+                ? _darkmode.withOpacity(0.7)
+                : theme.barBackgroundColor,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: CupertinoColors.systemGrey.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                children: [
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: CupertinoColors.separator,
+                        width: 0.5,
                       ),
-                      child: _buildBusinessImage(job),
                     ),
-                  if (isPremium) // Replace isUrgent check with this
+                    child: _buildBusinessImage(job),
+                  ),
+                  if (isPremium)
                     Positioned(
                       top: -2,
                       right: -2,
@@ -1031,7 +1121,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           color: CupertinoColors.systemYellow,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: theme.barBackgroundColor,
+                            color: themeProvider.isDarkMode
+                                ? _darkmode.withOpacity(0.7)
+                                : theme.barBackgroundColor,
                             width: 2,
                           ),
                         ),
@@ -1042,7 +1134,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         ),
                       ),
                     ),
-                  if (!isPremium && isUrgent) // Keep urgent indicator as secondary
+                  if (!isPremium && isUrgent)
                     Positioned(
                       top: -2,
                       right: -2,
@@ -1052,7 +1144,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           color: CupertinoColors.systemRed,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: theme.barBackgroundColor,
+                            color: themeProvider.isDarkMode
+                                ? _darkmode.withOpacity(0.7)
+                                : theme.barBackgroundColor,
                             width: 2,
                           ),
                         ),
@@ -1065,156 +1159,183 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     ),
                 ],
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            job.title,
+                            style: theme.textTheme.textStyle.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                              color: themeProvider.isDarkMode
+                                  ? CupertinoColors.white
+                                  : CupertinoColors.black,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isHighPay)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: CupertinoColors.systemGreen.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
                             child: Text(
-                              job.title,
+                              'HIGH PAY',
                               style: theme.textTheme.textStyle.copyWith(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
+                                color: CupertinoColors.systemGreen,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (isHighPay)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: CupertinoColors.systemGreen.withOpacity(
-                                  0.1,
-                                ),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                appLanguage.get('HIGH_PAY'),
-                                style: theme.textTheme.textStyle.copyWith(
-                                  color: CupertinoColors.systemGreen,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      job.businessName,
+                      style: theme.textTheme.textStyle.copyWith(
+                        color: CupertinoColors.systemBlue,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 14,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (job.address != null) ...[
                       const SizedBox(height: 4),
                       Text(
-                        job.businessName,
+                        job.address!,
                         style: theme.textTheme.textStyle.copyWith(
-                          color: CupertinoColors.systemBlue,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14,
+                          color: themeProvider.isDarkMode
+                              ? CupertinoColors.systemGrey2
+                              : CupertinoColors.secondaryLabel,
+                          fontSize: 12,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (job.address != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          job.address!,
-                          style: theme.textTheme.textStyle.copyWith(
-                            color: CupertinoColors.secondaryLabel,
-                            fontSize: 12,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                    ],
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _buildInfoChip(
+                          icon: CupertinoIcons.location_solid,
+                          text: formatDistance(job.distanceMiles),
+                          color: _getDistanceColor(job.distanceMiles),
+                          theme: theme,
+                          themeProvider: themeProvider,
+                        ),
+                        const SizedBox(width: 6),
+                        _buildInfoChip(
+                          icon: CupertinoIcons.clock,
+                          text: job.startTime ?? 'N/A',
+                          color: CupertinoColors.systemBlue,
+                          theme: theme,
+                          themeProvider: themeProvider,
                         ),
                       ],
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          _buildInfoChip(
-                            icon: CupertinoIcons.location_solid,
-                            text: formatDistance(job.distanceMiles),
-                            color: _getDistanceColor(job.distanceMiles),
-                            theme: theme,
-                          ),
-                          const SizedBox(width: 6),
-                          _buildInfoChip(
-                            icon: CupertinoIcons.clock,
-                            text: job.startTime ?? 'N/A',
-                            color: CupertinoColors.systemBlue,
-                            theme: theme,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Icon(
-                            CupertinoIcons.money_dollar_circle,
-                            color: CupertinoColors.systemGreen,
-                            size: 14,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              _formatPayInfo(job),
-                              style: theme.textTheme.textStyle.copyWith(
-                                color: CupertinoColors.systemGreen,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          CupertinoIcons.money_dollar_circle,
+                          color: CupertinoColors.systemGreen,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            _formatPayInfo(job),
+                            style: theme.textTheme.textStyle.copyWith(
+                              color: CupertinoColors.systemGreen,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
                             ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  child: const Icon(
-                    CupertinoIcons.chevron_right,
-                    color: CupertinoColors.tertiaryLabel,
-                    size: 14,
-                  ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(6),
+                child: Icon(
+                  CupertinoIcons.chevron_right,
+                  color: themeProvider.isDarkMode
+                      ? CupertinoColors.systemGrey2
+                      : CupertinoColors.tertiaryLabel,
+                  size: 14,
                 ),
-              ]
-            ),
+              ),
+            ],
           ),
-        ),)
-      );
-  }
+        ),
+      ),
+    ),
+  );
+}
 
-  Widget _buildInfoChip({
-    required IconData icon,
-    required String text,
-    required Color color,
-    required CupertinoThemeData theme,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 10),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: theme.textTheme.textStyle.copyWith(
-              color: color,
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-            ),
+ Widget _buildInfoChip({
+  required IconData icon,
+  required String text,
+  required Color color,
+  required CupertinoThemeData theme,
+  required ThemeProvider themeProvider,
+}) {
+  // Adjust color opacity based on dark mode
+  final chipColor = themeProvider.isDarkMode 
+      ? color.withOpacity(0.2)  // More visible in dark mode
+      : color.withOpacity(0.1);
+  
+  // Adjust text color for better visibility in dark mode
+  final textColor = themeProvider.isDarkMode
+      ? color.withOpacity(0.9)
+      : color;
+
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    decoration: BoxDecoration(
+      color: chipColor,
+      borderRadius: BorderRadius.circular(8),
+      border: themeProvider.isDarkMode
+          ? Border.all(color: color.withOpacity(0.3), width: 0.5)
+          : null,
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          icon,
+          color: textColor,
+          size: 12,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: theme.textTheme.textStyle.copyWith(
+            color: textColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   Color _getDistanceColor(double? distance) {
     if (distance == null) return CupertinoColors.systemOrange;

@@ -74,12 +74,24 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   Future<void> checkAuthState() async {
     final prefs = await SharedPreferences.getInstance();
     final accessToken = prefs.getString('access_token');
+    final refreshToken = prefs.getString('refresh_token');
     final languageSelected = prefs.getString('language_code');
 
     if (languageSelected == null) {
       navigateToLanguageSelection();
-    } else if (accessToken != null && accessToken.isNotEmpty) {
-      // Check profile completion status
+      return;
+    }
+
+    if (accessToken == null || accessToken.isEmpty) {
+      navigateToLogin();
+      return;
+    }
+
+    // First check if token is valid by making a test API call
+    final isTokenValid = await verifyToken(accessToken);
+    
+    if (isTokenValid) {
+      // Token is valid, check profile status
       final isProfileComplete = await checkProfileStatus(accessToken);
       if (isProfileComplete) {
         navigateToHome();
@@ -87,7 +99,70 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         navigateToProfileRegistration();
       }
     } else {
-      navigateToLogin();
+      // Token is invalid, try to refresh it
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        final newTokens = await refreshAccessToken(refreshToken);
+        if (newTokens != null) {
+          // Save new tokens and proceed
+          await prefs.setString('access_token', newTokens['access']);
+          await prefs.setString('refresh_token', newTokens['refresh'] ?? refreshToken);
+          
+          // Check profile status with new token
+          final isProfileComplete = await checkProfileStatus(newTokens['access']);
+          if (isProfileComplete) {
+            navigateToHome();
+          } else {
+            navigateToProfileRegistration();
+          }
+        } else {
+          // Refresh failed, go to login
+          navigateToLogin();
+        }
+      } else {
+        // No refresh token, go to login
+        navigateToLogin();
+      }
+    }
+  }
+
+  Future<bool> verifyToken(String accessToken) async {
+    try {
+      final response = await http.get(
+        Uri.parse(ApiConfig.profileStatusUrl),
+        headers: {
+          'Authorization': 'Bearer $accessToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      // If status is 200, token is valid
+      // If status is 401, token is invalid/expired
+      return response.statusCode == 200;
+    } catch (e) {
+      // Network error or other issue - treat as invalid token
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> refreshAccessToken(String refreshToken) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/token/refresh/'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'refresh': refreshToken,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
     }
   }
 

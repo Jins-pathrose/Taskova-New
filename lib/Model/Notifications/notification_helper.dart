@@ -29,6 +29,7 @@ class NotificationHelper {
     await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
   
+
   static Future<void> showJobNotification({
     required String companyName,
     required int notificationId,

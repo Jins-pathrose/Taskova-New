@@ -33,8 +33,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver, Ticker
   Timer? _reconnectTimer;
   int _reconnectAttempts = 0;
   static const int _maxReconnectAttempts = 5;
-  // static const String _baseUrl = 'https://taskova.co.uk';
-  static const String _baseUrl = 'http://192.168.20.29:8001';
+  static const String _baseUrl = 'https://taskova.co.uk';
+  // static const String _baseUrl = 'http://192.168.20.29:8001';
   
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -189,7 +189,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver, Ticker
 
     try {
       _channel = WebSocketChannel.connect(
-        Uri.parse('ws://192.168.20.29:8001/ws/chat/${widget.chatRoomId}/?token=$accessToken'),
+        Uri.parse('ws://taskova.co.uk:8001/ws/chat/${widget.chatRoomId}/?token=$accessToken'),
       );
 
       _channel!.stream.listen(

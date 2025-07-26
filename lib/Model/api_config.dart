@@ -56,6 +56,9 @@ class ApiConfig {
   static String get ratingUrl {
     return '$baseUrl/api/ratings/';
   }
+  static String get jobRequestsListUrl {
+    return '$baseUrl/api/job-requests/list/';
+  }
   static String get getImageUrl {
     return baseUrl;
   }
@@ -68,6 +71,8 @@ class ApiConfig {
   static String updateRequestStatusUrl(String requestId) {
   return '$baseUrl/api/job-application/request/$requestId/update-status/';
 }
-
+static String get driverMonthlyJobCountUrl {
+    return '$baseUrl/api/driver/monthly-job-count/';
+  }
 
 }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -18,17 +19,21 @@ class AppliedJobsPage extends StatefulWidget {
 
 class _AppliedJobsPageState extends State<AppliedJobsPage>
     with SingleTickerProviderStateMixin {
-  List<Map<String, dynamic>> _jobRequests = [];
+  List<Map<String, dynamic>> _allJobRequests = [];
+  List<Map<String, dynamic>> _filteredJobRequests = [];
   bool _isLoading = true;
   String? _errorMessage;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late AppLanguage appLanguage;
+  
+  // Filter states
+  String _selectedFilter = 'all'; // 'all', 'accepted', 'applied', 'cancelled'
 
   @override
   void initState() {
     super.initState();
-        appLanguage = Provider.of<AppLanguage>(context, listen: false);
+    appLanguage = Provider.of<AppLanguage>(context, listen: false);
 
     _animationController = AnimationController(
       vsync: this,
@@ -48,11 +53,53 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
     super.dispose();
   }
 
+  void _filterJobs(String filter) {
+    setState(() {
+      _selectedFilter = filter;
+      if (filter == 'all') {
+        _filteredJobRequests = List.from(_allJobRequests);
+      } else {
+        _filteredJobRequests = _allJobRequests.where((jobRequest) {
+          final status = jobRequest['request']['status']?.toString().toLowerCase() ?? '';
+          switch (filter) {
+            case 'accepted':
+              return status == 'accepted';
+            case 'applied':
+              return status == 'applied' || status == 'pending';
+            case 'cancelled':
+              return status.contains('cancelled');
+            default:
+              return true;
+          }
+        }).toList();
+      }
+    });
+  }
+
+  int _getCountForFilter(String filter) {
+    if (filter == 'all') return _allJobRequests.length;
+    
+    return _allJobRequests.where((jobRequest) {
+      final status = jobRequest['request']['status']?.toString().toLowerCase() ?? '';
+      switch (filter) {
+        case 'accepted':
+          return status == 'accepted';
+        case 'applied':
+          return status == 'applied' || status == 'pending';
+        case 'cancelled':
+          return status.contains('cancelled');
+        default:
+          return true;
+      }
+    }).length;
+  }
+
   Future<void> _fetchAppliedJobs() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _jobRequests = [];
+      _allJobRequests = [];
+      _filteredJobRequests = [];
     });
 
     try {
@@ -147,7 +194,8 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
 
         if (mounted) {
           setState(() {
-            _jobRequests = enrichedJobRequests;
+            _allJobRequests = enrichedJobRequests;
+            _filterJobs(_selectedFilter); // Apply current filter
             _isLoading = false;
           });
         }
@@ -206,13 +254,16 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
         slivers: [
           _buildSliverNavigationBar(theme),
           SliverToBoxAdapter(
+            child: _buildFilterTabs(theme),
+          ),
+          SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: _isLoading
                   ? _buildLoadingState(theme)
                   : _errorMessage != null
                       ? _buildErrorState(theme)
-                      : _jobRequests.isEmpty
+                      : _filteredJobRequests.isEmpty
                           ? _buildEmptyState(theme)
                           : _buildJobList(theme),
             ),
@@ -254,10 +305,10 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
     );
   }
 
-  Widget _buildLoadingState(CupertinoThemeData theme) {
+  Widget _buildFilterTabs(CupertinoThemeData theme) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: theme.barBackgroundColor,
         borderRadius: BorderRadius.circular(12),
@@ -271,41 +322,149 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
       ),
       child: Row(
         children: [
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemGrey5,
-              borderRadius: BorderRadius.circular(11.5),
-            ),
+          _buildFilterTab(
+            'all',
+            'All',
+            CupertinoColors.systemBlue,
+            theme,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: double.infinity,
-                  height: 16,
-                  color: CupertinoColors.systemGrey5,
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  width: 100,
-                  height: 12,
-                  color: CupertinoColors.systemGrey5,
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  width: 80,
-                  height: 10,
-                  color: CupertinoColors.systemGrey5,
-                ),
-              ],
-            ),
+          _buildFilterTab(
+            'accepted',
+            'Accepted',
+            CupertinoColors.systemGreen,
+            theme,
+          ),
+          _buildFilterTab(
+            'applied',
+            'Applied',
+            CupertinoColors.systemYellow,
+            theme,
+          ),
+          _buildFilterTab(
+            'cancelled',
+            'Cancelled',
+            CupertinoColors.systemRed,
+            theme,
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFilterTab(String filter, String title, Color color, CupertinoThemeData theme) {
+    final isSelected = _selectedFilter == filter;
+    final count = _isLoading ? 0 : _getCountForFilter(filter);
+    
+    return Expanded(
+      child: CupertinoButton(
+        padding: EdgeInsets.zero,
+        onPressed: () => _filterJobs(filter),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? color.withOpacity(0.15) : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            border: isSelected ? Border.all(color: color.withOpacity(0.3)) : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: theme.textTheme.textStyle.copyWith(
+                  color: isSelected ? color : CupertinoColors.label,
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 2),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: isSelected ? color : CupertinoColors.systemGrey4,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  count.toString(),
+                  style: TextStyle(
+                    color: isSelected ? CupertinoColors.white : CupertinoColors.systemGrey,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState(CupertinoThemeData theme) {
+    return Column(
+      children: List.generate(3, (index) => Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: theme.barBackgroundColor,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: CupertinoColors.systemGrey.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemGrey5,
+                borderRadius: BorderRadius.circular(11.5),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.systemGrey5,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: 100,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.systemGrey5,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 80,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.systemGrey5,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      )),
     );
   }
 
@@ -361,6 +520,27 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
   }
 
   Widget _buildEmptyState(CupertinoThemeData theme) {
+    String emptyMessage;
+    IconData emptyIcon;
+    
+    switch (_selectedFilter) {
+      case 'accepted':
+        emptyMessage = 'No accepted jobs found';
+        emptyIcon = CupertinoIcons.checkmark_circle;
+        break;
+      case 'applied':
+        emptyMessage = 'No applied jobs found';
+        emptyIcon = CupertinoIcons.clock;
+        break;
+      case 'cancelled':
+        emptyMessage = 'No cancelled jobs found';
+        emptyIcon = CupertinoIcons.xmark_circle;
+        break;
+      default:
+        emptyMessage = appLanguage.get('no_applied_Jobs');
+        emptyIcon = CupertinoIcons.briefcase;
+    }
+
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
@@ -377,29 +557,30 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            CupertinoIcons.briefcase,
+          Icon(
+            emptyIcon,
             color: CupertinoColors.systemGrey,
             size: 40,
           ),
           const SizedBox(height: 12),
           Text(
-           appLanguage.get ('no_applied_Jobs'),
+            emptyMessage,
             style: theme.textTheme.textStyle.copyWith(
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            '''You haven't applied for any jobs yet. Browse available jobs to get started!''',
-            style: theme.textTheme.textStyle.copyWith(
-              color: CupertinoColors.systemGrey,
-              fontSize: 14,
-              height: 1.5,
+          if (_selectedFilter == 'all')
+            Text(
+              '''You haven't applied for any jobs yet. Browse available jobs to get started!''',
+              style: theme.textTheme.textStyle.copyWith(
+                color: CupertinoColors.systemGrey,
+                fontSize: 14,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
         ],
       ),
     );
@@ -409,7 +590,7 @@ class _AppliedJobsPageState extends State<AppliedJobsPage>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Column(
-        children: _jobRequests.asMap().entries.map((entry) {
+        children: _filteredJobRequests.asMap().entries.map((entry) {
           final index = entry.key;
           final jobRequest = entry.value['request'];
           final JobPost job = entry.value['job'];
