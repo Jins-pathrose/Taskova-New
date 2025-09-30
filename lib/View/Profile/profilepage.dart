@@ -1019,7 +1019,7 @@ List<Map<String, String>> _getAvailableMonths() {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
-              appLanguage.get('monthly_jobs'),
+              appLanguage.get('Monthly Jobs'),
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,

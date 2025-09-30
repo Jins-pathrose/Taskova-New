@@ -153,7 +153,7 @@ class _CommunityPageState extends State<CommunityPage>
     if (accessToken.isEmpty) return;
 
     try {
-      final wsUrl = 'ws://taskova.co.uk:8001/ws/community/driver/?token=$accessToken';
+      final wsUrl = 'ws://taskova.co.uk:8009/ws/community/driver/?token=$accessToken';
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
 
       setState(() {

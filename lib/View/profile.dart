@@ -29,6 +29,13 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
   final TextEditingController _postcodeController = TextEditingController();
   final TextEditingController _customExperienceController =
       TextEditingController();
+  final TextEditingController _manualAddressController = TextEditingController();
+final TextEditingController _addressLine1Controller = TextEditingController();
+final TextEditingController _addressLine2Controller = TextEditingController();
+final TextEditingController _townController = TextEditingController();
+
+bool _useManualAddress = false;
+bool _isGeocodingPostcode = false;
 
   bool _isBritishCitizen = false;
   bool _hasCriminalHistory = false;
@@ -40,13 +47,9 @@ class _ProfileRegistrationPageState extends State<ProfileRegistrationPage> {
   String? _selectedAddress;
   double? _latitude;
   double? _longitude;
-  bool _isSearching = false;
   bool _isSubmitting = false;
   String? _errorMessage;
   late AppLanguage appLanguage;
-  String? _selectedHomeAddress;
-  double? _homeLatitude;
-  double? _homeLongitude;
   bool _formSubmittedSuccessfully = false;
   String? _selectedExperienceType;
   String? _selectedDrivingDuration;
@@ -86,10 +89,7 @@ void initState() {
       'value': 'freelance',
       'label': appLanguage.get('Freelance/delivery_for_local_shops'),
     },
-    {
-      'value': 'friends_family',
-      'label': appLanguage.get('I_help_friends_and_family_with_deliveries'),
-    },
+  
     {
       'value': 'no_experience',
       'label': appLanguage.get('No_experience_yet—but_ready_to_roll!'),
@@ -103,6 +103,86 @@ void initState() {
   _loadSavedUserData();
 }
 
+// Add this method for geocoding postcode
+Future<bool> _geocodePostcode(String postcode) async {
+  if (postcode.trim().isEmpty) {
+    print('Postcode is empty');
+    return false;
+  }
+  
+  print('Starting geocoding for postcode: $postcode');
+  
+  setState(() {
+    _isGeocodingPostcode = true;
+  });
+
+  try {
+    // Clean the postcode - remove extra spaces and make uppercase
+    String cleanedPostcode = postcode.trim().toUpperCase();
+    print('Cleaned postcode: $cleanedPostcode');
+    
+    final url = Uri.parse(
+      'https://api.postcodes.io/postcodes/${Uri.encodeComponent(cleanedPostcode)}'
+    );
+    
+    print('API URL: $url');
+    
+    final response = await http.get(url).timeout(
+      Duration(seconds: 10),
+      onTimeout: () {
+        throw TimeoutException('Geocoding request timed out');
+      },
+    );
+
+    print('Response status: ${response.statusCode}');
+    print('Response body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      print('Parsed data: $data');
+      
+      if (data['status'] == 200 && data['result'] != null) {
+        final result = data['result'];
+        print('Result data: $result');
+        print('Latitude: ${result['latitude']}');
+        print('Longitude: ${result['longitude']}');
+        
+        final lat = result['latitude'];
+        final lng = result['longitude'];
+        
+        if (lat != null && lng != null) {
+          setState(() {
+            _latitude = lat is int ? lat.toDouble() : lat.toDouble();
+            _longitude = lng is int ? lng.toDouble() : lng.toDouble();
+          });
+          print('Coordinates set - Lat: $_latitude, Lng: $_longitude');
+          return true;
+        } else {
+          print('Latitude or longitude is null in API response');
+          return false;
+        }
+      } else {
+        print('API returned error status or null result');
+        print('Status: ${data['status']}');
+        print('Error: ${data['error']}');
+        return false;
+      }
+    } else if (response.statusCode == 404) {
+      print('Postcode not found (404)');
+      return false;
+    } else {
+      print('HTTP error: ${response.statusCode}');
+      return false;
+    }
+  } catch (e) {
+    print('Exception during geocoding: $e');
+    return false;
+  } finally {
+    setState(() {
+      _isGeocodingPostcode = false;
+    });
+  }
+}
 Future<bool> _onWillPop() async {
   if (_formSubmittedSuccessfully) return true;
 
@@ -176,42 +256,50 @@ Future<bool> _onWillPop() async {
     });
   }
 
-  Future<void> _submitMultipartForm() async {
-    setState(() {
-      _isSubmitting = true;
-      _errorMessage = null;
+ Future<void> _submitMultipartForm() async {
+  setState(() {
+    _isSubmitting = true;
+    _errorMessage = null;
+  });
+
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('access_token');
+
+    final url = Uri.parse(ApiConfig.driverProfileUrl);
+    final request = http.MultipartRequest('POST', url);
+
+    request.headers.addAll({
+      'Authorization': 'Bearer $accessToken',
+      'Accept': 'application/json',
     });
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final accessToken = prefs.getString('access_token');
-
-      final url = Uri.parse(ApiConfig.driverProfileUrl);
-      final request = http.MultipartRequest('POST', url);
-
-      request.headers.addAll({
-        'Authorization': 'Bearer $accessToken',
-        'Accept': 'application/json',
-      });
-
-      request.fields['name'] = _nameController.text;
-      request.fields['phone_number'] = _phoneController.text;
-      // request.fields['email'] = _emailController.text;
-      request.fields['address'] = _selectedHomeAddress ?? '';
+    request.fields['name'] = _nameController.text;
+    request.fields['phone_number'] = _phoneController.text;
+    
+    // Handle address fields based on manual vs search mode
+    if (_useManualAddress) {
+      request.fields['address'] = _manualAddressController.text;
+      request.fields['address_line1'] = _addressLine1Controller.text;
+      request.fields['address_line2'] = _addressLine2Controller.text;
+      request.fields['town'] = _townController.text;
+      request.fields['preferred_working_address'] = 
+          '${_addressLine1Controller.text}, ${_addressLine2Controller.text.isNotEmpty ? _addressLine2Controller.text + ', ' : ''}${_townController.text}, ${_manualAddressController.text}';
+    } else {
       request.fields['preferred_working_address'] = _selectedAddress ?? '';
-      request.fields['latitude'] = _latitude!.toString();
-      request.fields['longitude'] = _longitude!.toString();
-      request.fields['is_british_citizen'] =
-          _isBritishCitizen ? 'true' : 'false';
-      request.fields['has_criminal_history'] =
-          _hasCriminalHistory ? 'true' : 'false';
-      request.fields['has_disability'] = _hasDisability ? 'true' : 'false';
-      request.fields['experience_types'] = jsonEncode(
-        _selectedExperienceType == 'custom'
-            ? [_customExperienceController.text]
-            : [_selectedExperienceType],
-      );
-      request.fields['driving_duration'] = _selectedDrivingDuration ?? '';
+    }
+    
+    request.fields['latitude'] = _latitude!.toString();
+    request.fields['longitude'] = _longitude!.toString();
+    request.fields['is_british_citizen'] = _isBritishCitizen ? 'true' : 'false';
+    request.fields['has_criminal_history'] = _hasCriminalHistory ? 'true' : 'false';
+    request.fields['has_disability'] = _hasDisability ? 'true' : 'false';
+    request.fields['experience_types'] = jsonEncode(
+      _selectedExperienceType == 'custom'
+          ? [_customExperienceController.text]
+          : [_selectedExperienceType],
+    );
+    request.fields['driving_duration'] = _selectedDrivingDuration ?? '';
 
       if (_imageFile != null) {
         final fileName = _imageFile!.path.split('/').last;
@@ -322,40 +410,83 @@ Future<bool> _onWillPop() async {
     }
   }
 
-  Future<void> _submitForm() async {
-    FocusScope.of(context).unfocus();
+Future<void> _submitForm() async {
+  FocusScope.of(context).unfocus();
 
-    if (_formKey.currentState!.validate()) {
-      if (_imageFile == null) {
-        _showErrorDialog(appLanguage.get('select_profile_picture'));
+  if (_formKey.currentState!.validate()) {
+    if (_imageFile == null) {
+      _showErrorDialog(appLanguage.get('select_profile_picture'));
+      return;
+    }
+
+    // Updated address validation with better debugging
+    if (_useManualAddress) {
+      print('Using manual address mode');
+      print('Postcode: "${_manualAddressController.text.trim()}"');
+      print('Address Line 1: "${_addressLine1Controller.text.trim()}"');
+      print('Town: "${_townController.text.trim()}"');
+      print('Current coordinates - Lat: $_latitude, Lng: $_longitude');
+      
+      if (_manualAddressController.text.trim().isEmpty) {
+        _showErrorDialog(appLanguage.get('Please_enter_postcode'));
         return;
       }
-
+      if (_addressLine1Controller.text.trim().isEmpty) {
+        _showErrorDialog(appLanguage.get('Please_enter_address_line_1'));
+        return;
+      }
+      if (_townController.text.trim().isEmpty) {
+        _showErrorDialog(appLanguage.get('Please_enter_town_city'));
+        return;
+      }
+      
+      // Validate postcode when submitting form
+      if (_latitude == null || _longitude == null) {
+        print('Coordinates are null - validating postcode now...');
+        try {
+          await _geocodePostcode(_manualAddressController.text.trim());
+          // Check if geocoding was successful
+          if (_latitude == null || _longitude == null) {
+            _showErrorDialog(appLanguage.get('Please_enter_a_valid_UK_postcode'));
+            return;
+          }
+        } catch (e) {
+          _showErrorDialog(appLanguage.get('Please_enter_a_valid_UK_postcode'));
+          return;
+        }
+      }
+    } else {
+      print('Using search address mode');
+      print('Selected address: $_selectedAddress');
+      print('Search coordinates - Lat: $_latitude, Lng: $_longitude');
+      
       if (_selectedAddress == null || _latitude == null || _longitude == null) {
         _showErrorDialog(appLanguage.get('select_working_area'));
         return;
       }
-
-      if (_hasDisability && _disabilityCertificateFile == null) {
-        _showErrorDialog(
-          appLanguage.get('please_upload_disability_certificate'),
-        );
-        return;
-      }
-
-      if (_selectedExperienceType == null) {
-        _showErrorDialog(appLanguage.get('Please_select_an_experience_type'));
-        return;
-      }
-
-      if (_selectedDrivingDuration == null) {
-        _showErrorDialog(appLanguage.get('Please_select_driving_duration'));
-        return;
-      }
-
-      await _submitMultipartForm();
     }
+
+    if (_hasDisability && _disabilityCertificateFile == null) {
+      _showErrorDialog(
+        appLanguage.get('please_upload_disability_certificate'),
+      );
+      return;
+    }
+
+    if (_selectedExperienceType == null) {
+      _showErrorDialog(appLanguage.get('Please_select_an_experience_type'));
+      return;
+    }
+
+    if (_selectedDrivingDuration == null) {
+      _showErrorDialog(appLanguage.get('Please_select_driving_duration'));
+      return;
+    }
+
+    print('All validations passed, submitting form...');
+    await _submitMultipartForm();
   }
+}
 
   void _showErrorDialog(String message) {
     showCupertinoDialog(
@@ -406,19 +537,23 @@ Future<bool> _onWillPop() async {
     );
   }
 
-  @override
-  void dispose() {
-    if (!_formSubmittedSuccessfully) {
-      _clearAccessToken();
-    }
-    _nameController.dispose();
-    _phoneController.dispose();
-    _emailController.dispose();
-    _addressController.dispose();
-    _postcodeController.dispose();
-    _customExperienceController.dispose();
-    super.dispose();
+ @override
+void dispose() {
+  if (!_formSubmittedSuccessfully) {
+    _clearAccessToken();
   }
+  _nameController.dispose();
+  _phoneController.dispose();
+  _emailController.dispose();
+  _addressController.dispose();
+  _postcodeController.dispose();
+  _customExperienceController.dispose();
+  _manualAddressController.dispose();
+  _addressLine1Controller.dispose();
+  _addressLine2Controller.dispose();
+  _townController.dispose();
+  super.dispose();
+}
 
   Future<void> _clearAccessToken() async {
     try {
@@ -895,55 +1030,31 @@ Future<bool> _onWillPop() async {
                                     ),
                                     SizedBox(height: 16),
 
-                                    // Home Address
-                                    _buildAddressSection(
-                                      title: appLanguage.get('Home_Address'),
-                                      subtitle: appLanguage.get('Your_residential_address'),
-                                      icon: CupertinoIcons.house_fill,
-                                      child: PostcodeSearchWidget(
-                                        placeholderText: appLanguage.get(
-                                          'home_postcode',
-                                        ),
-                                        onAddressSelected: (
-                                          latitude,
-                                          longitude,
-                                          address,
-                                        ) {
-                                          setState(() {
-                                            _selectedHomeAddress = address;
-                                            _homeLatitude = latitude;
-                                            _homeLongitude = longitude;
-                                          });
-                                        },
-                                      ),
-                                      selectedAddress: _selectedHomeAddress,
-                                    ),
-                                    SizedBox(height: 16),
-
                                     // Working Area
-                                    _buildAddressSection(
-                                      title: appLanguage.get('Workinga-Area'),
-                                      subtitle: appLanguage.get('preferred_working_address'),
-                                      icon: CupertinoIcons.briefcase_fill,
-                                      child: PostcodeSearchWidget(
-                                        postcodeController: _postcodeController,
-                                        placeholderText: appLanguage.get(
-                                          'postcode',
-                                        ),
-                                        onAddressSelected: (
-                                          latitude,
-                                          longitude,
-                                          address,
-                                        ) {
-                                          setState(() {
-                                            _selectedAddress = address;
-                                            _latitude = latitude;
-                                            _longitude = longitude;
-                                          });
-                                        },
-                                      ),
-                                      selectedAddress: _selectedAddress,
-                                    ),
+                                    // _buildAddressSection(
+                                    //   title: appLanguage.get('Workinga-Area'),
+                                    //   subtitle: appLanguage.get('preferred_working_address'),
+                                    //   icon: CupertinoIcons.briefcase_fill,
+                                    //   child: PostcodeSearchWidget(
+                                    //     postcodeController: _postcodeController,
+                                    //     placeholderText: appLanguage.get(
+                                    //       'postcode',
+                                    //     ),
+                                    //     onAddressSelected: (
+                                    //       latitude,
+                                    //       longitude,
+                                    //       address,
+                                    //     ) {
+                                    //       setState(() {
+                                    //         _selectedAddress = address;
+                                    //         _latitude = latitude;
+                                    //         _longitude = longitude;
+                                    //       });
+                                    //     },
+                                    //   ),
+                                    //   selectedAddress: _selectedAddress,
+                                    // ),
+                                    _buildUpdatedAddressSection(),
                                     SizedBox(height: 24),
 
                                     // Experience Section
@@ -1620,6 +1731,378 @@ Future<bool> _onWillPop() async {
     );
   }
 
+Widget _buildUpdatedAddressSection() {
+  return Container(
+    padding: EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Color(0xFFF7FAFC),
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: Color(0xFFE2E8F0)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(CupertinoIcons.briefcase_fill, color: Color(0xFF4A90E2), size: 20),
+            SizedBox(width: 8),
+            Text(
+              appLanguage.get('Working_Area'),
+              style: TextStyle(
+                color: Color(0xFF2D3748),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 4),
+        Text(
+          appLanguage.get('preferred_working_address'),
+          style: TextStyle(color: Color(0xFF718096), fontSize: 14),
+        ),
+        SizedBox(height: 16),
+
+        // Toggle between search and manual entry
+        Row(
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _useManualAddress = false;
+                    // Clear manual address fields when switching to search
+                    _manualAddressController.clear();
+                    _addressLine1Controller.clear();
+                    _addressLine2Controller.clear();
+                    _townController.clear();
+                    // Clear coordinates when switching modes
+                    _latitude = null;
+                    _longitude = null;
+                  });
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: !_useManualAddress ? Color(0xFF4A90E2) : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: !_useManualAddress ? Color(0xFF4A90E2) : Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        CupertinoIcons.search,
+                        color: !_useManualAddress ? Colors.white : Color(0xFF718096),
+                        size: 16,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        appLanguage.get(' Address'),
+                        style: TextStyle(
+                          color: !_useManualAddress ? Colors.white : Color(0xFF718096),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _useManualAddress = true;
+                    // Clear search results when switching to manual
+                    _selectedAddress = null;
+                    _postcodeController.clear();
+                    // Clear coordinates when switching modes
+                    _latitude = null;
+                    _longitude = null;
+                  });
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: _useManualAddress ? Color(0xFF4A90E2) : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _useManualAddress ? Color(0xFF4A90E2) : Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        CupertinoIcons.pencil,
+                        color: _useManualAddress ? Colors.white : Color(0xFF718096),
+                        size: 16,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        appLanguage.get('Manually'),
+                        style: TextStyle(
+                          color: _useManualAddress ? Colors.white : Color(0xFF718096),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+
+        // Conditional content based on selected mode
+        if (!_useManualAddress) ...[
+          // Original postcode search widget
+          PostcodeSearchWidget(
+            postcodeController: _postcodeController,
+            placeholderText: appLanguage.get('postcode'),
+            onAddressSelected: (latitude, longitude, address) {
+              setState(() {
+                _selectedAddress = address;
+                _latitude = latitude;
+                _longitude = longitude;
+              });
+            },
+          ),
+          if (_selectedAddress != null) ...[
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Color(0xFF4A90E2).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Color(0xFF4A90E2).withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    CupertinoIcons.checkmark_circle_fill,
+                    color: Color(0xFF10B981),
+                    size: 16,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _selectedAddress!,
+                      style: TextStyle(
+                        color: Color(0xFF2D3748),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ] else ...[
+          // Manual address entry fields
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Postcode field
+              Text(
+                appLanguage.get('Postcode'),
+                style: TextStyle(
+                  color: Color(0xFF2D3748),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Color(0xFFE2E8F0), width: 1),
+                ),
+                child: CupertinoTextFormFieldRow(
+                  controller: _manualAddressController,
+                  placeholder: appLanguage.get('Enter_postcode'),
+                  padding: EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  prefix: Container(
+                    padding: EdgeInsets.all(12),
+                    child: Icon(
+                      CupertinoIcons.location_fill,
+                      color: Color(0xFF4A90E2),
+                      size: 18,
+                    ),
+                  ),
+                  style: TextStyle(
+                    color: Color(0xFF2D3748),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  placeholderStyle: TextStyle(
+                    color: Color(0xFF718096),
+                    fontSize: 15,
+                  ),
+                  onChanged: (value) {
+                    // Clear coordinates when postcode changes
+                    setState(() {
+                      _latitude = null;
+                      _longitude = null;
+                    });
+                  },
+                ),
+              ),
+              SizedBox(height: 16),
+
+              // Address Line 1
+              Text(
+                appLanguage.get('Address_Line_1'),
+                style: TextStyle(
+                  color: Color(0xFF2D3748),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Color(0xFFE2E8F0), width: 1),
+                ),
+                child: CupertinoTextFormFieldRow(
+                  controller: _addressLine1Controller,
+                  placeholder: appLanguage.get('House_number_and_street_name'),
+                  padding: EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  prefix: Container(
+                    padding: EdgeInsets.all(12),
+                    child: Icon(
+                      CupertinoIcons.home,
+                      color: Color(0xFF4A90E2),
+                      size: 18,
+                    ),
+                  ),
+                  style: TextStyle(
+                    color: Color(0xFF2D3748),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  placeholderStyle: TextStyle(
+                    color: Color(0xFF718096),
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              SizedBox(height: 12),
+
+              // Address Line 2
+              Text(
+                appLanguage.get('Address_Line_2') + ' (' + appLanguage.get('Optional') + ')',
+                style: TextStyle(
+                  color: Color(0xFF2D3748),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Color(0xFFE2E8F0), width: 1),
+                ),
+                child: CupertinoTextFormFieldRow(
+                  controller: _addressLine2Controller,
+                  placeholder: appLanguage.get('Apartment_suite_building'),
+                  padding: EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  prefix: Container(
+                    padding: EdgeInsets.all(12),
+                    child: Icon(
+                      CupertinoIcons.building_2_fill,
+                      color: Color(0xFF4A90E2),
+                      size: 18,
+                    ),
+                  ),
+                  style: TextStyle(
+                    color: Color(0xFF2D3748),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  placeholderStyle: TextStyle(
+                    color: Color(0xFF718096),
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              SizedBox(height: 12),
+
+              // Town/City
+              Text(
+                appLanguage.get('Town_City'),
+                style: TextStyle(
+                  color: Color(0xFF2D3748),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Color(0xFFE2E8F0), width: 1),
+                ),
+                child: CupertinoTextFormFieldRow(
+                  controller: _townController,
+                  placeholder: appLanguage.get('Enter_town_or_city'),
+                  padding: EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  prefix: Container(
+                    padding: EdgeInsets.all(12),
+                    child: Icon(
+                      CupertinoIcons.map_fill,
+                      color: Color(0xFF4A90E2),
+                      size: 18,
+                    ),
+                  ),
+                  style: TextStyle(
+                    color: Color(0xFF2D3748),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  placeholderStyle: TextStyle(
+                    color: Color(0xFF718096),
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    ),
+  );
+}
   // Helper method to build address sections
   Widget _buildAddressSection({
     required String title,

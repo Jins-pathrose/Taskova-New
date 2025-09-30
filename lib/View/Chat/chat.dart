@@ -78,6 +78,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver, Ticker
     
     _fadeController.forward();
     _slideController.forward();
+    print(widget.chatRoomId);
   }
 
   @override
@@ -91,6 +92,8 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver, Ticker
   }
 
   Future<void> _initializeChat() async {
+    print('Initializing chat for chat room: ${widget.chatRoomId}');
+    print('000000000');
     try {
       await _fetchMessageHistory();
       await _connectToWebSocket();
@@ -189,7 +192,7 @@ class _ChatPageState extends State<ChatPage> with WidgetsBindingObserver, Ticker
 
     try {
       _channel = WebSocketChannel.connect(
-        Uri.parse('ws://taskova.co.uk:8001/ws/chat/${widget.chatRoomId}/?token=$accessToken'),
+        Uri.parse('ws://taskova.co.uk:8009/ws/chat/${widget.chatRoomId}/?token=$accessToken'),
       );
 
       _channel!.stream.listen(

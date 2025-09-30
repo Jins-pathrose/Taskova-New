@@ -13,6 +13,7 @@ import 'package:taskova_new/View/Homepage/canceljobpost.dart';
 import 'package:taskova_new/View/Homepage/homepage.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
 import 'package:taskova_new/View/driver_document.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class JobDetailPage extends StatefulWidget {
   final JobPost jobPost;
@@ -38,38 +39,54 @@ class _JobDetailPageState extends State<JobDetailPage>
   final TextEditingController _reviewController = TextEditingController();
   double _rating = 0.0;
   bool _showOtpFab = false;
-  String _otp = '';
+  bool _showFloatingChat = false;
+  bool _otp = false;
   final TextEditingController _otpController = TextEditingController();
-
   bool _hasSubmittedReview = false; // New flag to track review submission
   final ScrollController _scrollController = ScrollController();
   late AppLanguage appLanguage;
 
-  @override
-  void initState() {
-    super.initState();
-    appLanguage = Provider.of<AppLanguage>(context, listen: false);
+ void initState() {
+  super.initState();
+  appLanguage = Provider.of<AppLanguage>(context, listen: false);
 
-    _animationController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 800),
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: Offset(0, 0.05),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-    );
-    _animationController.forward();
-    _checkIfAlreadyApplied();
-    _checkIfReviewExists(); // Add this to check for existing review
-    _showOtpFab = _status == 'accepted';
+  _animationController = AnimationController(
+    vsync: this,
+    duration: Duration(milliseconds: 800),
+  );
+  _fadeAnimation = CurvedAnimation(
+    parent: _animationController,
+    curve: Curves.easeInOut,
+  );
+  _slideAnimation = Tween<Offset>(
+    begin: Offset(0, 0.05),
+    end: Offset.zero,
+  ).animate(
+    CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+  );
+  _animationController.forward();
+  _checkIfAlreadyApplied();
+  _checkIfReviewExists();
+  _checkIfOtpVerified(); // Add this line
+  _showOtpFab = _status == 'accepted';
+  _showFloatingChat = true;
+  _scrollController.addListener(_scrollListener);
+}
+Future<void> _checkIfOtpVerified() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final otpKey = 'otp_verified_${widget.jobPost.id}';
+    final hasVerifiedOtp = prefs.getBool(otpKey) ?? false;
+
+    if (mounted) {
+      setState(() {
+        _otp = hasVerifiedOtp;
+      });
+    }
+  } catch (e) {
+    print('Error checking OTP status: $e');
   }
-
+}
   @override
   void dispose() {
     _animationController.dispose();
@@ -79,7 +96,17 @@ class _JobDetailPageState extends State<JobDetailPage>
 
     super.dispose();
   }
-
+void _scrollListener() {
+  if (_scrollController.offset > 200 && _showFloatingChat) {
+    setState(() {
+      _showFloatingChat = false; // Hide when scrolling down
+    });
+  } else if (_scrollController.offset <= 200 && !_showFloatingChat) {
+    setState(() {
+      _showFloatingChat = true; // Show when at top
+    });
+  }
+}
   Future<void> _checkIfAlreadyApplied() async {
   try {
     final prefs = await SharedPreferences.getInstance();
@@ -108,7 +135,7 @@ class _JobDetailPageState extends State<JobDetailPage>
           _hasApplied = true;
           _chatRoomId = appliedJob['chat_room_id']?.toString();
           _driverId = appliedJob['driver_id']?.toString();
-          _showOtpFab = _status == 'accepted'; // Add this line
+          _showOtpFab = _status == 'accepted';
           print('Status: $_status, Show OTP FAB: $_showOtpFab');
         });
 
@@ -119,7 +146,7 @@ class _JobDetailPageState extends State<JobDetailPage>
         setState(() {
           _hasApplied = false;
           _status = 'pending';
-          _showOtpFab = false; // Add this line
+          _showOtpFab = false;
         });
       }
     }
@@ -128,7 +155,7 @@ class _JobDetailPageState extends State<JobDetailPage>
     setState(() {
       _hasApplied = false;
       _status = 'pending';
-      _showOtpFab = false; // Add this line
+      _showOtpFab = false;
     });
   }
 }
@@ -172,8 +199,8 @@ class _JobDetailPageState extends State<JobDetailPage>
           ),
     );
   }
-
-  Future<void> _submitOtp() async {
+ 
+Future<void> _submitOtp() async {
   if (_otpController.text.length != 6) {
     _showErrorMessage(context, 'Please enter a valid 6-digit OTP');
     return;
@@ -198,8 +225,13 @@ class _JobDetailPageState extends State<JobDetailPage>
       // Clear the OTP field
       _otpController.clear();
       
-      // Dismiss the dialog first
-      Navigator.of(context).pop();
+      // Save OTP verification status to SharedPreferences
+      final otpKey = 'otp_verified_${widget.jobPost.id}';
+      await prefs.setBool(otpKey, true);
+      
+      setState(() {
+        _otp = true;
+      });
       
       // Then show the success message
       _showSuccessMessage(context, 'OTP verified successfully!');
@@ -211,7 +243,6 @@ class _JobDetailPageState extends State<JobDetailPage>
     _showErrorMessage(context, 'Error verifying OTP: $e');
   }
 }
-
   Future<void> _checkIfReviewExists() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -269,95 +300,87 @@ class _JobDetailPageState extends State<JobDetailPage>
     }
   }
 }
-  Future<void> _submitReview() async {
-    try {
-      // Retrieve access token
-      final prefs = await SharedPreferences.getInstance();
-      final accessToken = prefs.getString('access_token');
 
-      if (accessToken == null || accessToken.isEmpty) {
-        _showErrorMessage(
-          context,
-          'Authentication error: Access token is missing.',
-        );
-        return;
-      }
+ Future<void> _submitReview() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final accessToken = prefs.getString('access_token');
 
-      // Validate required fields
-      if (widget.jobPost.id == null || widget.jobPost.businessId == null) {
-        _showErrorMessage(context, 'Error: Job ID or Business ID is missing.');
-        return;
-      }
-      if (_rating <= 0) {
-        _showErrorMessage(context, 'Please provide a rating.');
-        return;
-      }
-      // if (_reviewController.text.trim().isEmpty) {
-      //   _showErrorMessage(context, 'Please enter your feedback.');
-      //   return;
-      // }
-
-      // Prepare request body
-      final requestBody = {
-        'rater_type': 'user',
-        'ratee_type': 'business',
-        'job': widget.jobPost.id,
-        'ratee': widget.jobPost.businessId,
-        'rating': _rating.toInt(), // Convert rating to integer
-        'comment': _reviewController.text.trim(),
-      };
-
-      print(
-        'Submitting review with body: $requestBody',
-      ); // Log request body for debugging
-
-      // Make HTTP POST request
-      final response = await http.post(
-        Uri.parse(ApiConfig.ratingUrl),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(requestBody),
+    if (accessToken == null || accessToken.isEmpty) {
+      _showErrorMessage(
+        context,
+        'Authentication error: Access token is missing.',
       );
-
-      print('Response status: ${response.statusCode}'); // Log status code
-      print('Response body: ${response.body}'); // Log response body
-
-      if (response.statusCode == 201) {
-        final reviewKey = 'review_submitted_${widget.jobPost.id}';
-        await prefs.setBool(reviewKey, true);
-        _showSuccessMessage(context, 'Review submitted successfully!');
-        if (mounted) {
-          setState(() {
-            _reviewController.clear();
-            _rating = 0.0;
-            _hasSubmittedReview =
-                true; // Set flag to true after successful submission
-          });
-        }
-      } else {
-        // Parse error message from response if available
-        String errorMessage = 'Failed to submit review. Please try again.';
-        try {
-          final errorData = jsonDecode(response.body);
-          errorMessage =
-              errorData['detail'] ?? errorData['message'] ?? errorMessage;
-        } catch (_) {
-          // If response body is not JSON, use default message
-        }
-        // _showErrorMessage(context, errorMessage);
-      }
-    } catch (e, stackTrace) {
-      print(
-        'Error submitting review: $e\n$stackTrace',
-      ); // Log error and stack trace
-      _showErrorMessage(context, 'Error submitting review: $e');
+      return;
     }
-  }
 
+    if (widget.jobPost.id == null || widget.jobPost.businessId == null) {
+      _showErrorMessage(context, 'Error: Job ID or Business ID is missing.');
+      return;
+    }
+    
+    if (_rating <= 0) {
+      _showErrorMessage(context, 'Please provide a rating.');
+      return;
+    }
+
+    final requestBody = {
+      'rater_type': 'user',
+      'ratee_type': 'business',
+      'job': widget.jobPost.id,
+      'ratee': widget.jobPost.businessId,
+      'rating': _rating.toInt(),
+      'comment': _reviewController.text.trim(),
+    };
+
+    print('Submitting review with body: $requestBody');
+
+    final response = await http.post(
+      Uri.parse(ApiConfig.ratingUrl),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(requestBody),
+    );
+
+    print('Response status: ${response.statusCode}');
+    print('Response body: ${response.body}');
+
+    if (response.statusCode == 201) {
+      final reviewKey = 'review_submitted_${widget.jobPost.id}';
+      await prefs.setBool(reviewKey, true);
+      
+      _showSuccessMessage(context, 'Review submitted successfully!');
+      
+      if (mounted) {
+        setState(() {
+          _reviewController.clear();
+          _rating = 0.0;
+          _hasSubmittedReview = true; // This will hide the review form and show thank you message
+        });
+      }
+    } else {
+      String errorMessage = 'Failed to submit review. Please try again.';
+      try {
+        final errorData = jsonDecode(response.body);
+        errorMessage = errorData['detail'] ?? errorData['message'] ?? errorMessage;
+      } catch (_) {}
+      _showErrorMessage(context, errorMessage);
+    }
+  } catch (e, stackTrace) {
+    print('Error submitting review: $e\n$stackTrace');
+    _showErrorMessage(context, 'Error submitting review: $e');
+  }
+}
+Future<void> _openMap() async {
+  final lat = widget.jobPost.businessLatitude;
+  final lng = widget.jobPost.businessLongitude;
+    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+   await launchUrl(url);    
+  }
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) { 
       print('Building with status: $_status, showOtpFab: $_showOtpFab'); // Debug print
 
     return CupertinoPageScaffold(
@@ -365,21 +388,79 @@ class _JobDetailPageState extends State<JobDetailPage>
       child: Stack(
         children: [
           CustomScrollView(
-            controller: _scrollController,
-            slivers: [
-              _buildSliverNavigationBar(),
-              SliverToBoxAdapter(
-                child: Column(
-                  children: [
-                    _buildBusinessImage(),
-                    _buildJobHeader(),
-                    _buildJobContent(),
-                    SizedBox(height: 100),
-                  ],
-                ),
-              ),
+      controller: _scrollController,
+      slivers: [
+        _buildSliverNavigationBar(),
+        SliverToBoxAdapter(
+          child: Column(
+            children: [
+              _buildBusinessImage(),
+              _buildJobHeader(),
+              _buildJobContent(),
+              SizedBox(height: 100),
             ],
           ),
+        ),
+      ],
+    ),
+    
+    // Floating Chat Icon
+    if (_hasApplied &&
+    _status != 'cancelled_by_driver' &&
+    _status != 'cancelled_by_shopkeeper' &&
+    _chatRoomId != null && // Add this check
+    _driverId != null) // Add this check
+  AnimatedPositioned(
+    duration: Duration(milliseconds: 300),
+    top: _showFloatingChat ? 100 : -60,
+    right: 20,
+    child: GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          CupertinoPageRoute(
+            builder: (context) => ChatPage(
+              driverId: _driverId!, // Now safe to use !
+              chatRoomId: _chatRoomId!, // Now safe to use !
+              businessName: widget.jobPost.businessName,
+            ),
+          ),
+        );
+      },
+          child: Container(
+  padding: EdgeInsets.all(16),
+  decoration: BoxDecoration(
+    gradient: LinearGradient(
+      colors: [
+        CupertinoColors.activeBlue,
+        CupertinoColors.activeBlue,
+      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    shape: BoxShape.circle,
+    boxShadow: [
+      BoxShadow(
+        color: Color.fromARGB(255, 102, 177, 234).withOpacity(0.4),
+        blurRadius: 20,
+        spreadRadius: 2,
+        offset: Offset(0, 8),
+      ),
+      BoxShadow(
+        color: Colors.black.withOpacity(0.1),
+        blurRadius: 10,
+        offset: Offset(0, 4),
+      ),
+    ],
+  ),
+  child: Icon(
+    CupertinoIcons.chat_bubble_2_fill,
+    color: Colors.white,
+    size: 28,
+  ),
+),
+        ),
+      ),
          if (_showOtpFab)
   Positioned(
     bottom: 30,
@@ -730,31 +811,92 @@ class _JobDetailPageState extends State<JobDetailPage>
   }
 
   Widget _buildJobContent() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: [
-          _buildSection(
-            appLanguage.get('Job_Description'),
-            widget.jobPost.description ?? 'No description available',
-            CupertinoIcons.doc_text,
-          ),
+  return Padding(
+    padding: EdgeInsets.symmetric(horizontal: 16),
+    child: Column(
+      children: [
+        _buildSection(
+          appLanguage.get('Job_Description'),
+          widget.jobPost.description ?? 'No description available',
+          CupertinoIcons.doc_text,
+        ),
+        SizedBox(height: 16),
+        _buildLocationSection(),
+        SizedBox(height: 16),
+        _buildBenefitsSection(),
+        SizedBox(height: 16),
+        
+        // Show review section only when OTP is verified AND user hasn't submitted review yet
+        if (_otp == true && _hasSubmittedReview == false) ...[
           SizedBox(height: 16),
-          _buildLocationSection(),
-          SizedBox(height: 16),
-          _buildBenefitsSection(),
-          SizedBox(height: 16),
-          if (_status == 'accepted' && !_hasSubmittedReview) ...[
-            SizedBox(height: 16),
-            _buildReviewSection(),
-          ],
-          SizedBox(height: 16),
-          _buildBottomActions(),
+          _buildReviewSection(),
         ],
+        
+        // Show thank you message if review has been submitted
+        if (_otp == true && _hasSubmittedReview == true) ...[
+          SizedBox(height: 16),
+          _buildReviewSubmittedMessage(),
+        ],
+        
+        SizedBox(height: 16),
+        _buildBottomActions(),
+      ],
+    ),
+  );
+}
+Widget _buildReviewSubmittedMessage() {
+  return SlideTransition(
+    position: _slideAnimation,
+    child: FadeTransition(
+      opacity: _fadeAnimation,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: CupertinoColors.systemGreen.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: CupertinoColors.systemGreen.withOpacity(0.3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: CupertinoColors.systemGreen.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                CupertinoIcons.check_mark_circled_solid,
+                color: CupertinoColors.systemGreen,
+                size: 32,
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              appLanguage.get('Thank You!'),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: CupertinoColors.systemGreen,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              appLanguage.get('Your review has been submitted successfully.'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: CupertinoColors.systemGrey,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
-
+    ),
+  );
+}
   Widget _buildSection(String title, String content, IconData icon) {
     return SlideTransition(
       position: _slideAnimation,
@@ -812,7 +954,9 @@ class _JobDetailPageState extends State<JobDetailPage>
   }
 
   Widget _buildLocationSection() {
-    return SlideTransition(
+  return GestureDetector(
+    onTap: _openMap,
+    child: SlideTransition(
       position: _slideAnimation,
       child: FadeTransition(
         opacity: _fadeAnimation,
@@ -841,12 +985,45 @@ class _JobDetailPageState extends State<JobDetailPage>
                     ),
                   ),
                   SizedBox(width: 12),
-                  Text(
-                    appLanguage.get('Location'),
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: CupertinoColors.black,
+                  Expanded(
+                    child: Text(
+                      appLanguage.get('Location'),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: CupertinoColors.black,
+                      ),
+                    ),
+                  ),
+                  // Map indicator with "Tap to view" text
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: CupertinoColors.systemBlue.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: CupertinoColors.systemBlue.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          CupertinoIcons.map,
+                          color: CupertinoColors.systemBlue,
+                          size: 14,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          appLanguage.get('Tap to view'),
+                          style: TextStyle(
+                            color: CupertinoColors.systemBlue,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -858,6 +1035,14 @@ class _JobDetailPageState extends State<JobDetailPage>
                   color: CupertinoColors.systemGrey6,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: CupertinoColors.systemGrey5),
+                  // Add subtle shadow to indicate it's tappable
+                  boxShadow: [
+                    BoxShadow(
+                      color: CupertinoColors.systemGrey4.withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Column(
                   children: [
@@ -877,6 +1062,12 @@ class _JobDetailPageState extends State<JobDetailPage>
                               fontSize: 14,
                             ),
                           ),
+                        ),
+                        // Arrow indicating tappable action
+                        Icon(
+                          CupertinoIcons.chevron_right,
+                          color: CupertinoColors.systemGrey2,
+                          size: 16,
                         ),
                       ],
                     ),
@@ -901,6 +1092,39 @@ class _JobDetailPageState extends State<JobDetailPage>
                         ],
                       ),
                     ],
+                    SizedBox(height: 12),
+                    // Map preview hint with clear call-to-action
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: CupertinoColors.systemBlue.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: CupertinoColors.systemBlue.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            CupertinoIcons.map_fill,
+                            color: CupertinoColors.systemBlue,
+                            size: 16,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            appLanguage.get('View on Map'),
+                            style: TextStyle(
+                              color: CupertinoColors.systemBlue,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -908,8 +1132,9 @@ class _JobDetailPageState extends State<JobDetailPage>
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildBenefitsSection() {
     final benefits = widget.jobPost.complimentaryBenefits;
@@ -1284,30 +1509,55 @@ class _JobDetailPageState extends State<JobDetailPage>
   }
 
   // Chat button for accepted jobs
-  Widget _buildChatButton() {
+ Widget _buildChatButton() {
+  // Show loading if chat room is still being fetched
+  if (_chatRoomId == null || _driverId == null) {
     return SizedBox(
       width: double.infinity,
-      child: CupertinoButton.filled(
-        onPressed: () {
-          Navigator.push(
-            context,
-            CupertinoPageRoute(
-              builder:
-                  (context) => ChatPage(
-                    driverId: _driverId!,
-                    chatRoomId: _chatRoomId!,
-                    businessName: widget.jobPost.businessName,
-                  ),
+      height: 50,
+      child: CupertinoButton(
+        onPressed: null,
+        color: CupertinoColors.systemGrey4,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CupertinoActivityIndicator(radius: 12),
+            SizedBox(width: 8),
+            Text(
+              'Setting up chat...',
+              style: TextStyle(
+                color: CupertinoColors.systemGrey,
+                fontSize: 16,
+              ),
             ),
-          );
-        },
-        child: Text(
-          'Chat with ${widget.jobPost.businessName}',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ],
         ),
       ),
     );
   }
+
+  return SizedBox(
+    width: double.infinity,
+    child: CupertinoButton.filled(
+      onPressed: () {
+        Navigator.push(
+          context,
+          CupertinoPageRoute(
+            builder: (context) => ChatPage(
+              driverId: _driverId!,
+              chatRoomId: _chatRoomId!,
+              businessName: widget.jobPost.businessName,
+            ),
+          ),
+        );
+      },
+      child: Text(
+        'Chat with ${widget.jobPost.businessName}',
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
+    ),
+  );
+}
 
   void _handleJobApplication(BuildContext context) {
     showCupertinoDialog(
@@ -1530,6 +1780,8 @@ class _JobDetailPageState extends State<JobDetailPage>
                   _showOtpFab = _status == 'accepted'; // Add this line
 
           });
+          print(_chatRoomId);
+          print('chaaaaaaattttt');
         }
 
         // If chat room ID wasn't in initial response, try to fetch it
@@ -1584,6 +1836,8 @@ class _JobDetailPageState extends State<JobDetailPage>
             _driverId = jobRequest['driver_id']?.toString();
           });
         }
+        print(_chatRoomId);
+        print('00000chattt');
       }
     } catch (e) {
       print('Error fetching chat room ID: $e');

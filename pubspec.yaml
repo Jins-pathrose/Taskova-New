@@ -61,6 +61,7 @@ dependencies:
   animated_text_kit: ^4.2.3
   firebase_messaging: ^15.2.7
   timeago: ^3.7.1
+  video_player: ^2.10.0
 
 dev_dependencies:
   flutter_test:
@@ -110,6 +111,7 @@ flutter:
     - assets/undraw_package-arrived_twqd.png
     - assets/appicon.png
     - assets/appicon-removebg-preview.png
+    - assets/logogif.mp4
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

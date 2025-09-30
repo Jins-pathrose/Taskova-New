@@ -288,7 +288,9 @@ print('3333333333333333333333333333333333333333333333333333333333333333333333333
           } else {
             _showErrorDialog("Could not verify profile status");
           }
-        } else {
+        } 
+         
+        else {
           final responseData = jsonDecode(response.body);
           String errorMessage =
               responseData['detail'] ??

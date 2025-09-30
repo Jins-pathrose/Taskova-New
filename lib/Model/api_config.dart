@@ -10,7 +10,7 @@ class ApiConfig {
   }
   
   static String get loginUrl {
-    return '$baseUrl/api/login/';
+    return '$baseUrl/api/login/driver/';
   }
 
   static String get registerUrl {
