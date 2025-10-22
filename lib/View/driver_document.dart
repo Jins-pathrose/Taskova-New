@@ -137,7 +137,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
         throw Exception('Failed to load status: ${response.statusCode}');
       }
     } catch (e) {
-      _showErrorDialog('Error loading profile: ${e.toString()}');
+      // _showErrorDialog('Error loading profile: ${e.toString()}');
       setState(() => _isBritishCitizen = false);
     } finally {
       setState(() => _isLoading = false);
@@ -219,7 +219,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
             return compressedFile;
           } else {
             debugPrint('Compression failed for $documentType');
-            _showErrorDialog('Failed to compress image for $documentType');
+            // _showErrorDialog('Failed to compress image for $documentType');
             return null;
           }
         } else {
@@ -230,7 +230,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
       return null;
     } catch (e) {
       debugPrint('Error selecting or compressing image for $documentType: $e');
-      _showErrorDialog('Error processing image: ${e.toString()}');
+      // _showErrorDialog('Error processing image: ${e.toString()}');
       return null;
     }
   }
@@ -296,7 +296,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
       );
       if (compressedImage == null) {
         debugPrint('Failed to compress image for $documentType');
-        _showErrorDialog('Failed to compress image for $documentType');
+        // _showErrorDialog('Failed to compress image for $documentType');
         return false;
       }
 
@@ -313,7 +313,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
         );
         if (compressedBackImage == null) {
           debugPrint('Failed to compress back image for $documentType');
-          _showErrorDialog('Failed to compress back image for $documentType');
+          // _showErrorDialog('Failed to compress back image for $documentType');
           return false;
         }
         request.files.add(
@@ -344,12 +344,12 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
         return true;
       } else {
         debugPrint('Upload failed for $documentType: $responseString');
-        _showErrorDialog('Failed to upload $documentType: $responseString');
+        // _showErrorDialog('Failed to upload $documentType: $responseString');
         return false;
       }
     } catch (e) {
       debugPrint('Upload error for $documentType: $e');
-      _showErrorDialog('Error uploading $documentType: ${e.toString()}');
+      // _showErrorDialog('Error uploading $documentType: ${e.toString()}');
       return false;
     }
   }
@@ -434,7 +434,7 @@ class _DocumentRegistrationPageState extends State<DocumentRegistrationPage> {
 
       _showSuccessDialog(appLanguage.get('All_documents_submitted_successfully!'));
     } catch (e) {
-      _showErrorDialog(e.toString());
+      // _showErrorDialog(e.toString());
     } finally {
       setState(() => _isLoading = false);
     }

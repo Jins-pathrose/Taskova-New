@@ -4,12 +4,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskova_new/Controller/Jobstatus/jobstatus.dart';
 import 'package:taskova_new/Controller/Theme/theme.dart';
 import 'package:taskova_new/Model/api_config.dart';
+import 'package:taskova_new/View/Authentication/login.dart';
 import 'package:taskova_new/View/Homepage/detailspage.dart';
 import 'package:taskova_new/View/Language/language_provider.dart';
 import 'package:video_player/video_player.dart';
@@ -206,6 +208,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _isLoadingJobRequest = false;
   bool _isVideoInitialized = false;
   late VideoPlayerController _videoController;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
 
   @override
   void initState() {
@@ -216,6 +220,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _searchFocusNode.unfocus();
     _loadData();
     _initializeVideoPlayer();
+    
   }
 
   @override
@@ -234,7 +239,41 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     super.dispose();
   }
+Future<bool> _refreshToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final refreshToken = prefs.getString('refresh_token');
+      if (refreshToken == null || refreshToken.isEmpty) {
+        print('No refresh token found'); // Debug
+        return false;
+      }
 
+      final response = await http.post(
+        Uri.parse('https://taskova.co.uk/api/token/refresh/'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'refresh': refreshToken}),
+      );
+
+      print('Token refresh response: ${response.statusCode} ${response.body}'); // Debug
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final newAccessToken = data['access'];
+        final newRefreshToken = data['refresh'] ?? refreshToken; // Fallback to old refresh token
+
+        await prefs.setString('access_token', newAccessToken);
+        await prefs.setString('refresh_token', newRefreshToken);
+        print('Token refreshed successfully'); // Debug
+        return true;
+      } else {
+        print('Token refresh failed: ${response.statusCode}'); // Debug
+        return false;
+      }
+    } catch (e) {
+      print('Error refreshing token: $e'); // Debug
+      return false;
+    }
+  }
   void _initializeVideoPlayer() {
     _videoController = VideoPlayerController.asset('assets/logogif.mp4');
 
@@ -340,7 +379,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       setState(() {
         _userName = userName; // Set initial username
         if (accessToken == null || accessToken.isEmpty) {
-          _errorMessage = 'No access token found. Please log in.';
+          
           _isLoading = false;
         }
       });
@@ -373,34 +412,45 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           print('Updated user_name: "$_userName"'); // Debug final username
         });
       } else if (response.statusCode == 401) {
-        setState(() {
-          _errorMessage = 'Authentication failed. Please log in again.';
-          _isLoading = false;
-        });
+        await _refreshToken();
+        print(response.statusCode);
+        print('6666666666666666666666666666666666666666666666666666666');
+        // setState(() {
+        //   _errorMessage = 'Authentication failed. Please log in again.';
+        //   _isLoading = false;
+        // });
       } else {
-        setState(() {
-          _errorMessage =
-              'Failed to load driver profile: ${response.statusCode}';
-          _driverProfile = DriverProfile.defaultProfile();
-        });
+        logout(context);
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Error fetching driver profile: $e';
-        _driverProfile = DriverProfile.defaultProfile();
-      });
+      // setState(() {
+      //   _errorMessage = 'Error fetching driver profile: $e';
+      //   _driverProfile = DriverProfile.defaultProfile();
+      // });
       print('Error in _fetchDriverProfile: $e'); // Debug error
     }
   }
-
+ Future<void> logout(BuildContext context) async {
+      await _googleSignIn.signOut();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        CupertinoPageRoute(builder: (context) => LoginPage()),
+        (route) => false,
+      );
+    
+  }
   Future<void> _fetchJobPosts() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final accessToken = prefs.getString('access_token');
       if (accessToken == null || accessToken.isEmpty) {
         setState(() {
-          _errorMessage = 'No access token found. Please log in.';
-          _isLoading = false;
+
+Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        CupertinoPageRoute(builder: (context) => LoginPage()),
+        (route) => false,
+      );          _isLoading = false;
         });
         return;
       }
@@ -469,15 +519,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           _isLoading = false;
         });
       } else if (response.statusCode == 401) {
-        setState(() {
-          _errorMessage = 'Authentication failed. Please log in again.';
-          _isLoading = false;
-        });
+                await _refreshToken();
+
       } else {
-        setState(() {
-          _errorMessage = 'Failed to load job posts: ${response.statusCode}';
-          _isLoading = false;
-        });
+        logout(context);
       }
     } catch (e) {
       setState(() {
@@ -615,29 +660,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 18,
-                color:
-                    themeProvider.isDarkMode
-                        ? CupertinoColors.white
+                color
+                    
                         : CupertinoColors.black,
               ),
             ),
             backgroundColor:
                 themeProvider.isDarkMode
-                    ? _darkmode.withOpacity(0.8)
+                    ? const Color.fromARGB(255, 255, 255, 255).withOpacity(0.8)
                     : theme.barBackgroundColor,
             border: null,
           ),
           child: Container(
             decoration:
-                themeProvider.isDarkMode
-                    ? const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_darkmode, _darkGradientEnd],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    )
-                    : const BoxDecoration(color: Colors.white),
+                 const BoxDecoration(color: Colors.white),
             child: SafeArea(
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(
@@ -670,9 +706,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color:
-            themeProvider.isDarkMode
-                ? CupertinoColors.darkBackgroundGray
-                : CupertinoColors.systemGrey6,
+             CupertinoColors.systemGrey6,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -686,6 +720,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 style: theme.textTheme.textStyle.copyWith(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
+                  color:
+                       const Color.fromARGB(255, 70, 70, 70),
                 ),
               ),
               Text(
@@ -754,7 +790,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         decoration: BoxDecoration(
           color:
               themeProvider.isDarkMode
-                  ? _darkmode.withOpacity(0.7)
+                  ? const Color.fromARGB(255, 255, 255, 255).withOpacity(0.7)
                   : theme.barBackgroundColor,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
@@ -869,9 +905,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     textStyle: theme.textTheme.navTitleTextStyle.copyWith(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color:
-                          themeProvider.isDarkMode
-                              ? CupertinoColors.white
+                      color
                               : CupertinoColors.black,
                     ),
                   ),
@@ -882,20 +916,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 style: theme.textTheme.navTitleTextStyle.copyWith(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color:
-                      themeProvider.isDarkMode
-                          ? CupertinoColors.white
-                          : CupertinoColors.black,
+                  color: CupertinoColors.black,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
                 appLanguage.get('Find_jobs_near_you'),
                 style: theme.textTheme.textStyle.copyWith(
-                  color:
-                      themeProvider.isDarkMode
-                          ? CupertinoColors.systemGrey2
-                          : CupertinoColors.secondaryLabel,
+                  color: CupertinoColors.secondaryLabel,
                   fontSize: 14,
                 ),
               ),
@@ -908,10 +936,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color:
-                      themeProvider.isDarkMode
-                          ? CupertinoColors.darkBackgroundGray
-                          : CupertinoColors.systemGrey6,
+                  color: CupertinoColors.systemGrey6,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
@@ -921,10 +946,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     Text(
                       'Checking job status...',
                       style: theme.textTheme.textStyle.copyWith(
-                        color:
-                            themeProvider.isDarkMode
-                                ? CupertinoColors.white
-                                : CupertinoColors.black,
+                        color: CupertinoColors.black,
                         fontSize: 14,
                       ),
                     ),
@@ -976,10 +998,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color:
-            themeProvider.isDarkMode
-                ? CupertinoColors.darkBackgroundGray
-                : CupertinoColors.systemGrey6,
+        color: CupertinoColors.systemGrey6,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -992,7 +1011,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               placeholder: appLanguage.get('Search_jobs,_companies...'),
               placeholderStyle: theme.textTheme.textStyle.copyWith(
-                color: CupertinoColors.placeholderText,
+                color: const Color.fromARGB(75, 0, 0, 0),
                 fontSize: 14,
               ),
               style: theme.textTheme.textStyle.copyWith(fontSize: 14),
@@ -1060,7 +1079,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     ThemeProvider themeProvider,
   ) {
     if (_isLoading) return _buildLoadingState(theme, themeProvider);
-    if (_errorMessage != null) return _buildErrorState(theme);
+    // if (_errorMessage != null) return _buildErrorState(theme);
     if (_filteredJobPosts.isEmpty && _searchQuery.isNotEmpty) {
       return _buildNoResultsState(theme);
     }
@@ -1092,9 +1111,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color:
-                themeProvider.isDarkMode
-                    ? _darkmode.withOpacity(0.7)
-                    : theme.barBackgroundColor,
+                 CupertinoColors.systemGrey6,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
@@ -1110,10 +1127,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 width: 70,
                 height: 70,
                 decoration: BoxDecoration(
-                  color:
-                      themeProvider.isDarkMode
-                          ? CupertinoColors.darkBackgroundGray
-                          : CupertinoColors.systemGrey5,
+                  color: CupertinoColors.systemGrey5,
                   borderRadius: BorderRadius.circular(11.5),
                 ),
               ),
@@ -1125,29 +1139,22 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     Container(
                       width: double.infinity,
                       height: 16,
-                      color:
-                          themeProvider.isDarkMode
-                              ? CupertinoColors.darkBackgroundGray
-                              : CupertinoColors.systemGrey5,
+                      color: CupertinoColors.systemGrey5,
                     ),
                     const SizedBox(height: 6),
                     Container(
                       width: 100,
                       height: 12,
-                      color:
-                          themeProvider.isDarkMode
-                              ? CupertinoColors.darkBackgroundGray
-                              : CupertinoColors.systemGrey5,
+                      color: CupertinoColors.systemGrey5,
                     ),
                     const SizedBox(height: 10),
                     Container(
                       width: 80,
                       height: 10,
                       color:
-                          themeProvider.isDarkMode
-                              ? CupertinoColors.darkBackgroundGray
-                              : CupertinoColors.systemGrey5,
+                           CupertinoColors.systemGrey5,
                     ),
+                    
                   ],
                 ),
               ),
@@ -1155,60 +1162,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ),
         ),
         childCount: 3,
-      ),
-    );
-  }
-
-  Widget _buildErrorState(CupertinoThemeData theme) {
-    return SliverToBoxAdapter(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.barBackgroundColor,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: CupertinoColors.systemGrey.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            const Icon(
-              CupertinoIcons.exclamationmark_triangle,
-              color: CupertinoColors.systemRed,
-              size: 28,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Something Went Wrong',
-              style: theme.textTheme.navTitleTextStyle.copyWith(
-                color: CupertinoColors.systemRed,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _errorMessage ?? 'Unknown error',
-              style: theme.textTheme.textStyle.copyWith(
-                color: CupertinoColors.systemRed,
-                fontSize: 12,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            CupertinoButton.filled(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              minSize: 36,
-              onPressed: _refreshData,
-              child: const Text('Try Again', style: TextStyle(fontSize: 14)),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1281,18 +1234,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color:
-                themeProvider.isDarkMode
-                    ? CupertinoColors.white
-                    : CupertinoColors.black,
+                CupertinoColors.black,
           ),
         ),
         Text(
           label,
           style: theme.textTheme.textStyle.copyWith(
             color:
-                themeProvider.isDarkMode
-                    ? CupertinoColors.systemGrey2
-                    : CupertinoColors.secondaryLabel,
+                CupertinoColors.secondaryLabel,
             fontSize: 10,
           ),
         ),
@@ -1344,34 +1293,26 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: themeProvider.isDarkMode
-                ? _darkmode.withOpacity(0.7)
-                : theme.barBackgroundColor,
+            color:  const Color.fromARGB(255, 255, 255, 255),
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               // Main shadow
               BoxShadow(
-                color: themeProvider.isDarkMode
-                    ? Colors.black.withOpacity(0.3)
-                    : const Color.fromARGB(255, 1, 1, 1).withOpacity(0.2),
+                color:  const Color.fromARGB(255, 1, 1, 1).withOpacity(0.2),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
                 spreadRadius: 0,
               ),
               // Subtle top highlight for depth
               BoxShadow(
-                color: themeProvider.isDarkMode
-                    ? Colors.white.withOpacity(0.05)
-                    : const Color.fromARGB(255, 207, 207, 207).withOpacity(0.8),
+                color:  const Color.fromARGB(255, 207, 207, 207).withOpacity(0.8),
                 blurRadius: 1,
                 offset: const Offset(0, -1),
                 spreadRadius: 0,
               ),
               // Additional depth shadow
               BoxShadow(
-                color: themeProvider.isDarkMode
-                    ? Colors.black.withOpacity(0.1)
-                    : const Color.fromARGB(255, 212, 211, 211).withOpacity(0.1),
+                color:  const Color.fromARGB(255, 212, 211, 211).withOpacity(0.1),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
                 spreadRadius: -1,
@@ -1406,9 +1347,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           color: CupertinoColors.systemYellow,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: themeProvider.isDarkMode
-                                ? _darkmode.withOpacity(0.7)
-                                : theme.barBackgroundColor,
+                            color:  theme.barBackgroundColor,
                             width: 2,
                           ),
                         ),
@@ -1429,9 +1368,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           color: CupertinoColors.systemRed,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: themeProvider.isDarkMode
-                                ? _darkmode.withOpacity(0.7)
-                                : theme.barBackgroundColor,
+                            color:  theme.barBackgroundColor,
                             width: 2,
                           ),
                         ),
@@ -1457,9 +1394,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             style: theme.textTheme.textStyle.copyWith(
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
-                              color: themeProvider.isDarkMode
-                                  ? CupertinoColors.white
-                                  : CupertinoColors.black,
+                              color:  CupertinoColors.black,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1502,9 +1437,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       Text(
                         job.address!,
                         style: theme.textTheme.textStyle.copyWith(
-                          color: themeProvider.isDarkMode
-                              ? CupertinoColors.systemGrey2
-                              : CupertinoColors.secondaryLabel,
+                          color: CupertinoColors.secondaryLabel,
                           fontSize: 12,
                         ),
                         maxLines: 1,
@@ -1534,12 +1467,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Icon(
-                          CupertinoIcons.money_dollar_circle,
-                          color: CupertinoColors.systemGreen,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 4),
+                        
                         Expanded(
                           child: Text(
                             _formatPayInfo(job),
@@ -1559,9 +1487,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 padding: const EdgeInsets.all(6),
                 child: Icon(
                   CupertinoIcons.chevron_right,
-                  color: themeProvider.isDarkMode
-                      ? CupertinoColors.systemGrey2
-                      : CupertinoColors.tertiaryLabel,
+                  color:  CupertinoColors.tertiaryLabel,
                   size: 14,
                 ),
               ),
@@ -1582,12 +1508,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }) {
     // Adjust color opacity based on dark mode
     final chipColor =
-        themeProvider.isDarkMode
-            ? color.withOpacity(0.2) // More visible in dark mode
-            : color.withOpacity(0.1);
+       color.withOpacity(0.1);
 
     // Adjust text color for better visibility in dark mode
-    final textColor = themeProvider.isDarkMode ? color.withOpacity(0.9) : color;
+    final textColor = color;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1595,9 +1519,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         color: chipColor,
         borderRadius: BorderRadius.circular(8),
         border:
-            themeProvider.isDarkMode
-                ? Border.all(color: color.withOpacity(0.3), width: 0.5)
-                : null,
+             null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1627,9 +1549,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   String _formatPayInfo(JobPost job) {
     final payParts = <String>[];
-    if (job.hourlyRate != null) payParts.add('\$${job.hourlyRate}/hr');
+    if (job.hourlyRate != null) payParts.add('\€ ${job.hourlyRate}/hr');
     if (job.perDeliveryRate != null)
-      payParts.add('\$${job.perDeliveryRate}/delivery');
+      payParts.add('\€ ${job.perDeliveryRate}/delivery');
     return payParts.isEmpty ? 'Pay TBD' : payParts.join(' + ');
   }
 }

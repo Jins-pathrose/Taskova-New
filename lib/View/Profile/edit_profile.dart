@@ -372,7 +372,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         data: CupertinoThemeData(brightness: Brightness.light),
         child: CupertinoAlertDialog(
           title: Text(
-            appLanguage.get('error'),
+            appLanguage.get('OOPS!'),
             style: TextStyle(color: CupertinoColors.destructiveRed),
           ),
           content: Text(message),

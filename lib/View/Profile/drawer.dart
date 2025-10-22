@@ -213,13 +213,13 @@ class SettingsDrawer extends StatelessWidget {
                       iconColor: Color.fromARGB(255, 230, 91, 45),
                       onTap: () {},
                     ),
-                    _buildSettingsItem(
-                      icon: CupertinoIcons.lock_fill,
-                      title: appLanguage.get('change_password'),
-                      subtitle: appLanguage.get('Update_your_account_password'),
-                      iconColor: CupertinoColors.systemBlue,
-                      onTap: onChangePassword,
-                    ),
+                    // _buildSettingsItem(
+                    //   icon: CupertinoIcons.lock_fill,
+                    //   title: appLanguage.get('change_password'),
+                    //   subtitle: appLanguage.get('Update_your_account_password'),
+                    //   iconColor: CupertinoColors.systemBlue,
+                    //   onTap: onChangePassword,
+                    // ),
                     _buildSettingsItem(
                       icon: CupertinoIcons.globe,
                       title: appLanguage.get('language'),

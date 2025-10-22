@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:taskova_new/Model/api_config.dart';
+import 'package:taskova_new/View/BottomNavigation/bottomnavigation.dart';
 import 'package:taskova_new/View/Chat/chat.dart';
 import 'package:taskova_new/View/Homepage/admin_approval.dart';
 import 'package:taskova_new/View/Homepage/canceljobpost.dart';
@@ -746,9 +747,9 @@ Future<void> _openMap() async {
             children: [
               if (widget.jobPost.hourlyRate != null)
                 _buildInfoChip(
-                  CupertinoIcons.money_dollar_circle,
+                  CupertinoIcons.money_euro,
                   appLanguage.get('Hourly'),
-                  '\$${widget.jobPost.hourlyRate?.toStringAsFixed(2)}',
+                  '\€ ${widget.jobPost.hourlyRate?.toStringAsFixed(2)}',
                   CupertinoColors.systemPurple,
                 ),
               if (widget.jobPost.hourlyRate != null &&
@@ -758,7 +759,7 @@ Future<void> _openMap() async {
                 _buildInfoChip(
                   CupertinoIcons.car_detailed,
                   appLanguage.get('Per_Delivery'),
-                  '\$${widget.jobPost.perDeliveryRate?.toStringAsFixed(2)}',
+                  '\€ ${widget.jobPost.perDeliveryRate?.toStringAsFixed(2)}',
                   CupertinoColors.systemTeal,
                 ),
             ],
@@ -1663,6 +1664,9 @@ Widget _buildReviewSubmittedMessage() {
       ],
     ),
   );
+  super.setState(() {
+    _showOtpFab = false;
+  });
 }
 
   void _showErrorMessage(BuildContext context, String message) {
@@ -1794,17 +1798,19 @@ Widget _buildReviewSubmittedMessage() {
         }
 
         _showApplicationSuccessMessage(context);
+        
       } else {
-        throw Exception('Failed to submit application');
+        // throw Exception('Failed to submit application');
+        print(response.statusCode);
       }
     } catch (e) {
       if (loadingContext != null && Navigator.canPop(loadingContext!)) {
         Navigator.pop(loadingContext!);
       }
-      _showErrorMessage(
-        context,
-        'Application failed: ${e is SocketException ? 'No internet connection' : e.toString()}',
-      );
+      // _showErrorMessage(
+      //   context,
+      //   'Application failed: ${e is SocketException ? 'No internet connection' : e.toString()}',
+      // );
     }
   }
 
@@ -1907,7 +1913,13 @@ Widget _buildReviewSubmittedMessage() {
                 ),
                 SizedBox(height: 20),
                 GestureDetector(
-                  onTap: () => Navigator.pop(context),
+                  onTap: () => Navigator.of(context, rootNavigator: true)
+                            .pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (context) => const MainWrapper(),
+                          ),
+                          (Route<dynamic> route) => false,
+                        ),
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(

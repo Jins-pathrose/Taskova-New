@@ -106,14 +106,17 @@ List<MonthlyJobCount> _filteredJobCounts = [];
           }
         });
       } else {
-        setState(() {
-          _errorMessage =
-              'Failed to load profile data, but email is loaded from local storage.';
-        });
+        // setState(() {
+        //   _errorMessage =
+        //       'Failed to load profile data, but email is loaded from local storage.';
+        // });
+        print(response.statusCode);
+        print(response.body);
+        print('000000000000000000000');
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error loading profile: ${e.toString()}';
+        // _errorMessage = 'Error loading profile: ${e.toString()}';
       });
     } finally {
       setState(() {
@@ -689,261 +692,170 @@ List<Map<String, String>> _getAvailableMonths() {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
-      backgroundColor: CupertinoColors.systemGroupedBackground,
-      navigationBar: CupertinoNavigationBar(
-        backgroundColor: CupertinoColors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: CupertinoColors.separator.withOpacity(0.3),
-            width: 0.5,
+    return CupertinoTheme(
+      data: CupertinoThemeData(brightness: Brightness.light),
+      child: CupertinoPageScaffold(
+        backgroundColor: CupertinoColors.systemGroupedBackground,
+        navigationBar: CupertinoNavigationBar(
+          backgroundColor: CupertinoColors.white,
+          border: Border(
+            bottom: BorderSide(
+              color: CupertinoColors.separator.withOpacity(0.3),
+              width: 0.5,
+            ),
           ),
-        ),
-        middle: Text(
-          appLanguage.get('profile'),
-          style: TextStyle(
-            color: CupertinoColors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+          middle: Text(
+            appLanguage.get('profile'),
+            style: TextStyle(
+              color: CupertinoColors.black,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-        trailing:
-            _isLoading
-                ? null
-                : CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  child: Icon(
-                    CupertinoIcons.gear,
-                    color: primaryBlue,
-                    size: 24,
-                  ),
-                  onPressed: _showSettingsDrawer,
-                ),
-      ),
-      child:
-          _isLoading
-              ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CupertinoActivityIndicator(radius: 20),
-                    SizedBox(height: 20),
-                    Text(
-                      appLanguage.get('loading_profile'),
-                      style: TextStyle(
-                        color: CupertinoColors.systemGrey,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
+          trailing:
+              _isLoading
+                  ? null
+                  : CupertinoButton(
+                    padding: EdgeInsets.zero,
+                    child: Icon(
+                      CupertinoIcons.gear,
+                      color: primaryBlue,
+                      size: 24,
                     ),
-                  ],
-                ),
-              )
-              : CustomScrollView(
-                physics: AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Container(
-                      margin: EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: CupertinoColors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: CupertinoColors.systemGrey.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
+                    onPressed: _showSettingsDrawer,
+                  ),
+        ),
+        child:
+            _isLoading
+                ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CupertinoActivityIndicator(radius: 20),
+                      SizedBox(height: 20),
+                      Text(
+                        appLanguage.get('loading_profile'),
+                        style: TextStyle(
+                          color: CupertinoColors.systemGrey,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      child: Column(
-                        children: [
-                          Stack(
-                            clipBehavior: Clip.none,
-                            alignment: Alignment.center,
-                            children: [
-                              Container(
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [primaryBlue, accentBlue],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.only(
-                                    topLeft: Radius.circular(16),
-                                    topRight: Radius.circular(16),
-                                  ),
-                                ),
-                                child: Stack(
-                                  children: [
-                                    Positioned(
-                                      right: -20,
-                                      top: -20,
-                                      child: Container(
-                                        width: 100,
-                                        height: 100,
-                                        decoration: BoxDecoration(
-                                          color: CupertinoColors.white
-                                              .withOpacity(0.1),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
+                    ],
+                  ),
+                )
+                : CustomScrollView(
+                  physics: AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Container(
+                        margin: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: CupertinoColors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: CupertinoColors.systemGrey.withOpacity(0.1),
+                              blurRadius: 10,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [primaryBlue, accentBlue],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
                                     ),
-                                    Positioned(
-                                      right: 20,
-                                      top: 40,
-                                      child: Container(
-                                        width: 60,
-                                        height: 60,
-                                        decoration: BoxDecoration(
-                                          color: CupertinoColors.white
-                                              .withOpacity(0.05),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
+                                    borderRadius: BorderRadius.only(
+                                      topLeft: Radius.circular(16),
+                                      topRight: Radius.circular(16),
                                     ),
-                                  ],
-                                ),
-                              ),
-                              Positioned(
-                                top: 80,
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      width: 80,
-                                      height: 80,
-                                      decoration: BoxDecoration(
-                                        color: CupertinoColors.white,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: CupertinoColors.white,
-                                          width: 4,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: CupertinoColors.black
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      Positioned(
+                                        right: -20,
+                                        top: -20,
+                                        child: Container(
+                                          width: 100,
+                                          height: 100,
+                                          decoration: BoxDecoration(
+                                            color: CupertinoColors.white
                                                 .withOpacity(0.1),
-                                            blurRadius: 8,
-                                            offset: Offset(0, 2),
+                                            shape: BoxShape.circle,
                                           ),
-                                        ],
-                                      ),
-                                      child: ClipOval(
-                                        child: Icon(
-                                          CupertinoIcons.person_solid,
-                                          size: 40,
-                                          color: primaryBlue,
                                         ),
                                       ),
-                                    ),
-                                    Positioned(
-                                      bottom: 5,
-                                      right: 5,
-                                      child: Container(
-                                        width: 20,
-                                        height: 20,
+                                      Positioned(
+                                        right: 20,
+                                        top: 40,
+                                        child: Container(
+                                          width: 60,
+                                          height: 60,
+                                          decoration: BoxDecoration(
+                                            color: CupertinoColors.white
+                                                .withOpacity(0.05),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 80,
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        width: 80,
+                                        height: 80,
                                         decoration: BoxDecoration(
-                                          color: CupertinoColors.systemGreen,
+                                          color: CupertinoColors.white,
                                           shape: BoxShape.circle,
                                           border: Border.all(
                                             color: CupertinoColors.white,
-                                            width: 2,
+                                            width: 4,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: CupertinoColors.black
+                                                  .withOpacity(0.1),
+                                              blurRadius: 8,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: ClipOval(
+                                          child: Icon(
+                                            CupertinoIcons.person_solid,
+                                            size: 40,
+                                            color: primaryBlue,
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          Padding(
-                            padding: EdgeInsets.fromLTRB(20, 50, 20, 20),
-                            child: Column(
-                              children: [
-                                Text(
-                                  _nameController.text.isNotEmpty
-                                      ? _nameController.text
-                                      : appLanguage.get('your_name'),
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: CupertinoColors.black,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  _emailController.text.isNotEmpty
-                                      ? _emailController.text
-                                      : appLanguage.get('your_email'),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: CupertinoColors.systemGrey,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  _phoneController.text.isNotEmpty
-                                      ? _phoneController.text
-                                      : appLanguage.get('your_phone'),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: CupertinoColors.systemGrey,
-                                  ),
-                                ),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      CupertinoIcons.location_solid,
-                                      size: 14,
-                                      color: CupertinoColors.systemGrey,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Flexible(
-                                      child: Text(
-                                        _selectedAddress ??
-                                            appLanguage.get('set_location'),
-                                        style: TextStyle(
-                                          color: CupertinoColors.systemGrey,
-                                          fontSize: 14,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 12),
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: CupertinoColors.systemGreen
-                                        .withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: CupertinoColors.systemGreen
-                                          .withOpacity(0.3),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        CupertinoIcons.checkmark_seal_fill,
-                                        color: CupertinoColors.systemGreen,
-                                        size: 16,
-                                      ),
-                                      SizedBox(width: 6),
-                                      Text(
-                                        appLanguage.get('active'),
-                                        style: TextStyle(
-                                          color: CupertinoColors.systemGreen,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
+                                      Positioned(
+                                        bottom: 5,
+                                        right: 5,
+                                        child: Container(
+                                          width: 20,
+                                          height: 20,
+                                          decoration: BoxDecoration(
+                                            color: CupertinoColors.systemGreen,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: CupertinoColors.white,
+                                              width: 2,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -951,154 +863,248 @@ List<Map<String, String>> _getAvailableMonths() {
                                 ),
                               ],
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (_errorMessage != null)
-                    SliverToBoxAdapter(
-                      child: Container(
-                        margin: EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        padding: EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: CupertinoColors.destructiveRed.withOpacity(
-                            0.1,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: CupertinoColors.destructiveRed.withOpacity(
-                              0.3,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              CupertinoIcons.exclamationmark_triangle_fill,
-                              color: CupertinoColors.destructiveRed,
-                              size: 20,
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: TextStyle(
-                                  color: CupertinoColors.destructiveRed,
-                                  fontSize: 14,
-                                ),
+                            Padding(
+                              padding: EdgeInsets.fromLTRB(20, 50, 20, 20),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    _nameController.text.isNotEmpty
+                                        ? _nameController.text
+                                        : appLanguage.get('your_name'),
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: CupertinoColors.black,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    _emailController.text.isNotEmpty
+                                        ? _emailController.text
+                                        : appLanguage.get('your_email'),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: CupertinoColors.systemGrey,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    _phoneController.text.isNotEmpty
+                                        ? _phoneController.text
+                                        : appLanguage.get('your_phone'),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: CupertinoColors.systemGrey,
+                                    ),
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        CupertinoIcons.location_solid,
+                                        size: 14,
+                                        color: CupertinoColors.systemGrey,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          _selectedAddress ??
+                                              appLanguage.get('set_location'),
+                                          style: TextStyle(
+                                            color: CupertinoColors.systemGrey,
+                                            fontSize: 14,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: CupertinoColors.systemGreen
+                                          .withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: CupertinoColors.systemGreen
+                                            .withOpacity(0.3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          CupertinoIcons.checkmark_seal_fill,
+                                          color: CupertinoColors.systemGreen,
+                                          size: 16,
+                                        ),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          appLanguage.get('active'),
+                                          style: TextStyle(
+                                            color: CupertinoColors.systemGreen,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                    SliverToBoxAdapter(
-  child: Container(
-    margin: EdgeInsets.all(16),
-    padding: EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      color: CupertinoColors.white,
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-          color: CupertinoColors.systemGrey.withOpacity(0.1),
-          blurRadius: 10,
-          offset: Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Text(
-              appLanguage.get('Monthly Jobs'),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: CupertinoColors.black,
-              ),
-            ),
-            CupertinoButton(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              color: primaryBlue.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              onPressed: _showMonthSelector,
-              minSize: 0,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    CupertinoIcons.calendar,
-                    size: 16,
-                    color: primaryBlue,
-                  ),
-                  SizedBox(width: 6),
-                  Text(
-                    _getSelectedMonthLabel(),
-                    style: TextStyle(
-                      color: primaryBlue,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  SizedBox(width: 4),
-                  Icon(
-                    CupertinoIcons.chevron_down,
-                    size: 14,
-                    color: primaryBlue,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 20),
-        if (_isLoadingChart)
-          Container(
-            height: 200,
-            child: Center(
-              child: CupertinoActivityIndicator(radius: 14),
-            ),
-          )
-        else if (_filteredJobCounts.isEmpty)
-          Container(
-            height: 200,
-            child: Center(
-              child: Text(
-                appLanguage.get('no_job_data'),
+                    if (_errorMessage != null)
+                      SliverToBoxAdapter(
+                        // child: Container(
+                        //   margin: EdgeInsets.symmetric(
+                        //     horizontal: 16,
+                        //     vertical: 8,
+                        //   ),
+                        //   padding: EdgeInsets.all(16),
+                        //   decoration: BoxDecoration(
+                        //     color: CupertinoColors.destructiveRed.withOpacity(
+                        //       0.1,
+                        //     ),
+                        //     borderRadius: BorderRadius.circular(12),
+                        //     border: Border.all(
+                        //       color: CupertinoColors.destructiveRed.withOpacity(
+                        //         0.3,
+                        //       ),
+                        //     ),
+                        //   ),
+                        //   child: Row(
+                        //     children: [
+                        //       Icon(
+                        //         CupertinoIcons.exclamationmark_triangle_fill,
+                        //         color: CupertinoColors.destructiveRed,
+                        //         size: 20,
+                        //       ),
+                        //       SizedBox(width: 12),
+                        //       Expanded(
+                        //         child: Text(
+                        //           _errorMessage!,
+                        //           style: TextStyle(
+                        //             color: CupertinoColors.destructiveRed,
+                        //             fontSize: 14,
+                        //           ),
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   ),
+                        // ),
+                      ),
+                      SliverToBoxAdapter(
+        child: Container(
+      margin: EdgeInsets.all(16),
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: CupertinoColors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: CupertinoColors.systemGrey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                appLanguage.get('Monthly Jobs'),
                 style: TextStyle(
-                  color: CupertinoColors.systemGrey,
-                  fontSize: 16,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: CupertinoColors.black,
+                ),
+              ),
+              CupertinoButton(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                color: primaryBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                onPressed: _showMonthSelector,
+                minSize: 0,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      CupertinoIcons.calendar,
+                      size: 16,
+                      color: primaryBlue,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      _getSelectedMonthLabel(),
+                      style: TextStyle(
+                        color: primaryBlue,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(
+                      CupertinoIcons.chevron_down,
+                      size: 14,
+                      color: primaryBlue,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          if (_isLoadingChart)
+            Container(
+              height: 200,
+              child: Center(
+                child: CupertinoActivityIndicator(radius: 14),
+              ),
+            )
+          else if (_filteredJobCounts.isEmpty)
+            Container(
+              height: 200,
+              child: Center(
+                child: Text(
+                  appLanguage.get('no_job_data'),
+                  style: TextStyle(
+                    color: CupertinoColors.systemGrey,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            )
+          else
+            Container(
+              height: 200,
+              width: double.infinity,
+              child: CustomPaint(
+                painter: MonthlyJobsChartPainter(
+                  monthlyJobCounts: _filteredJobCounts,
+                  primaryColor: primaryBlue,
+                  showAll: _selectedMonth == null || _selectedMonth == 'all',
                 ),
               ),
             ),
-          )
-        else
-          Container(
-            height: 200,
-            width: double.infinity,
-            child: CustomPaint(
-              painter: MonthlyJobsChartPainter(
-                monthlyJobCounts: _filteredJobCounts,
-                primaryColor: primaryBlue,
-                showAll: _selectedMonth == null || _selectedMonth == 'all',
-              ),
-            ),
-          ),
-      ],
-    ),
-  ),
-),
-                ],
-              ),
+        ],
+      ),
+        ),
+      ),
+                  ],
+                ),
+      ),
     );
   }
 String _getSelectedMonthLabel() {

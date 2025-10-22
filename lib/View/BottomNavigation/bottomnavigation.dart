@@ -284,6 +284,7 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _refreshAccessToken();
     appLanguage = Provider.of<AppLanguage>(context, listen: false);
     WidgetsBinding.instance.addObserver(this);
     _notificationService.startNotificationService();
@@ -487,7 +488,14 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoPageScaffold(
+  return CupertinoTheme(
+    data: CupertinoThemeData(
+      brightness: Brightness.light, // Force light theme
+      primaryColor: CupertinoColors.systemBlue,
+      barBackgroundColor: CupertinoColors.systemBackground,
+      scaffoldBackgroundColor: CupertinoColors.systemBackground,
+    ),
+    child: CupertinoPageScaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: CupertinoColors.systemBackground,
       child: CupertinoTabScaffold(
@@ -541,6 +549,7 @@ class _MainWrapperState extends State<MainWrapper> with WidgetsBindingObserver {
           );
         },
       ),
-    );
-  }
+    ),
+  );
+}
 }
